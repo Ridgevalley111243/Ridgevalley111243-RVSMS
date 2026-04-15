@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ridgevalley Report System | Teacher Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] },
+                    colors: {
+                        primary: { 50: '#ecfdf5', 100: '#d1fae5', 500: '#10b981', 600: '#059669', 700: '#047857', 900: '#064e3b' },
+                        secondary: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' },
+                        slate: { 850: '#1e293b', 900: '#0f172a' }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.3s ease-out',
+                        'slide-up': 'slideUp 0.4s ease-out',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        slideUp: { '0%': { transform: 'translateY(20px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; }
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(226, 232, 240, 0.8); }
+        .dark body { background: #0f172a; color: #f1f5f9; }
+        .dark .glass-panel { background: rgba(30, 41, 59, 0.95); border-color: rgba(51, 65, 85, 0.8); }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        .input-field { 
+            transition: all 0.2s; 
+            border: 1.5px solid #e2e8f0; 
+        }
+        .input-field:focus { 
+            border-color: #10b981; 
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); 
+            outline: none; 
+        }
+        .dark .input-field { border-color: #334155; background: #1e293b; color: #f1f5f9; }
+        .dark .input-field:focus { border-color: #10b981; }
+        
+        .student-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .student-card:hover { transform: translateY(-2px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+        
+        .status-badge { 
+            display: inline-flex; align-items: center; gap: 6px; 
+            padding: 6px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; 
+        }
+        
+        /* Full Screen Editor */
+        #report-editor { 
+            position: fixed; inset: 0; z-index: 50; 
+            background: #f1f5f9; 
+            display: none; flex-direction: column;
+        }
+        .dark #report-editor { background: #0f172a; }
+        #report-editor.active { display: flex; animation: fadeIn 0.3s ease-out; }
+        
+        .editor-sidebar { 
+            width: 280px; background: white; border-right: 1px solid #e2e8f0; 
+            display: flex; flex-direction: column; height: 100vh;
+        }
+        .dark .editor-sidebar { background: #1e293b; border-color: #334155; }
+        
+        .editor-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .editor-content { flex: 1; overflow-y: auto; padding: 2rem; }
+        
+        /* Loading States */
+        .skeleton { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: loading 1.5s infinite; }
+        .dark .skeleton { background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%); }
+        @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        
+        /* Toast Notifications */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { 
+            padding: 16px 20px; border-radius: 12px; color: white; font-weight: 600; 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); 
+            display: flex; align-items: center; gap: 12px; min-width: 300px;
+            animation: slideUp 0.3s ease-out;
+        }
+        
+        /* Subject Table Styles */
+        .subject-table th { background: #f8fafc; font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; }
+        .dark .subject-table th { background: #1e293b; }
+        .subject-table td { border-bottom: 1px solid #e2e8f0; }
+        .dark .subject-table td { border-color: #334155; }
+        
+        .score-input { 
+            width: 100%; text-align: center; font-weight: 700; 
+            border: 2px solid #e2e8f0; border-radius: 8px; padding: 8px;
+        }
+        .score-input:focus { border-color: #10b981; outline: none; }
+        
+        /* Modal */
+        .modal-overlay { 
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); 
+            z-index: 100; display: none; align-items: center; justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content { 
+            background: white; border-radius: 20px; padding: 2rem; max-width: 500px; width: 90%; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            animation: slideUp 0.3s ease-out;
+        }
+        .dark .modal-content { background: #1e293b; color: #f1f5f9; }
+    </style>
+</head>
+<body class="antialiased text-slate-800 dark:text-slate-100">
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-exclamation-triangle text-amber-600 text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold mb-2" id="modal-title">Confirm Action</h3>
+                <p class="text-slate-600 dark:text-slate-400" id="modal-message">Are you sure?</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeModal()" class="flex-1 px-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Cancel</button>
+                <button id="modal-confirm-btn" class="flex-1 px-4 py-3 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200 dark:shadow-emerald-900/50">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="global-loading" class="fixed inset-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm z-[200] hidden items-center justify-center flex-col">
+        <div class="w-16 h-16 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mb-4"></div>
+        <p class="text-lg font-bold text-slate-700 dark:text-slate-200" id="loading-text">Loading...</p>
+        <p class="text-sm text-slate-500 mt-2" id="loading-subtext">Please wait</p>
+    </div>
+
+    <!-- Landing Page -->
+    <div id="landing-page" class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="glass-panel sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800">
+            <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <button onclick="goBackToDashboard()" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-all">
+                        <i class="fas fa-arrow-left text-slate-600 dark:text-slate-400"></i>
+                    </button>
+                    <div>
+                        <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Report System</h1>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Ridgevalley Hybrid School</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right hidden md:block">
+                        <p id="teacher-name" class="font-bold text-slate-900 dark:text-white">Loading...</p>
+                        <p id="class-info" class="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
+                    </div>
+                    <button onclick="toggleDarkMode()" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-all">
+                        <i class="fas fa-moon dark:hidden text-slate-600"></i>
+                        <i class="fas fa-sun hidden dark:block text-amber-400"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-grow max-w-7xl mx-auto px-6 py-8 w-full space-y-6">
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass-panel rounded-2xl p-6 border-l-4 border-emerald-500">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Progress</h3>
+                        <span class="text-2xl font-black text-emerald-600" id="progress-percent">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 mb-2">
+                        <div id="progress-bar" class="bg-emerald-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <p class="text-sm text-slate-600 dark:text-slate-400"><span id="progress-completed" class="font-bold text-slate-900 dark:text-white">0</span> of <span id="progress-total" class="font-bold text-slate-900 dark:text-white">0</span> completed</p>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-6 border-l-4 border-blue-500">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Template</h3>
+                        <div id="template-status-icon" class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                            <i class="fas fa-file-word text-blue-600 text-sm"></i>
+                        </div>
+                    </div>
+                    <p id="template-name" class="font-bold text-slate-900 dark:text-white truncate">Loading...</p>
+                    <p id="template-status-text" class="text-sm text-slate-500 dark:text-slate-400 mt-1">Checking...</p>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-6 border-l-4 border-purple-500">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Database</h3>
+                        <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                    </div>
+                    <p class="font-bold text-slate-900 dark:text-white">Supabase Cloud</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Auto-save enabled</p>
+                </div>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white">Student Reports</h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Select a student to fill their report</p>
+                </div>
+                <button onclick="openBulkEditor()" id="fill-reports-btn" disabled class="px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/50 hover:bg-emerald-700 hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                    <i class="fas fa-pen-to-square"></i>
+                    <span>Fill Reports</span>
+                </button>
+            </div>
+
+            <!-- Students Grid -->
+            <div id="students-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <!-- Skeleton Loading -->
+                <div class="glass-panel rounded-2xl p-6 skeleton h-32"></div>
+                <div class="glass-panel rounded-2xl p-6 skeleton h-32"></div>
+                <div class="glass-panel rounded-2xl p-6 skeleton h-32"></div>
+                <div class="glass-panel rounded-2xl p-6 skeleton h-32"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Full Screen Report Editor -->
+    <div id="report-editor">
+        <!-- Editor Header -->
+        <div class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-4">
+                <button onclick="closeReportEditor()" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-all">
+                    <i class="fas fa-times text-slate-600 dark:text-slate-400"></i>
+                </button>
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white">Report Editor</h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400" id="editor-subtitle">Fill all required fields</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button onclick="saveCurrentReport()" class="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 font-semibold text-slate-700 dark:text-slate-200 transition-all flex items-center gap-2">
+                    <i class="fas fa-save"></i>
+                    <span class="hidden sm:inline">Save</span>
+                </button>
+                <button onclick="generateAndDownloadDOCX()" class="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-lg shadow-purple-200 dark:shadow-purple-900/50 transition-all flex items-center gap-2">
+                    <i class="fas fa-download"></i>
+                    <span class="hidden sm:inline">Download</span>
+                </button>
+                <button onclick="submitToAdmin()" id="submit-btn" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-lg shadow-emerald-200 dark:shadow-emerald-900/50 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Submit</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Sidebar - Student List -->
+            <div class="editor-sidebar hidden lg:flex">
+                <div class="p-4 border-b border-slate-200 dark:border-slate-800">
+                    <h3 class="font-bold text-slate-900 dark:text-white mb-1">Students</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Click to switch</p>
+                </div>
+                <div id="student-list" class="flex-1 overflow-y-auto p-3 space-y-2">
+                    <!-- Populated by JS -->
+                </div>
+                <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="text-slate-600 dark:text-slate-400">Completed</span>
+                        <span class="font-bold text-emerald-600" id="sidebar-progress">0/0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="editor-main">
+                <!-- Student Info Bar -->
+                <div class="bg-emerald-600 dark:bg-emerald-700 text-white px-6 py-4 flex items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold" id="student-avatar">A</div>
+                        <div>
+                            <h3 class="text-xl font-bold" id="editor-student-name">Student Name</h3>
+                            <p class="text-emerald-100 text-sm" id="editor-student-meta">Class • ID • Attendance</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-6 text-right">
+                        <div>
+                            <p class="text-xs text-emerald-200 uppercase tracking-wider font-semibold">Attendance</p>
+                            <p class="text-2xl font-bold" id="editor-attendance">0/0</p>
+                        </div>
+                        <div id="class-position-wrapper" class="hidden">
+                            <p class="text-xs text-emerald-200 uppercase tracking-wider font-semibold">Position</p>
+                            <p class="text-2xl font-bold" id="editor-position">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Content -->
+                <div class="editor-content bg-slate-100 dark:bg-slate-950">
+                    <div class="max-w-4xl mx-auto space-y-6 pb-20" id="form-container">
+                        <!-- Dynamic Form Sections -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="report.js"></script>
+</body>
+</html>
