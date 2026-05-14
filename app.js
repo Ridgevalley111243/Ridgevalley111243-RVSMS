@@ -693,21 +693,21 @@ const app = {
 
     setRole(role) {
         state.role = role;
-        
+
+        // ── Highlight the active role button ──────────────────────────────────
         document.querySelectorAll('.role-btn').forEach(btn => {
             btn.classList.remove('bg-ridge-500', 'text-white', 'ring-2', 'ring-ridge-500', 'ring-offset-2');
             btn.classList.add('hover:bg-slate-200', 'dark:hover:bg-slate-700');
         });
-
         const activeBtn = document.getElementById(`btn-${role}`);
         if (activeBtn) {
             activeBtn.classList.add('bg-ridge-500', 'text-white', 'ring-2', 'ring-ridge-500', 'ring-offset-2');
             activeBtn.classList.remove('hover:bg-slate-200', 'dark:hover:bg-slate-700');
         }
 
+        // ── Forgot-password / admin-note visibility ───────────────────────────
         const forgotSection = document.getElementById('forgot-password-section');
-        const adminNote = document.getElementById('admin-reg-note');
-        
+        const adminNote     = document.getElementById('admin-reg-note');
         if (forgotSection && adminNote) {
             if (role === 'admin') {
                 forgotSection.classList.add('hidden');
@@ -718,35 +718,116 @@ const app = {
             }
         }
 
+        // ── Email placeholder ─────────────────────────────────────────────────
+        const emailInput = document.getElementById('auth-email');
+        if (emailInput) {
+            emailInput.placeholder = (role === 'parent' && state.authMode !== 'register')
+                ? 'Email or Phone Number'
+                : 'Email Address';
+        }
+
+        // ── Submit-button colour ──────────────────────────────────────────────
         const submitBtn = document.getElementById('auth-submit-btn');
         if (submitBtn) {
-            submitBtn.className = submitBtn.className.replace(/bg-(ridge|blue|purple)-600/g, '');
-            if (role === 'teacher') submitBtn.classList.add('bg-blue-600');
-            else if (role === 'parent') submitBtn.classList.add('bg-purple-600');
-            else submitBtn.classList.add('bg-ridge-500');
+            submitBtn.className = submitBtn.className.replace(/bg-(ridge|blue|purple)-(500|600)/g, '');
+            if (role === 'teacher')      submitBtn.classList.add('bg-blue-600');
+            else if (role === 'parent')  submitBtn.classList.add('bg-purple-600');
+            else                         submitBtn.classList.add('bg-ridge-500');
         }
+
+        // ── Register-mode adjustments (title + phone field) ───────────────────
+        if (state.authMode === 'register') {
+            const authTitle = document.getElementById('auth-title');
+            if (authTitle) authTitle.textContent = role === 'admin' ? 'Admin Registration' : 'Create Account';
+
+            // Ensure the phone field exists in the DOM
+            this._ensurePhoneField();
+
+            // Show phone field only for parent, hide for admin/teacher
+            const phoneField = document.getElementById('phone-reg-field');
+            if (phoneField) {
+                if (role === 'parent') {
+                    phoneField.classList.remove('hidden');
+                } else {
+                    phoneField.classList.add('hidden');
+                }
+            }
+        }
+    },
+
+    // Inject the phone field into reg-fields if it isn't there yet.
+    _ensurePhoneField() {
+        if (document.getElementById('phone-reg-field')) return; // already exists
+        const regFields = document.getElementById('reg-fields');
+        if (!regFields) return;
+        const phoneDiv = document.createElement('div');
+        phoneDiv.id = 'phone-reg-field';
+        phoneDiv.className = 'hidden';
+        phoneDiv.innerHTML = `
+            <label class="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
+                Phone Number <span class="text-red-500">*</span>
+            </label>
+            <input type="tel" id="auth-phone" maxlength="13"
+                class="w-full rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none transition-all"
+                placeholder="e.g. 0241234567"
+                oninput="(function(el){
+                    const v = ghanaPhone.validate(el.value.trim());
+                    if (el.value.trim().length >= 10) {
+                        ghanaPhone.showError(el, v.valid ? null : v.error);
+                        el.style.borderColor = v.valid ? '#10b981' : '#ef4444';
+                    } else {
+                        ghanaPhone.showError(el, null);
+                        el.style.borderColor = '';
+                    }
+                })(this)">
+            <p class="text-xs text-slate-400 mt-1">
+                Valid Ghana number — 10 digits starting with 0 (e.g. 0241234567).<br>
+                Accepted: MTN (020/024/025/053–055/059), Telecel (050), AirtelTigo (026/027/056/057), Glo (023/028).
+            </p>`;
+        regFields.appendChild(phoneDiv);
     },
 
     toggleAuthMode() {
         state.authMode = state.authMode === 'login' ? 'register' : 'login';
-        const regFields = document.getElementById('reg-fields');
-        const authTitle = document.getElementById('auth-title');
+
+        const regFields  = document.getElementById('reg-fields');
+        const authTitle  = document.getElementById('auth-title');
         const submitText = document.getElementById('auth-submit-text');
-        const toggleBtn = document.getElementById('toggle-auth-btn');
-        const modeText = document.getElementById('auth-mode-text');
+        const toggleBtn  = document.getElementById('toggle-auth-btn');
+        const modeText   = document.getElementById('auth-mode-text');
+        const emailInput = document.getElementById('auth-email');
 
         if (state.authMode === 'register') {
-            if (regFields) regFields.classList.remove('hidden');
-            if (authTitle) authTitle.textContent = state.role === 'admin' ? 'Admin Registration' : 'Create Account';
+            // ── Show registration fields ──────────────────────────────────────
+            if (regFields)  regFields.classList.remove('hidden');
+            if (authTitle)  authTitle.textContent = state.role === 'admin' ? 'Admin Registration' : 'Create Account';
             if (submitText) submitText.textContent = 'Create Account';
-            if (toggleBtn) toggleBtn.textContent = 'Already have an account? Sign In';
-            if (modeText) modeText.textContent = 'Have an account?';
+            if (toggleBtn)  toggleBtn.textContent  = 'Already have an account? Sign In';
+            if (modeText)   modeText.textContent   = 'Have an account?';
+            if (emailInput) emailInput.placeholder = 'Email Address';
+
+            // Ensure phone field exists, then show/hide based on current role
+            this._ensurePhoneField();
+            const phoneField = document.getElementById('phone-reg-field');
+            if (phoneField) {
+                if (state.role === 'parent') {
+                    phoneField.classList.remove('hidden');
+                } else {
+                    phoneField.classList.add('hidden');
+                }
+            }
         } else {
-            if (regFields) regFields.classList.add('hidden');
-            if (authTitle) authTitle.textContent = 'Secure Login';
+            // ── Back to login ─────────────────────────────────────────────────
+            if (regFields)  regFields.classList.add('hidden');
+            if (authTitle)  authTitle.textContent = 'Secure Login';
             if (submitText) submitText.textContent = 'Authorize Access';
-            if (toggleBtn) toggleBtn.textContent = 'Create Account';
-            if (modeText) modeText.textContent = 'New to Ridgevalley?';
+            if (toggleBtn)  toggleBtn.textContent  = 'Create Account';
+            if (modeText)   modeText.textContent   = 'New to Ridgevalley?';
+            if (emailInput) emailInput.placeholder = state.role === 'parent' ? 'Email or Phone Number' : 'Email Address';
+
+            // Always hide phone field in login mode
+            const phoneField = document.getElementById('phone-reg-field');
+            if (phoneField) phoneField.classList.add('hidden');
         }
     },
 
@@ -816,16 +897,102 @@ const app = {
     }
 };
 
+// ==================== GHANA PHONE VALIDATION ====================
+const ghanaPhone = {
+    // All active Ghana mobile prefixes as of 2025 (MTN, Telecel/Vodafone, AirtelTigo, Glo)
+    // Format: 10 digits starting with 0XXXXXXXXX
+    validPrefixes: [
+        // MTN Ghana
+        '020','024','054','055','059','025',
+        // Telecel Ghana (formerly Vodafone)
+        '020','050','020',
+        // AirtelTigo
+        '026','027','056','057',
+        // Glo Ghana
+        '023','028',
+        // Newer / additional MTN ranges
+        '053','055','059',
+        // Telecel new ranges
+        '050',
+        // AT new ranges
+        '057',
+        // All valid confirmed current prefixes (deduplicated below)
+    ],
+
+    // Canonical set — covers all telcos including newer allocations
+    _prefixSet: new Set([
+        // MTN Ghana
+        '020','024','054','055','059','025','053',
+        // Telecel Ghana (formerly Vodafone Ghana, rebranded 2024)
+        '050',
+        // AirtelTigo (merged Airtel + Tigo)
+        '026','027','056','057',
+        // Glo Ghana
+        '023','028',
+    ]),
+
+    /**
+     * Normalise a Ghanaian phone number to 0XXXXXXXXX (10 digits).
+     * Accepts: 0241234567 | +233241234567 | 233241234567 | 024 123 4567
+     * Returns null if the number cannot be normalised.
+     */
+    normalise(raw) {
+        if (!raw) return null;
+        // Strip spaces, dashes, dots, parentheses
+        let s = raw.replace(/[\s\-().]/g, '');
+        // +233XXXXXXXXX → 0XXXXXXXXX
+        if (s.startsWith('+233')) s = '0' + s.slice(4);
+        // 233XXXXXXXXX → 0XXXXXXXXX
+        else if (s.startsWith('233') && s.length === 12) s = '0' + s.slice(3);
+        return s;
+    },
+
+    /**
+     * Validate a Ghanaian mobile number.
+     * Returns { valid: true, normalised: '0XXXXXXXXX' }
+     * or      { valid: false, error: 'human-readable message' }
+     */
+    validate(raw) {
+        const n = this.normalise(raw);
+        if (!n) return { valid: false, error: 'Please enter a phone number.' };
+        if (!/^\d+$/.test(n)) return { valid: false, error: 'Phone number must contain digits only.' };
+        if (n.length !== 10) return { valid: false, error: `Phone number must be 10 digits (got ${n.length}). Format: 0XXXXXXXXX` };
+        if (!n.startsWith('0')) return { valid: false, error: 'Phone number must start with 0 (e.g. 0241234567).' };
+        const prefix = n.slice(0, 3);
+        if (!this._prefixSet.has(prefix)) {
+            return { valid: false, error: `"${prefix}" is not a recognised Ghana network prefix. Valid prefixes: 020, 023, 024, 025, 026, 027, 028, 050, 053, 054, 055, 056, 057, 059.` };
+        }
+        return { valid: true, normalised: n };
+    },
+
+    /** Show inline error under an input element. Pass null/'' to clear. */
+    showError(inputEl, message) {
+        if (!inputEl) return;
+        const existingErr = inputEl.parentElement?.querySelector('.gh-phone-err');
+        if (existingErr) existingErr.remove();
+        if (message) {
+            const err = document.createElement('p');
+            err.className = 'gh-phone-err';
+            err.style.cssText = 'color:#ef4444;font-size:11px;margin-top:4px;';
+            err.textContent = '⚠ ' + message;
+            inputEl.parentElement?.appendChild(err);
+            inputEl.style.borderColor = '#ef4444';
+        } else {
+            inputEl.style.borderColor = '';
+        }
+    }
+};
+
 // ==================== AUTHENTICATION ====================
 const auth = {
     async handleAction() {
         if (state.isLoading) return;
-        
+
         const name = document.getElementById('auth-name')?.value.trim();
-        const email = document.getElementById('auth-email')?.value.trim();
+        const emailOrPhone = document.getElementById('auth-email')?.value.trim();
         const password = document.getElementById('auth-password')?.value;
 
-        if (!email || !password) {
+        if (!emailOrPhone || !password) {
             modal.alert('Validation Error', 'Please fill in all fields', 'warning');
             return;
         }
@@ -835,9 +1002,73 @@ const auth = {
                 modal.alert('Validation Error', 'Please enter your full name', 'warning');
                 return;
             }
-            await this.register(name, email, password);
+            // Validate Ghana phone number for parent registration
+            if (state.role === 'parent') {
+                const phoneInputEl = document.getElementById('auth-phone');
+                const rawPhone = phoneInputEl?.value?.trim() || '';
+                if (!rawPhone) {
+                    modal.alert('Phone Required', 'A phone number is required to create a parent account. It allows you to log in with your phone number.', 'warning');
+                    if (phoneInputEl) phoneInputEl.focus();
+                    return;
+                }
+                const phoneCheck = ghanaPhone.validate(rawPhone);
+                if (!phoneCheck.valid) {
+                    ghanaPhone.showError(phoneInputEl, phoneCheck.error);
+                    modal.alert('Invalid Phone Number', phoneCheck.error, 'warning');
+                    return;
+                }
+                ghanaPhone.showError(phoneInputEl, null);
+                // Store normalised form back so register() picks it up correctly
+                if (phoneInputEl) phoneInputEl.value = phoneCheck.normalised;
+            }
+            await this.register(name, emailOrPhone, password);
         } else {
-            await this.login(email, password);
+            // For login: if it looks like a phone number, resolve to email first
+            let loginEmail = emailOrPhone;
+            const looksLikePhone = /^[+\d\s\-().]{7,20}$/.test(emailOrPhone) && !emailOrPhone.includes('@');
+            if (looksLikePhone) {
+                // Only parents can log in with a phone number
+                if (state.role !== 'parent') {
+                    modal.alert('Login Error', 'Please enter a valid email address.', 'warning');
+                    return;
+                }
+                const phoneCheck = ghanaPhone.validate(emailOrPhone);
+                if (!phoneCheck.valid) {
+                    modal.alert('Invalid Phone Number', phoneCheck.error, 'warning');
+                    return;
+                }
+                const normalisedPhone = phoneCheck.normalised;
+                app.showLoading('Looking up account...');
+                try {
+                    const { data: profileRows } = await supabaseClient
+                        .from('profiles')
+                        .select('email')
+                        .eq('phone', normalisedPhone)
+                        .limit(1);
+                    if (profileRows && profileRows.length > 0) {
+                        loginEmail = profileRows[0].email;
+                    } else {
+                        const { data: parentRows } = await supabaseClient
+                            .from('parents')
+                            .select('email')
+                            .eq('phone', normalisedPhone)
+                            .limit(1);
+                        if (parentRows && parentRows.length > 0) {
+                            loginEmail = parentRows[0].email;
+                        } else {
+                            app.hideLoading();
+                            modal.alert('Login Failed', 'No account found with that phone number. Please use your email address.', 'error');
+                            return;
+                        }
+                    }
+                } catch (err) {
+                    app.hideLoading();
+                    modal.alert('Error', 'Could not resolve phone number: ' + extractErrorMessage(err), 'error');
+                    return;
+                }
+                app.hideLoading();
+            }
+            await this.login(loginEmail, password);
         }
     },
 
@@ -868,6 +1099,10 @@ const auth = {
                 return;
             }
 
+            // Get phone number if parent role — already validated & normalised by handleAction
+            const rawPhone = document.getElementById('auth-phone')?.value?.trim() || null;
+            const phoneInput = rawPhone ? (ghanaPhone.validate(rawPhone).normalised || rawPhone) : null;
+
             const { data: authData, error: authError } = await supabaseClient.auth.signUp({
                 email,
                 password,
@@ -883,6 +1118,7 @@ const auth = {
                 email: email,
                 full_name: name,
                 role: state.role,
+                phone: phoneInput || null,
                 approved: state.role !== 'admin',
                 created_at: new Date().toISOString()
             };
@@ -906,6 +1142,7 @@ const auth = {
                     profile_id: authData.user.id,
                     email: email,
                     full_name: name,
+                    phone: phoneInput || null,
                     children_ids: []
                 }]);
                 if (parentError) throw new Error('Profile created but failed to register parent record: ' + parentError.message);
@@ -1071,15 +1308,15 @@ const dataManager = {
             // Primary: profiles table (always populated on registration)
             const { data: profiles, error: profilesError } = await supabaseClient
                 .from('profiles')
-                .select('id, full_name, email, created_at')
+                .select('id, full_name, email, phone, created_at')
                 .eq('role', 'parent');
 
             if (profilesError) throw profilesError;
 
-            // Secondary: parents table for children_ids
+            // Secondary: parents table for children_ids and phone
             const { data: parentRows, error: parentsError } = await supabaseClient
                 .from('parents')
-                .select('id, profile_id, children_ids, email, full_name');
+                .select('id, profile_id, children_ids, email, full_name, phone');
 
             if (parentsError) console.warn('parents table query error:', parentsError);
 
@@ -1092,6 +1329,7 @@ const dataManager = {
                     profile_id: p.id,
                     email: p.email,
                     full_name: p.full_name,
+                    phone: p.phone || null,
                     children_ids: []
                 }]);
             }
@@ -1101,11 +1339,11 @@ const dataManager = {
             if (missingRows.length > 0) {
                 const { data: refreshed } = await supabaseClient
                     .from('parents')
-                    .select('id, profile_id, children_ids, email, full_name');
+                    .select('id, profile_id, children_ids, email, full_name, phone');
                 finalParentRows = refreshed || [];
             }
 
-            // Merge profiles with parent rows
+            // Merge profiles with parent rows — phone comes from parents table first, then profiles
             state.parents = (profiles || []).map(p => {
                 const pRow = finalParentRows.find(r => r.profile_id === p.id);
                 return {
@@ -1114,7 +1352,8 @@ const dataManager = {
                     profile_id: p.id,              // auth/profiles uuid
                     children_ids: pRow?.children_ids || [],
                     full_name: p.full_name || pRow?.full_name || 'Unknown',
-                    email: p.email || pRow?.email || ''
+                    email: p.email || pRow?.email || '',
+                    phone: pRow?.phone || p.phone || null
                 };
             });
         } catch (err) {
@@ -1378,13 +1617,22 @@ const ui = {
         const sidebar = document.getElementById('admin-sidebar');
         const overlay = document.getElementById('sidebar-overlay');
         state.isSidebarOpen = !state.isSidebarOpen;
+        const isMobile = window.innerWidth <= 768;
 
         if (state.isSidebarOpen) {
-            sidebar?.classList.remove('-translate-x-full');
+            if (isMobile) {
+                sidebar?.classList.add('mobile-open');
+            } else {
+                sidebar?.classList.remove('-translate-x-full');
+            }
             overlay?.classList.remove('hidden');
             setTimeout(() => overlay?.classList.remove('opacity-0'), 10);
         } else {
-            sidebar?.classList.add('-translate-x-full');
+            if (isMobile) {
+                sidebar?.classList.remove('mobile-open');
+            } else {
+                sidebar?.classList.add('-translate-x-full');
+            }
             overlay?.classList.add('opacity-0');
             setTimeout(() => overlay?.classList.add('hidden'), 300);
         }
@@ -1717,6 +1965,87 @@ const ui = {
                     to   { opacity: 1; transform: translateY(0); }
                 }
                 #view-content > * { animation: rv-fade 0.22s ease; }
+
+                /* ── Mobile Responsive ── */
+                @media (max-width: 768px) {
+                    /* Sidebar: hidden by default, slides in */
+                    #admin-sidebar {
+                        position: fixed !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        bottom: 0 !important;
+                        z-index: 50 !important;
+                        transform: translateX(-100%) !important;
+                        transition: transform 0.3s ease !important;
+                        width: 260px !important;
+                    }
+                    #admin-sidebar.mobile-open {
+                        transform: translateX(0) !important;
+                    }
+
+                    /* Always show hamburger on mobile */
+                    #drawer-btn { display: flex !important; }
+
+                    /* Main content takes full width on mobile */
+                    #main-content {
+                        margin-left: 0 !important;
+                        width: 100% !important;
+                    }
+
+                    /* Top nav adjustments */
+                    #main-nav {
+                        padding: 0 12px !important;
+                        gap: 8px !important;
+                    }
+
+                    /* View content padding reduced */
+                    #view-content {
+                        padding: 14px !important;
+                    }
+
+                    /* Tables scroll horizontally */
+                    .overflow-x-auto, table {
+                        display: block;
+                        overflow-x: auto;
+                        -webkit-overflow-scrolling: touch;
+                    }
+
+                    /* Stat cards: 2-col grid on mobile */
+                    .grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
+                    .grid-cols-3 { grid-template-columns: repeat(2, 1fr) !important; }
+                    .grid-cols-2 { grid-template-columns: repeat(1, 1fr) !important; }
+
+                    /* Column mapping: stack on mobile */
+                    .bulk-map-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+
+                    /* Reduce font sizes on very small screens */
+                    .rv-stat-value { font-size: 24px !important; }
+
+                    /* Full-width buttons in modals */
+                    .modal-btn-row {
+                        flex-direction: column !important;
+                    }
+
+                    /* Cards: reduce padding */
+                    .rv-card, .glass-panel {
+                        padding: 14px !important;
+                    }
+
+                    /* Period pill: hide on very small */
+                    .rv-period-pill {
+                        display: none !important;
+                    }
+                }
+
+                @media (max-width: 480px) {
+                    #main-nav { padding: 0 10px !important; }
+                    #view-content { padding: 10px !important; }
+                    .grid-cols-4, .grid-cols-3 { grid-template-columns: repeat(1, 1fr) !important; }
+                    .rv-stat-value { font-size: 20px !important; }
+                    .sidebar-item { font-size: 14px !important; padding: 12px 16px !important; }
+                }
             `;
             document.head.appendChild(style);
         }
@@ -2310,6 +2639,16 @@ const views = {
     },
 
     renderStudents() {
+        // Group students by class, sorted alphabetically within each class
+        const studentsByClass = {};
+        const sortedStudents = [...state.students].sort((a, b) => a.name.localeCompare(b.name));
+        sortedStudents.forEach(s => {
+            const cls = s.class || 'Unassigned';
+            if (!studentsByClass[cls]) studentsByClass[cls] = [];
+            studentsByClass[cls].push(s);
+        });
+        const sortedClasses = Object.keys(studentsByClass).sort();
+
         const html = `
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Student Registry</h2>
@@ -2320,64 +2659,77 @@ const views = {
                     <button onclick="actions.openBulkUploadWizard()" class="px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg font-bold text-sm hover:shadow-lg transition-all">
                         <i class="fas fa-file-excel mr-2"></i> Bulk Upload
                     </button>
-
                 </div>
             </div>
 
             <div class="glass-panel rounded-2xl p-6 mb-6 bg-white dark:bg-slate-800 shadow-lg">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <h3 class="text-sm font-bold text-slate-600 dark:text-slate-400 mb-4 uppercase tracking-wide">Register New Student</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input type="text" id="student-admission" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Admission Number">
                     <input type="text" id="student-name" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Full Name">
                     <input type="date" id="student-dob" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" onchange="actions.calculateAge()">
-                    <input type="text" id="student-age" class="input-field rounded-xl px-4 py-3 bg-slate-100 dark:bg-slate-600 text-slate-800 dark:text-white" placeholder="Age" readonly>
+                    <input type="text" id="student-age" class="input-field rounded-xl px-4 py-3 bg-slate-100 dark:bg-slate-600 text-slate-800 dark:text-white" placeholder="Age (auto-calculated)" readonly>
                     <select id="student-class" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
                         <option value="">Select Class</option>
                         ${state.classes.map(c => `<option value="${c.level} - ${c.grade}">${c.level} - ${c.grade}</option>`).join('')}
                     </select>
-                    <button onclick="actions.addStudent()" class="md:col-span-4 px-6 py-3 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                    <input type="tel" id="student-parent-phone" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Parent Phone Number">
+                    <button onclick="actions.addStudent()" class="md:col-span-3 px-6 py-3 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                         <i class="fas fa-plus mr-2"></i> Register Student
                     </button>
                 </div>
             </div>
 
-            <div class="glass-panel rounded-2xl overflow-hidden bg-white dark:bg-slate-800 shadow-lg">
+            <div class="space-y-6">
                 ${state.students.length === 0 ? `
-                    <div class="p-8 text-center text-slate-500">
+                    <div class="glass-panel rounded-2xl p-8 text-center text-slate-500 bg-white dark:bg-slate-800 shadow-lg">
                         <i class="fas fa-user-graduate text-4xl mb-3 text-slate-300"></i>
                         <p>No students registered yet.</p>
                     </div>
-                ` : `
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left min-w-[600px]">
-                            <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
-                                <tr>
-                                    <th class="px-6 py-4 font-bold text-sm text-slate-700 dark:text-slate-200">ID</th>
-                                    <th class="px-6 py-4 font-bold text-sm text-slate-700 dark:text-slate-200">Name</th>
-                                    <th class="px-6 py-4 font-bold text-sm text-slate-700 dark:text-slate-200">Class</th>
-                                    <th class="px-6 py-4 font-bold text-sm text-slate-700 dark:text-slate-200">Age</th>
-                                    <th class="px-6 py-4 font-bold text-sm text-slate-700 dark:text-slate-200 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
-                                ${state.students.map(s => `
-                                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                                        <td class="px-6 py-4 font-mono text-xs text-ridge-600 dark:text-ridge-400">${s.id}</td>
-                                        <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${s.name}</td>
-                                        <td class="px-6 py-4 text-slate-800 dark:text-slate-200">${s.class}</td>
-                                        <td class="px-6 py-4 text-slate-800 dark:text-slate-200">${s.age || 'N/A'}</td>
-                                        <td class="px-6 py-4 text-right">
-                                            <button onclick="actions.editStudent('${s.id}')" class="text-blue-500 hover:text-blue-700 transition-colors p-2 mr-2" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button onclick="actions.deleteStudent('${s.id}')" class="text-red-500 hover:text-red-700 transition-colors p-2" title="Delete">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </td>
+                ` : sortedClasses.map(cls => `
+                    <div class="glass-panel rounded-2xl overflow-hidden bg-white dark:bg-slate-800 shadow-lg">
+                        <div style="padding:14px 24px;background:linear-gradient(135deg,#1a56db,#7c3aed);display:flex;align-items:center;justify-content:space-between;">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <i class="fas fa-school" style="color:#fff;font-size:16px;"></i>
+                                <span style="color:#fff;font-weight:700;font-size:15px;">${cls}</span>
+                            </div>
+                            <span style="background:rgba(255,255,255,0.2);color:#fff;font-size:12px;font-weight:700;padding:3px 12px;border-radius:20px;">${studentsByClass[cls].length} student${studentsByClass[cls].length !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left min-w-[700px]">
+                                <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+                                    <tr>
+                                        <th class="px-5 py-3 font-bold text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wide">Adm. No.</th>
+                                        <th class="px-5 py-3 font-bold text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wide">Name</th>
+                                        <th class="px-5 py-3 font-bold text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wide">Date of Birth</th>
+                                        <th class="px-5 py-3 font-bold text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wide">Age</th>
+                                        <th class="px-5 py-3 font-bold text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wide">Parent Phone</th>
+                                        <th class="px-5 py-3 font-bold text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wide text-right">Actions</th>
                                     </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+                                    ${studentsByClass[cls].map(s => `
+                                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                                            <td class="px-5 py-3 font-mono text-xs text-ridge-600 dark:text-ridge-400 font-bold">${s.admission_number || '—'}</td>
+                                            <td class="px-5 py-3 font-semibold text-slate-800 dark:text-slate-200">${s.name}</td>
+                                            <td class="px-5 py-3 text-slate-600 dark:text-slate-400">${s.dob ? new Date(s.dob).toLocaleDateString('en-GB') : '—'}</td>
+                                            <td class="px-5 py-3 text-slate-800 dark:text-slate-200">${s.age || '—'}</td>
+                                            <td class="px-5 py-3 text-slate-600 dark:text-slate-400">${s.parent_phone || '—'}</td>
+                                            <td class="px-5 py-3 text-right">
+                                                <button onclick="actions.editStudent('${s.id}')" class="text-blue-500 hover:text-blue-700 transition-colors p-2 mr-1" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button onclick="actions.deleteStudent('${s.id}')" class="text-red-500 hover:text-red-700 transition-colors p-2" title="Delete">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                `}
+                `).join('')}
             </div>
         `;
         
@@ -2461,11 +2813,12 @@ const views = {
                     </div>
                 ` : `
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left min-w-[600px]">
+                        <table class="w-full text-left min-w-[700px]">
                             <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
                                 <tr>
                                     <th class="px-6 py-4 font-bold text-sm text-slate-700 dark:text-slate-200">Name</th>
                                     <th class="px-6 py-4 font-bold text-sm text-slate-700 dark:text-slate-200">Email</th>
+                                    <th class="px-6 py-4 font-bold text-sm text-slate-700 dark:text-slate-200">Phone</th>
                                     <th class="px-6 py-4 font-bold text-sm text-slate-700 dark:text-slate-200">Linked Children</th>
                                     <th class="px-6 py-4 font-bold text-sm text-slate-700 dark:text-slate-200 text-right">Actions</th>
                                 </tr>
@@ -2481,6 +2834,7 @@ const views = {
                                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                                             <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${p.full_name}</td>
                                             <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">${p.email}</td>
+                                            <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">${p.phone || '—'}</td>
                                             <td class="px-6 py-4 text-sm max-w-xs truncate text-slate-600 dark:text-slate-400" title="${children}">${children}</td>
                                             <td class="px-6 py-4 text-right">
                                                 <button onclick="actions.editParentChildren('${p.id}')" class="text-blue-500 hover:text-blue-700 mr-3 transition-colors p-2" title="Edit Children">
@@ -4030,20 +4384,24 @@ const actions = {
     },
 
     async addStudent() {
-        const name = document.getElementById('student-name')?.value;
+        const admissionNumber = document.getElementById('student-admission')?.value?.trim();
+        const name = document.getElementById('student-name')?.value?.trim();
         const dob = document.getElementById('student-dob')?.value;
         const age = document.getElementById('student-age')?.value;
         const studentClass = document.getElementById('student-class')?.value;
+        const parentPhone = document.getElementById('student-parent-phone')?.value?.trim();
 
-        if (!name || !dob || !studentClass) return modal.alert('Validation Error', 'Please fill all fields', 'warning');
+        if (!admissionNumber || !name || !dob || !studentClass) return modal.alert('Validation Error', 'Please fill in Admission Number, Name, Date of Birth, and Class', 'warning');
 
         try {
             app.showLoading('Registering student...');
             const { error } = await supabaseClient.from('students').insert([{
+                admission_number: admissionNumber,
                 name,
                 dob,
                 age,
-                class: studentClass
+                class: studentClass,
+                parent_phone: parentPhone || null
             }]);
 
             if (error) throw error;
@@ -4062,11 +4420,84 @@ const actions = {
         const student = state.students.find(s => s.id === id);
         if (!student) return;
 
-        modal.prompt('Edit Name:', student.name, async (name) => {
-            if (!name) return;
+        const modalId = 'edit-student-modal-' + Date.now();
+        const classOptions = state.classes.map(c => {
+            const val = `${c.level} - ${c.grade}`;
+            return `<option value="${val}" ${student.class === val ? 'selected' : ''}>${val}</option>`;
+        }).join('');
+
+        const html = `
+            <div id="${modalId}" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:16px;overflow-y:auto;">
+                <div style="width:100%;max-width:480px;background:#1e293b;border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.08);margin:auto;flex-shrink:0;">
+                    <div style="background:linear-gradient(135deg,#1a56db,#7c3aed);padding:20px 24px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:1;">
+                        <div style="width:40px;height:40px;background:rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                            <i class="fas fa-user-edit" style="color:#fff;font-size:18px;"></i>
+                        </div>
+                        <div style="color:#fff;font-size:16px;font-weight:700;">Edit Student</div>
+                    </div>
+                    <div style="padding:24px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;max-height:calc(85vh - 90px);">
+                        <div>
+                            <label style="display:block;color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Admission Number</label>
+                            <input type="text" id="${modalId}-admission" value="${student.admission_number || ''}" style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;outline:none;" placeholder="Admission Number">
+                        </div>
+                        <div>
+                            <label style="display:block;color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Full Name</label>
+                            <input type="text" id="${modalId}-name" value="${student.name || ''}" style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;outline:none;" placeholder="Full Name">
+                        </div>
+                        <div>
+                            <label style="display:block;color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Date of Birth</label>
+                            <input type="date" id="${modalId}-dob" value="${student.dob || ''}" style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;outline:none;" onchange="(function(){const d=document.getElementById('${modalId}-dob').value;if(d){const age=Math.floor((new Date()-new Date(d))/31557600000);document.getElementById('${modalId}-age').value=age+' years';}})()">
+                        </div>
+                        <div>
+                            <label style="display:block;color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Age (auto-calculated)</label>
+                            <input type="text" id="${modalId}-age" value="${student.age || ''}" style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #1e293b;background:#0f172a;color:#64748b;font-size:14px;outline:none;" readonly>
+                        </div>
+                        <div>
+                            <label style="display:block;color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Class</label>
+                            <select id="${modalId}-class" style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;outline:none;">
+                                <option value="">Select Class</option>
+                                ${classOptions}
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display:block;color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Parent Phone Number</label>
+                            <input type="tel" id="${modalId}-phone" value="${student.parent_phone || ''}" style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;outline:none;" placeholder="Parent Phone Number">
+                        </div>
+                        <div style="display:flex;gap:10px;margin-top:6px;">
+                            <button id="${modalId}-cancel" style="flex:1;padding:11px 20px;border-radius:10px;border:1.5px solid #475569;background:transparent;color:#94a3b8;font-weight:600;font-size:14px;cursor:pointer;">Cancel</button>
+                            <button id="${modalId}-save" style="flex:2;padding:11px 20px;border-radius:10px;background:linear-gradient(135deg,#1a56db,#7c3aed);color:#fff;font-weight:700;font-size:14px;cursor:pointer;border:none;"><i class="fas fa-save" style="margin-right:8px;"></i>Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', html);
+        const modalEl = document.getElementById(modalId);
+
+        document.getElementById(`${modalId}-cancel`).onclick = () => modalEl.remove();
+        document.getElementById(`${modalId}-save`).onclick = async () => {
+            const admissionNumber = document.getElementById(`${modalId}-admission`)?.value?.trim();
+            const name = document.getElementById(`${modalId}-name`)?.value?.trim();
+            const dob = document.getElementById(`${modalId}-dob`)?.value;
+            const age = document.getElementById(`${modalId}-age`)?.value;
+            const studentClass = document.getElementById(`${modalId}-class`)?.value;
+            const parentPhone = document.getElementById(`${modalId}-phone`)?.value?.trim();
+
+            if (!name || !studentClass) {
+                ui.showToast('Name and class are required', 'warning');
+                return;
+            }
             try {
+                modalEl.remove();
                 app.showLoading('Updating student...');
-                const { error } = await supabaseClient.from('students').update({ name }).eq('id', id);
+                const { error } = await supabaseClient.from('students').update({
+                    admission_number: admissionNumber || null,
+                    name,
+                    dob: dob || null,
+                    age: age || null,
+                    class: studentClass,
+                    parent_phone: parentPhone || null
+                }).eq('id', id);
                 if (error) throw error;
                 await dataManager.loadStudents();
                 ui.route('students');
@@ -4076,7 +4507,8 @@ const actions = {
             } finally {
                 app.hideLoading();
             }
-        });
+        };
+        modalEl.addEventListener('click', e => { if (e.target === modalEl) modalEl.remove(); });
     },
 
     async deleteStudent(id) {
@@ -5683,10 +6115,10 @@ const actions = {
         const modalId = 'bulk-wizard-' + Date.now();
         // Step state stored in modal dataset
         const html = `
-            <div id="${modalId}" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;">
-                <div style="width:100%;max-width:560px;background:#1e293b;border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);">
+            <div id="${modalId}" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:16px;overflow-y:auto;">
+                <div style="width:100%;max-width:560px;background:#1e293b;border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);margin:auto;flex-shrink:0;">
                     <!-- Header -->
-                    <div style="background:linear-gradient(135deg,#1a56db,#7c3aed);padding:20px 24px;display:flex;align-items:center;gap:12px;">
+                    <div style="background:linear-gradient(135deg,#1a56db,#7c3aed);padding:20px 24px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:1;">
                         <div style="width:40px;height:40px;background:rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;">
                             <i class="fas fa-file-excel" style="color:#fff;font-size:18px;"></i>
                         </div>
@@ -5735,11 +6167,13 @@ const actions = {
                     </div>
 
                     <!-- Step 3: Column Mapping (hidden initially) -->
-                    <div id="${modalId}-step3" style="padding:24px;display:none;">
-                        <p style="color:#94a3b8;font-size:13px;margin-bottom:16px;">Match your file's columns to the system fields:</p>
-                        <div id="${modalId}-mapping-area" style="space-y:12px;"></div>
-                        <div id="${modalId}-preview-area" style="margin-top:16px;"></div>
-                        <div style="display:flex;justify-content:space-between;margin-top:20px;">
+                    <div id="${modalId}-step3" style="display:none;flex-direction:column;">
+                        <div style="padding:24px;overflow-y:auto;overflow-x:hidden;max-height:calc(80vh - 160px);">
+                            <p style="color:#94a3b8;font-size:13px;margin-bottom:16px;">Match your file's columns to the system fields:</p>
+                            <div id="${modalId}-mapping-area"></div>
+                            <div id="${modalId}-preview-area" style="margin-top:16px;overflow-x:auto;"></div>
+                        </div>
+                        <div style="padding:14px 24px;border-top:1px solid #334155;display:flex;justify-content:space-between;background:#1e293b;flex-shrink:0;">
                             <button onclick="actions._bulkWizardGoStep2('${modalId}')" style="padding:10px 20px;border-radius:8px;border:1.5px solid #475569;background:transparent;color:#94a3b8;font-weight:600;cursor:pointer;"><i class="fas fa-arrow-left mr-1"></i> Back</button>
                             <button onclick="actions._bulkWizardFinish('${modalId}')" style="padding:10px 20px;border-radius:8px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-weight:700;cursor:pointer;border:none;"><i class="fas fa-upload mr-2"></i>Upload Students</button>
                         </div>
@@ -5829,13 +6263,19 @@ const actions = {
                 headers.map(h => `<option value="${h}">${h}</option>`).join('');
 
             mappingArea.innerHTML = `
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+                <div class="bulk-map-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
                     <div>
                         <label style="display:block;color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">System Field</label>
-                        <div style="padding:12px;background:#0f172a;border-radius:8px;border:1.5px solid #1a56db;color:#e2e8f0;font-size:13px;font-weight:600;"><i class="fas fa-user mr-2 text-blue-400"></i>Student Name</div>
+                        <div style="padding:12px;background:#0f172a;border-radius:8px;border:1.5px solid #0891b2;color:#e2e8f0;font-size:13px;font-weight:600;"><i class="fas fa-hashtag mr-2 text-cyan-400"></i>Admission Number</div>
                     </div>
                     <div>
                         <label style="display:block;color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Your Column</label>
+                        <select id="${modalId}-map-admission" style="width:100%;padding:12px;border-radius:8px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;outline:none;" onchange="actions._bulkWizardUpdatePreview('${modalId}')">${optionHtml}</select>
+                    </div>
+                    <div>
+                        <div style="padding:12px;background:#0f172a;border-radius:8px;border:1.5px solid #1a56db;color:#e2e8f0;font-size:13px;font-weight:600;"><i class="fas fa-user mr-2 text-blue-400"></i>Student Name</div>
+                    </div>
+                    <div>
                         <select id="${modalId}-map-name" style="width:100%;padding:12px;border-radius:8px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;outline:none;" onchange="actions._bulkWizardUpdatePreview('${modalId}')">${optionHtml}</select>
                     </div>
                     <div>
@@ -5844,23 +6284,39 @@ const actions = {
                     <div>
                         <select id="${modalId}-map-dob" style="width:100%;padding:12px;border-radius:8px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;outline:none;" onchange="actions._bulkWizardUpdatePreview('${modalId}')">${optionHtml}</select>
                     </div>
+                    <div>
+                        <div style="padding:12px;background:#0f172a;border-radius:8px;border:1.5px solid #059669;color:#e2e8f0;font-size:13px;font-weight:600;"><i class="fas fa-phone mr-2 text-emerald-400"></i>Parent Phone</div>
+                    </div>
+                    <div>
+                        <select id="${modalId}-map-phone" style="width:100%;padding:12px;border-radius:8px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;outline:none;" onchange="actions._bulkWizardUpdatePreview('${modalId}')">${optionHtml}</select>
+                    </div>
+                </div>
+                <div style="padding:10px 14px;background:rgba(26,86,219,0.1);border:1px solid rgba(26,86,219,0.3);border-radius:8px;margin-bottom:4px;">
+                    <p style="color:#93c5fd;font-size:12px;"><i class="fas fa-info-circle mr-2"></i>Date of Birth accepts formats: <strong>YYYY-MM-DD</strong>, <strong>MM/DD/YYYY</strong>, <strong>DD/MM/YYYY</strong>, or any standard date format.</p>
                 </div>
             `;
 
             // Auto-detect common column names
+            const admCandidates = ['admission', 'admission number', 'adm', 'adm no', 'adm number', 'admission no', 'student id', 'id'];
             const nameCandidates = ['name', 'student name', 'full name', 'student'];
             const dobCandidates = ['dob', 'date of birth', 'birth date', 'birthday', 'dateofbirth'];
+            const phoneCandidates = ['parent phone', 'phone', 'phone number', 'parent contact', 'contact', 'mobile', 'tel'];
+            const admSel = document.getElementById(`${modalId}-map-admission`);
             const nameSel = document.getElementById(`${modalId}-map-name`);
             const dobSel = document.getElementById(`${modalId}-map-dob`);
+            const phoneSel = document.getElementById(`${modalId}-map-phone`);
             headers.forEach(h => {
-                if (nameCandidates.includes(h.toLowerCase()) && nameSel.value === '') nameSel.value = h;
-                if (dobCandidates.includes(h.toLowerCase()) && dobSel.value === '') dobSel.value = h;
+                const hl = h.toLowerCase();
+                if (admCandidates.includes(hl) && admSel.value === '') admSel.value = h;
+                if (nameCandidates.includes(hl) && nameSel.value === '') nameSel.value = h;
+                if (dobCandidates.includes(hl) && dobSel.value === '') dobSel.value = h;
+                if (phoneCandidates.includes(hl) && phoneSel.value === '') phoneSel.value = h;
             });
 
             this._bulkWizardUpdatePreview(modalId);
 
             document.getElementById(`${modalId}-step2`).style.display = 'none';
-            document.getElementById(`${modalId}-step3`).style.display = 'block';
+            document.getElementById(`${modalId}-step3`).style.display = 'flex';
             this._bulkWizardUpdateTabs(modalId, 3);
         } catch (err) {
             ui.showToast('Failed to read Excel file: ' + extractErrorMessage(err), 'error');
@@ -5872,36 +6328,48 @@ const actions = {
         if (!modalEl) return;
         const { fileData, headers } = modalEl._wizardState;
         if (!fileData || fileData.length < 2) return;
+        const admSel = document.getElementById(`${modalId}-map-admission`);
         const nameSel = document.getElementById(`${modalId}-map-name`);
         const dobSel = document.getElementById(`${modalId}-map-dob`);
+        const phoneSel = document.getElementById(`${modalId}-map-phone`);
+        const admCol = admSel?.value;
         const nameCol = nameSel?.value;
         const dobCol = dobSel?.value;
+        const phoneCol = phoneSel?.value;
+        const admIdx = headers.indexOf(admCol);
         const nameIdx = headers.indexOf(nameCol);
         const dobIdx = headers.indexOf(dobCol);
-        const previewRows = fileData.slice(1, 6); // preview first 5 data rows
+        const phoneIdx = headers.indexOf(phoneCol);
+        const previewRows = fileData.slice(1, 6);
         const previewArea = document.getElementById(`${modalId}-preview-area`);
         if (!previewArea) return;
         previewArea.innerHTML = `
             <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Preview (first 5 rows)</div>
-            <div style="background:#0f172a;border-radius:10px;overflow:hidden;border:1px solid #334155;">
-                <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <div style="background:#0f172a;border-radius:10px;overflow:hidden;border:1px solid #334155;overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:500px;">
                     <thead>
                         <tr style="background:#1e293b;">
+                            <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Adm. No.</th>
                             <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Name</th>
                             <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Date of Birth</th>
-                            <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Age (calculated)</th>
+                            <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Age</th>
+                            <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Parent Phone</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${previewRows.map(row => {
+                            const adm = admIdx >= 0 ? String(row[admIdx] || '') : '';
                             const name = nameIdx >= 0 ? String(row[nameIdx] || '') : '';
                             const dob = dobIdx >= 0 ? row[dobIdx] : '';
-                            const dobStr = dob instanceof Date ? dob.toISOString().split('T')[0] : String(dob || '');
+                            const dobStr = dob instanceof Date ? dob.toISOString().split('T')[0] : this._parseDobString(String(dob || ''));
                             const age = dobStr ? this._calculateAgeFromDob(dobStr) : '—';
+                            const phone = phoneIdx >= 0 ? String(row[phoneIdx] || '') : '';
                             return `<tr style="border-top:1px solid #1e293b;">
+                                <td style="padding:8px 12px;color:#67e8f9;">${adm || '<span style="color:#64748b;">—</span>'}</td>
                                 <td style="padding:8px 12px;color:#e2e8f0;">${name || '<span style="color:#64748b;">—</span>'}</td>
                                 <td style="padding:8px 12px;color:#e2e8f0;">${dobStr || '<span style="color:#64748b;">—</span>'}</td>
                                 <td style="padding:8px 12px;color:#10b981;font-weight:600;">${age}</td>
+                                <td style="padding:8px 12px;color:#a78bfa;">${phone || '<span style="color:#64748b;">—</span>'}</td>
                             </tr>`;
                         }).join('')}
                     </tbody>
@@ -5923,20 +6391,66 @@ const actions = {
         } catch { return '—'; }
     },
 
+    // Parse DOB strings — supports YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY, and JS Date serial numbers
+    _parseDobString(dobRaw) {
+        if (!dobRaw) return '';
+        const s = String(dobRaw).trim();
+        if (!s || s === '0') return '';
+
+        // Already ISO: YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+        // MM/DD/YYYY (US format) — primary requested format
+        const mdyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (mdyMatch) {
+            const [, mm, dd, yyyy] = mdyMatch;
+            const d = new Date(`${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`);
+            if (!isNaN(d)) return d.toISOString().split('T')[0];
+        }
+
+        // DD/MM/YYYY (British format)
+        const dmyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (dmyMatch) {
+            const [, dd, mm, yyyy] = dmyMatch;
+            const d = new Date(`${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`);
+            if (!isNaN(d)) return d.toISOString().split('T')[0];
+        }
+
+        // Excel serial date number
+        if (/^\d+$/.test(s)) {
+            const serial = parseInt(s, 10);
+            if (serial > 25568 && serial < 60000) {
+                const excelEpoch = new Date(1899, 11, 30);
+                excelEpoch.setDate(excelEpoch.getDate() + serial);
+                return excelEpoch.toISOString().split('T')[0];
+            }
+        }
+
+        // Fallback: let JS try to parse it
+        const d = new Date(s);
+        return isNaN(d) ? '' : d.toISOString().split('T')[0];
+    },
+
     async _bulkWizardFinish(modalId) {
         const modalEl = document.getElementById(modalId);
         if (!modalEl) return;
         const { selectedClass, fileData, headers } = modalEl._wizardState;
+        const admSel = document.getElementById(`${modalId}-map-admission`);
         const nameSel = document.getElementById(`${modalId}-map-name`);
         const dobSel = document.getElementById(`${modalId}-map-dob`);
+        const phoneSel = document.getElementById(`${modalId}-map-phone`);
+        const admCol = admSel?.value;
         const nameCol = nameSel?.value;
         const dobCol = dobSel?.value;
+        const phoneCol = phoneSel?.value;
 
         if (!nameCol || !dobCol) { ui.showToast('Please map both Name and Date of Birth columns', 'warning'); return; }
         if (!selectedClass) { ui.showToast('No class selected', 'warning'); return; }
 
+        const admIdx = headers.indexOf(admCol);
         const nameIdx = headers.indexOf(nameCol);
         const dobIdx = headers.indexOf(dobCol);
+        const phoneIdx = headers.indexOf(phoneCol);
         const dataRows = (fileData || []).slice(1).filter(row => row[nameIdx]?.toString().trim());
 
         if (dataRows.length === 0) { ui.showToast('No valid student rows found in the file', 'warning'); return; }
@@ -5946,18 +6460,26 @@ const actions = {
 
         try {
             const records = dataRows.map(row => {
+                const admission_number = admIdx >= 0 ? String(row[admIdx] || '').trim() : '';
                 const name = String(row[nameIdx] || '').trim();
-                const dob = row[dobIdx];
+                const dobRaw = dobIdx >= 0 ? row[dobIdx] : '';
                 let dobStr = '';
-                if (dob instanceof Date) {
-                    dobStr = dob.toISOString().split('T')[0];
-                } else if (dob) {
-                    // Try to parse common date formats
-                    const parsed = new Date(dob);
-                    dobStr = isNaN(parsed) ? String(dob) : parsed.toISOString().split('T')[0];
+                if (dobRaw instanceof Date) {
+                    dobStr = dobRaw.toISOString().split('T')[0];
+                } else if (dobRaw) {
+                    dobStr = this._parseDobString(String(dobRaw));
                 }
                 const age = this._calculateAgeFromDob(dobStr);
-                return { name, date_of_birth: dobStr, age: typeof age === 'number' ? age : null, class: selectedClass, created_at: new Date().toISOString() };
+                const parent_phone = phoneIdx >= 0 ? String(row[phoneIdx] || '').trim() : '';
+                return {
+                    admission_number: admission_number || null,
+                    name,
+                    dob: dobStr || null,
+                    age: typeof age === 'number' ? age : null,
+                    class: selectedClass,
+                    parent_phone: parent_phone || null,
+                    created_at: new Date().toISOString()
+                };
             });
 
             const { error } = await supabaseClient.from('students').insert(records);
