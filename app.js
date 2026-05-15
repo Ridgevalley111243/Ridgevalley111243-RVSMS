@@ -1619,6 +1619,19 @@ const ui = {
         state.isSidebarOpen = !state.isSidebarOpen;
         const isMobile = window.innerWidth <= 768;
 
+        if (overlay) {
+            // Remove any backdrop-blur/backdrop-filter Tailwind classes — they blur the
+            // sidebar itself because it sits in the same stacking context as the overlay.
+            overlay.classList.remove(
+                'backdrop-blur', 'backdrop-blur-sm', 'backdrop-blur-md',
+                'backdrop-blur-lg', 'backdrop-blur-xl', 'backdrop-blur-2xl',
+                'backdrop-blur-3xl'
+            );
+            // Ensure overlay never blurs via inline style either
+            overlay.style.backdropFilter = 'none';
+            overlay.style.webkitBackdropFilter = 'none';
+        }
+
         if (state.isSidebarOpen) {
             if (isMobile) {
                 sidebar?.classList.add('mobile-open');
@@ -1974,13 +1987,20 @@ const ui = {
                         left: 0 !important;
                         top: 0 !important;
                         bottom: 0 !important;
-                        z-index: 50 !important;
+                        z-index: 60 !important;
                         transform: translateX(-100%) !important;
                         transition: transform 0.3s ease !important;
                         width: 260px !important;
                     }
                     #admin-sidebar.mobile-open {
                         transform: translateX(0) !important;
+                    }
+
+                    /* Overlay sits BELOW the sidebar — no blur so sidebar content is crisp */
+                    #sidebar-overlay {
+                        z-index: 55 !important;
+                        backdrop-filter: none !important;
+                        -webkit-backdrop-filter: none !important;
                     }
 
                     /* Always show hamburger on mobile */
@@ -2639,13 +2659,35 @@ const views = {
     },
 
     renderStudents() {
-        // Group students by class, sorted alphabetically within each class
+        // Normalise a class string so minor whitespace/casing differences don't create
+        // separate tables for the same class.
+        // e.g. "Class 1  - A", "class 1 - a", "Class 1 - A" → all become "Class 1 - A"
+        const normaliseClass = raw => {
+            if (!raw) return 'unassigned';
+            return raw
+                .trim()
+                .replace(/[\u2013\u2014\u2012\u2015]/g, '-') // en-dash, em-dash → hyphen
+                .replace(/\s{2,}/g, ' ')                     // collapse multiple spaces
+                .replace(/\s*-\s*/g, ' - ')                  // normalise spaces around dash
+                .toLowerCase();                              // case-insensitive matching
+        };
+
+        // Build a map from normalised key → display label (use first seen canonical form)
+        const keyToLabel = {};
         const studentsByClass = {};
         const sortedStudents = [...state.students].sort((a, b) => a.name.localeCompare(b.name));
         sortedStudents.forEach(s => {
-            const cls = s.class || 'Unassigned';
-            if (!studentsByClass[cls]) studentsByClass[cls] = [];
-            studentsByClass[cls].push(s);
+            const raw = s.class || '';
+            const key = normaliseClass(raw);
+            if (!studentsByClass[key]) {
+                studentsByClass[key] = [];
+                // Prefer the canonical label from state.classes; fall back to title-casing the raw value
+                const matchedClass = state.classes.find(c => normaliseClass(`${c.level} - ${c.grade}`) === key);
+                keyToLabel[key] = matchedClass
+                    ? `${matchedClass.level} - ${matchedClass.grade}`
+                    : raw.trim().replace(/[\u2013\u2014\u2012\u2015]/g, '-').replace(/\s*-\s*/g, ' - ') || 'Unassigned';
+            }
+            studentsByClass[key].push(s);
         });
         const sortedClasses = Object.keys(studentsByClass).sort();
 
@@ -2691,7 +2733,7 @@ const views = {
                         <div style="padding:14px 24px;background:linear-gradient(135deg,#1a56db,#7c3aed);display:flex;align-items:center;justify-content:space-between;">
                             <div style="display:flex;align-items:center;gap:10px;">
                                 <i class="fas fa-school" style="color:#fff;font-size:16px;"></i>
-                                <span style="color:#fff;font-weight:700;font-size:15px;">${cls}</span>
+                                <span style="color:#fff;font-weight:700;font-size:15px;">${keyToLabel[cls]}</span>
                             </div>
                             <span style="background:rgba(255,255,255,0.2);color:#fff;font-size:12px;font-weight:700;padding:3px 12px;border-radius:20px;">${studentsByClass[cls].length} student${studentsByClass[cls].length !== 1 ? 's' : ''}</span>
                         </div>
@@ -4393,6 +4435,9 @@ const actions = {
 
         if (!admissionNumber || !name || !dob || !studentClass) return modal.alert('Validation Error', 'Please fill in Admission Number, Name, Date of Birth, and Class', 'warning');
 
+        // Normalise to canonical "Level - Grade" format to avoid duplicate tables
+        const normalisedClass = studentClass.trim().replace(/[\u2013\u2014\u2012\u2015]/g, '-').replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
+
         try {
             app.showLoading('Registering student...');
             const { error } = await supabaseClient.from('students').insert([{
@@ -4400,7 +4445,7 @@ const actions = {
                 name,
                 dob,
                 age,
-                class: studentClass,
+                class: normalisedClass,
                 parent_phone: parentPhone || null
             }]);
 
@@ -6455,6 +6500,9 @@ const actions = {
 
         if (dataRows.length === 0) { ui.showToast('No valid student rows found in the file', 'warning'); return; }
 
+        // Normalise the class key to avoid duplicate tables
+        const normalisedClass = selectedClass.trim().replace(/[\u2013\u2014\u2012\u2015]/g, '-').replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
+
         modalEl.remove();
         app.showLoading(`Uploading ${dataRows.length} students...`);
 
@@ -6476,7 +6524,7 @@ const actions = {
                     name,
                     dob: dobStr || null,
                     age: typeof age === 'number' ? age : null,
-                    class: selectedClass,
+                    class: normalisedClass,
                     parent_phone: parent_phone || null,
                     created_at: new Date().toISOString()
                 };
@@ -6486,7 +6534,7 @@ const actions = {
             if (error) throw error;
 
             // Notify all parents about new students
-            await notificationManager.notifyParents('New Students Added', `${records.length} new student(s) have been added to ${selectedClass}.`, 'student_added');
+            await notificationManager.notifyParents('New Students Added', `${records.length} new student(s) have been added to ${normalisedClass}.`, 'student_added');
 
             ui.showToast(`Successfully uploaded ${records.length} students to ${selectedClass}`, 'success');
             await dataManager.loadStudents();
