@@ -386,6 +386,45 @@ const TEMPLATE_CONFIG = {
     }
 };
 
+// ==================== GRADE INTERPRETATION ====================
+// Used to auto-fill subject remarks and initials for primary levels (lower/upper)
+const GRADE_INTERPRETATION = [
+    { min: 80, max: 100, grade: 'A', label: 'EXCELLENT',  remark: 'Excellent performance in this subject' },
+    { min: 70, max: 79,  grade: 'B', label: 'VERY GOOD',  remark: 'Very good performance in this subject' },
+    { min: 60, max: 69,  grade: 'C', label: 'GOOD',       remark: 'Good performance in this subject'      },
+    { min: 50, max: 59,  grade: 'D', label: 'CREDIT',     remark: 'Credit level performance in this subject' },
+    { min: 45, max: 49,  grade: 'E', label: 'PASS',       remark: 'Pass level performance in this subject' },
+    { min: 35, max: 44,  grade: 'F', label: 'WEAK PASS',  remark: 'Weak pass — needs improvement in this subject' },
+    { min: 0,  max: 34,  grade: 'G', label: 'FAIL',       remark: 'Below passing mark — needs significant improvement' }
+];
+
+function getGradeInfo(totalScore) {
+    const score = parseFloat(totalScore);
+    if (isNaN(score)) return null;
+    return GRADE_INTERPRETATION.find(g => score >= g.min && score <= g.max) || null;
+}
+
+// ==================== HEADTEACHER REMARKS LIST ====================
+const HEAD_TEACHER_REMARKS = [
+    'Excellent performance',
+    'Good progress',
+    'Needs improvement',
+    'Encouraging progress',
+    'Needs to stay focus',
+    'Excellent attitude',
+    'Needs to take books seriously',
+    'Well done, keep it up',
+    'Good work done',
+    'A promising child, keep going',
+    'Improving student',
+    'Leadership potential',
+    'Can do better',
+    'Positive influence',
+    'Consistent improvement',
+    'Room for Growth',
+    'Excellent participation'
+];
+
 // ==================== ERROR HANDLING ====================
 class AppError extends Error {
     constructor(message, type = 'error', recoverable = false) {
@@ -1119,6 +1158,86 @@ function calculateStudentTotal(studentId) {
     }, 0);
 }
 
+// ==================== SCORE VALIDATION ====================
+// Clamps a score input to 0-50. If the entered value exceeds 50 it is
+// immediately reset to 0 and a toast notifies the teacher.
+// Returns true if valid, false if it was clamped.
+function validateScoreInput(input) {
+    const val = parseFloat(input.value);
+    if (!isNaN(val) && val > 50) {
+        input.value = '0';
+        input.classList.add('score-invalid-shake');
+        setTimeout(() => input.classList.remove('score-invalid-shake'), 500);
+        showToast('Score cannot exceed 50. Value reset to 0.', 'error');
+        return false;
+    }
+    if (!isNaN(val) && val < 0) {
+        input.value = '0';
+        return false;
+    }
+    return true;
+}
+
+// Returns true only if ALL score inputs on the current form are valid.
+function allScoresValid() {
+    const container = document.getElementById('form-container');
+    if (!container) return true;
+    let valid = true;
+    container.querySelectorAll('[data-field="class_score"], [data-field="exam_score"]').forEach(input => {
+        const val = parseFloat(input.value);
+        if (!isNaN(val) && (val > 50 || val < 0)) valid = false;
+    });
+    return valid;
+}
+
+// ==================== AUTO-FILL REMARKS & GRADE (PRIMARY) ====================
+// Called when class_score or exam_score changes on a primary report row.
+// Updates the remarks field with a grade-based remark and fills the grade badge.
+function autoFillRemarkAndGrade(changedInput) {
+    const container = document.getElementById('form-container');
+    if (!container) return;
+    const subjectName = changedInput.getAttribute('data-subject');
+    if (!subjectName) return;
+
+    const classEl  = container.querySelector(`[data-subject="${subjectName}"][data-field="class_score"]`);
+    const examEl   = container.querySelector(`[data-subject="${subjectName}"][data-field="exam_score"]`);
+    const totalEl  = container.querySelector(`[data-subject="${subjectName}"][data-field="total_score"]`);
+    const remarkEl = container.querySelector(`[data-subject="${subjectName}"][data-field="remarks"]`);
+    const gradeEl  = container.querySelector(`[data-subject="${subjectName}"][data-field="teacher_initials"]`);
+
+    if (!classEl || !examEl || !totalEl) return;
+
+    const c = parseFloat(classEl.value) || 0;
+    const e = parseFloat(examEl.value)  || 0;
+    const total = c + e;
+
+    // Update total display
+    totalEl.value = (c + e) > 0 ? String(total) : '';
+
+    const gradeInfo = getGradeInfo(total);
+    if (gradeInfo) {
+        if (remarkEl && (!remarkEl.value || remarkEl.dataset.autoFilled === 'true')) {
+            remarkEl.value = gradeInfo.remark;
+            remarkEl.dataset.autoFilled = 'true';
+        }
+        if (gradeEl) {
+            const isRo = gradeEl.hasAttribute('readonly');
+            if (isRo) gradeEl.removeAttribute('readonly');
+            gradeEl.value = gradeInfo.grade;
+            if (isRo) gradeEl.setAttribute('readonly', '');
+            // Style by grade
+            gradeEl.className = gradeEl.className
+                .replace(/\btext-emerald-\d+\b/g, '').replace(/\btext-blue-\d+\b/g, '')
+                .replace(/\btext-amber-\d+\b/g, '').replace(/\btext-red-\d+\b/g, '')
+                .replace(/\btext-slate-\d+\b/g, '').trim();
+            if      (['A'].includes(gradeInfo.grade)) gradeEl.classList.add('text-emerald-600');
+            else if (['B'].includes(gradeInfo.grade)) gradeEl.classList.add('text-blue-600');
+            else if (['C', 'D'].includes(gradeInfo.grade)) gradeEl.classList.add('text-amber-600');
+            else gradeEl.classList.add('text-red-600');
+        }
+    }
+}
+
 // ==================== CLASS POSITION TOGGLE ====================
 
 // Called by the Activate/Deactivate Position button in the editor header
@@ -1652,6 +1771,24 @@ function populateFormFromState(studentId) {
                         const sum = (parseFloat(classEl.value) || 0) + (parseFloat(examEl.value) || 0);
                         if (sum > 0) totalEl.value = String(sum);
                     }
+                    // Restore grade badge from saved total (primary levels only)
+                    if (sec.type === 'subjects_scored_full' && totalEl && totalEl.value) {
+                        const gradeEl  = container.querySelector(`[data-subject="${f.name}"][data-field="teacher_initials"]`);
+                        const remarkEl = container.querySelector(`[data-subject="${f.name}"][data-field="remarks"]`);
+                        const gradeInfo = getGradeInfo(totalEl.value);
+                        if (gradeInfo) {
+                            if (gradeEl && !gradeEl.value) {
+                                const isRo = gradeEl.hasAttribute('readonly');
+                                if (isRo) gradeEl.removeAttribute('readonly');
+                                gradeEl.value = gradeInfo.grade;
+                                if (isRo) gradeEl.setAttribute('readonly', '');
+                            }
+                            if (remarkEl && !remarkEl.value) {
+                                remarkEl.value = gradeInfo.remark;
+                                remarkEl.dataset.autoFilled = 'true';
+                            }
+                        }
+                    }
                 });
             }
         });
@@ -1823,6 +1960,20 @@ async function renderEditorContent() {
     // Step 8: Attach input listeners for live calculations + debounced auto-save
     container.querySelectorAll('input, select, textarea').forEach(el => {
         el.addEventListener('input', () => {
+            // Validate score inputs (class score & exam score must be ≤ 50)
+            const fieldName = el.getAttribute('data-field');
+            if (fieldName === 'class_score' || fieldName === 'exam_score') {
+                if (!validateScoreInput(el)) {
+                    // Clear total when score is invalid so a bad value never gets saved
+                    const subjectName = el.getAttribute('data-subject');
+                    if (subjectName) {
+                        const totalInput = container.querySelector(`[data-subject="${subjectName}"][data-field="total_score"]`);
+                        if (totalInput) totalInput.value = '';
+                    }
+                    return; // Stop processing — don't save invalid data
+                }
+            }
+
             state.hasUnsavedChanges = true;
 
             if (el.hasAttribute('data-subject')) {
@@ -2043,14 +2194,18 @@ function renderSubjectsTable(fields, savedData, isFull) {
                     const initials = data.teacher_initials || '';
                     
                     if (isFull) {
+                        // Auto-derive remark and grade from total score
+                        const gradeInfo = getGradeInfo(total);
+                        const autoRemark = (remarks || (gradeInfo ? gradeInfo.remark : ''));
+                        const autoGrade  = gradeInfo ? gradeInfo.grade : (initials || '');
                         return `
                             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                <td class="p-3 text-sm font-semibold text-slate-800 dark:text-slate-200 border-r border-slate-100 dark:border-slate-700">${field.label}</td>
+                                <td class="p-3 text-sm font-semibold text-slate-800 dark:text-slate-200 border-r border-slate-100 dark:border-slate-700 subject-label">${field.label}</td>
                                 <td class="p-2 border-r border-slate-100 dark:border-slate-700">
-                                    <input type="number" min="0" max="50" class="score-input text-emerald-600 dark:text-emerald-400" data-subject="${field.name}" data-field="class_score" value="${classScore}" onchange="calculateAllPositions()">
+                                    <input type="number" min="0" max="50" class="score-input text-emerald-600 dark:text-emerald-400" data-subject="${field.name}" data-field="class_score" value="${classScore}" onchange="calculateAllPositions(); autoFillRemarkAndGrade(this);">
                                 </td>
                                 <td class="p-2 border-r border-slate-100 dark:border-slate-700">
-                                    <input type="number" min="0" max="50" class="score-input text-blue-600 dark:text-blue-400" data-subject="${field.name}" data-field="exam_score" value="${examScore}" onchange="calculateAllPositions()">
+                                    <input type="number" min="0" max="50" class="score-input text-blue-600 dark:text-blue-400" data-subject="${field.name}" data-field="exam_score" value="${examScore}" onchange="calculateAllPositions(); autoFillRemarkAndGrade(this);">
                                 </td>
                                 <td class="p-2 border-r border-slate-100 dark:border-slate-700">
                                     <input type="text" class="score-input bg-slate-100 dark:bg-slate-700 border-0" data-subject="${field.name}" data-field="total_score" value="${total}" readonly tabindex="-1">
@@ -2059,10 +2214,10 @@ function renderSubjectsTable(fields, savedData, isFull) {
                                     <input type="text" class="score-input bg-slate-100 dark:bg-slate-700 border-0 text-xs ${position === '1st' ? 'text-yellow-600 font-bold' : ''}" data-subject="${field.name}" data-field="position" value="${position}" readonly tabindex="-1">
                                 </td>
                                 <td class="p-2 border-r border-slate-100 dark:border-slate-700">
-                                    <input type="text" class="input-field w-full px-2 py-1.5 rounded text-sm" data-subject="${field.name}" data-field="remarks" value="${escHtml(remarks)}" placeholder="Strengths/weaknesses">
+                                    <input type="text" class="input-field w-full px-2 py-1.5 rounded text-sm" data-subject="${field.name}" data-field="remarks" value="${escHtml(autoRemark)}" placeholder="Auto-filled from grade">
                                 </td>
                                 <td class="p-2">
-                                    <input type="text" class="input-field w-full px-2 py-1.5 rounded text-sm text-center uppercase" data-subject="${field.name}" data-field="teacher_initials" value="${escHtml(initials)}" maxlength="3" placeholder="AB">
+                                    <input type="text" class="input-field w-full px-2 py-1.5 rounded text-sm text-center uppercase font-bold grade-badge" data-subject="${field.name}" data-field="teacher_initials" value="${escHtml(autoGrade)}" maxlength="1" placeholder="A" readonly tabindex="-1" title="Auto-filled grade (A–G)">
                                 </td>
                             </tr>
                         `;
@@ -2197,6 +2352,20 @@ function renderRemarks(fields, savedData) {
     return `<div class="space-y-4">
         ${fields.map(field => {
             const value = savedData[field.name] || '';
+            // Use dropdown for all headteacher/head teacher remark fields across every level
+            const isHeadTeacher = field.name.toLowerCase().includes('head') && field.name.toLowerCase().includes('remark');
+            const isHeadComment = field.name.toLowerCase().includes('head') && field.name.toLowerCase().includes('comment');
+            if (isHeadTeacher || isHeadComment) {
+                return `
+                    <div class="space-y-2">
+                        <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">${field.label}</label>
+                        <select class="input-field w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800" data-field="${field.name}">
+                            <option value="">— Select a remark —</option>
+                            ${HEAD_TEACHER_REMARKS.map(r => `<option value="${escHtml(r)}" ${value === r ? 'selected' : ''}>${escHtml(r)}</option>`).join('')}
+                        </select>
+                    </div>
+                `;
+            }
             return `
                 <div class="space-y-2">
                     <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">${field.label}</label>
@@ -2217,6 +2386,12 @@ function saveCurrentReportData(isAutoSave = false) {
     
     const student = state.students[state.currentStudentIndex];
     if (!student) return Promise.resolve();
+
+    // Block save if any score input exceeds 50
+    if (!allScoresValid()) {
+        if (!isAutoSave) showToast('Cannot save — one or more scores exceed the maximum of 50.', 'error');
+        return Promise.resolve();
+    }
     
     try {
         const config = TEMPLATE_CONFIG[state.classLevel];
@@ -3357,6 +3532,59 @@ function goBackToDashboard() {
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
+    // ── Mobile Responsiveness ──────────────────────────────────────────────────
+    // Ensure viewport meta is present (critical for mobile rendering)
+    if (!document.querySelector('meta[name="viewport"]')) {
+        const vp = document.createElement('meta');
+        vp.name = 'viewport';
+        vp.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0';
+        document.head.appendChild(vp);
+    }
+
+    // Inject mobile-specific CSS for the subject table and layout
+    const mobileStyle = document.createElement('style');
+    mobileStyle.textContent = `
+        /* ── Score validation shake animation ── */
+        @keyframes scoreShake {
+            0%,100% { transform: translateX(0); }
+            20%      { transform: translateX(-6px); }
+            40%      { transform: translateX(6px); }
+            60%      { transform: translateX(-4px); }
+            80%      { transform: translateX(4px); }
+        }
+        .score-invalid-shake {
+            animation: scoreShake 0.45s ease;
+            border-color: #ef4444 !important;
+            background-color: rgba(239,68,68,0.1) !important;
+        }
+        /* ── Mobile: subject table scrolls horizontally ── */
+        .subject-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .subject-table table { min-width: 520px; }
+
+        /* ── Mobile: subject column label wraps instead of overflows ── */
+        @media (max-width: 640px) {
+            .subject-label { font-size: 0.7rem !important; white-space: normal !important; max-width: 80px; }
+            .score-input { min-width: 36px !important; font-size: 0.7rem !important; padding: 0.25rem !important; }
+            /* Stack basic-info grid to single column on small screens */
+            .grid.grid-cols-1.md\\:grid-cols-3 { grid-template-columns: 1fr !important; }
+            /* Tighten section padding */
+            .glass-panel .p-6 { padding: 1rem !important; }
+            .glass-panel .px-6 { padding-left: 1rem !important; padding-right: 1rem !important; }
+            /* Editor sidebar hidden on mobile (scroll-based layout) */
+            #student-sidebar { display: none !important; }
+            #editor-main { margin-left: 0 !important; width: 100% !important; }
+            /* Make the form container full width */
+            #form-container { padding: 0 !important; }
+            /* Student grid single column */
+            #students-grid { grid-template-columns: 1fr !important; }
+            /* Stack editor header */
+            #editor-header { flex-wrap: wrap; gap: 0.5rem; }
+            /* Remarks select full width */
+            .remarks-select { width: 100% !important; }
+        }
+    `;
+    document.head.appendChild(mobileStyle);
+
     // Check for saved dark mode preference
     if (localStorage.getItem('darkMode') === 'true') {
         document.documentElement.classList.add('dark');
