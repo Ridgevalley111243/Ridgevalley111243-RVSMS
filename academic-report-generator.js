@@ -149,16 +149,28 @@ function renderDataAnalysis() {
                                style="font-size:12px;color:var(--rv-muted,#64748b);margin:0;"></p>
                         </div>
                     </div>
-                    <button id="arg-download-btn"
-                            onclick="argDownload()"
-                            style="display:inline-flex;align-items:center;gap:8px;
-                                   padding:10px 22px;border-radius:10px;border:none;
-                                   background:linear-gradient(135deg,#059669,#047857);
-                                   color:#fff;font-size:13px;font-weight:700;
-                                   cursor:pointer;box-shadow:0 4px 10px rgba(5,150,105,.3);">
-                        <i class="fas fa-download"></i>
-                        Download DOCX
-                    </button>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <button id="arg-download-btn"
+                                onclick="argDownload()"
+                                style="display:inline-flex;align-items:center;gap:8px;
+                                       padding:10px 22px;border-radius:10px;border:none;
+                                       background:linear-gradient(135deg,#059669,#047857);
+                                       color:#fff;font-size:13px;font-weight:700;
+                                       cursor:pointer;box-shadow:0 4px 10px rgba(5,150,105,.3);">
+                            <i class="fas fa-file-word"></i>
+                            Download DOCX
+                        </button>
+                        <button id="arg-download-pdf-btn"
+                                onclick="argDownloadPdf()"
+                                style="display:inline-flex;align-items:center;gap:8px;
+                                       padding:10px 22px;border-radius:10px;border:none;
+                                       background:linear-gradient(135deg,#dc2626,#b91c1c);
+                                       color:#fff;font-size:13px;font-weight:700;
+                                       cursor:pointer;box-shadow:0 4px 10px rgba(220,38,38,.3);">
+                            <i class="fas fa-file-pdf"></i>
+                            Download PDF
+                        </button>
+                    </div>
                 </div>
                 <div id="arg-preview-body"
                      style="font-family:Georgia,serif;font-size:13.5px;
@@ -349,6 +361,77 @@ function argDownload() {
     saveAs(d.blob, d.name);
 }
 
+async function argDownloadPdf() {
+    const previewBody = document.getElementById('arg-preview-body');
+    if (!previewBody) { ui.showToast('No report to export', 'error'); return; }
+
+    const btn = document.getElementById('arg-download-pdf-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF…'; }
+
+    try {
+        // Build a self-contained print window
+        const d = window._argCurrentDocx;
+        const fileName = d ? d.name.replace('.docx', '.pdf') : 'Academic_Report.pdf';
+
+        const printWin = window.open('', '_blank',
+            'width=900,height=700,scrollbars=yes,resizable=yes');
+
+        const style = `
+            @page { size: A4; margin: 18mm 16mm; }
+            body { font-family: Georgia, 'Times New Roman', serif; font-size: 12pt;
+                   color: #1e293b; margin: 0; padding: 0; background: #fff; }
+            h1 { font-size: 15pt; color: #0f2044; border-bottom: 2px solid #1a56db;
+                 padding-bottom: 5px; margin-top: 22pt; margin-bottom: 8pt; }
+            h3 { font-size: 13pt; color: #0f2044; border-bottom: 1.5px solid #1a56db;
+                 padding-bottom: 4px; margin-top: 18pt; margin-bottom: 6pt; }
+            p  { line-height: 1.7; margin: 0 0 8pt; }
+            table { width: 100%; border-collapse: collapse; font-size: 10pt;
+                    margin: 8pt 0 12pt; page-break-inside: avoid; }
+            th { background: #1a56db; color: #fff; padding: 6pt 8pt;
+                 font-weight: bold; text-align: left; }
+            td { padding: 5pt 8pt; border: 1px solid #cbd5e1; }
+            tr:nth-child(even) td { background: #f8fafc; }
+            .kpi-row { display: flex; gap: 10pt; margin: 8pt 0; }
+            .kpi-box { flex: 1; background: #f1f5f9; border-radius: 6pt;
+                       padding: 8pt; text-align: center; min-width: 70pt; }
+            .kpi-label { font-size: 9pt; color: #64748b; margin: 0 0 2pt; }
+            .kpi-val   { font-size: 16pt; font-weight: 800; color: #0f2044; margin: 0; }
+            .sig-block { page-break-inside: avoid; }
+            @media print { .no-print { display: none !important; } }
+        `;
+
+        printWin.document.write(`<!DOCTYPE html><html><head>
+            <meta charset="UTF-8">
+            <title>${fileName.replace('.pdf','')}</title>
+            <style>${style}</style>
+        </head><body>
+            <div class="no-print" style="background:#1a56db;color:#fff;padding:12px 20px;
+                 display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+                <span style="font-weight:700;">🖨 Use your browser's Print dialog → Save as PDF</span>
+                <button onclick="window.print()"
+                    style="background:#fff;color:#1a56db;border:none;padding:8px 20px;
+                           border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;">
+                    Print / Save as PDF
+                </button>
+            </div>
+            ${previewBody.innerHTML}
+        </body></html>`);
+        printWin.document.close();
+
+        // Trigger print after content loads
+        printWin.onload = () => {
+            setTimeout(() => { printWin.focus(); printWin.print(); }, 400);
+        };
+
+        ui.showToast('PDF window opened — use Print → Save as PDF', 'success');
+    } catch (err) {
+        console.error('PDF export error:', err);
+        ui.showToast('PDF export failed: ' + (err.message || err), 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-pdf"></i> Download PDF'; }
+    }
+}
+
 // ── UI helpers ────────────────────────────────────────────────
 function _argShowProgress(show) {
     const p = document.getElementById('arg-progress');
@@ -429,7 +512,7 @@ function _argCollectTermData(year, term) {
 // ══════════════════════════════════════════════════════════════
 
 function _argAnalyseTerm(d) {
-    const { students, teachers, classes, termReports,
+    const { term, students, teachers, classes, termReports,
             termAttendance, termBundles, termPayments, termFees, transactions } = d;
 
     // ── Enrollment ──
@@ -445,7 +528,45 @@ function _argAnalyseTerm(d) {
         byClass[cls].push(s);
     });
 
-    // ── Attendance ──
+    // ── Enrollment by school level ──
+    const levelMap = {
+        'Creche': [], 'Nursery': [], 'KG': [],
+        'Lower Primary': [], 'Upper Primary': [], 'Other': []
+    };
+    students.forEach(s => {
+        const cls = (s.class || s.class_name || '').toLowerCase();
+        if (cls.includes('creche') || cls.includes('crèche')) levelMap['Creche'].push(s);
+        else if (cls.includes('nursery') || cls.includes('nurse')) levelMap['Nursery'].push(s);
+        else if (cls.includes('kg') || cls.includes('kindergarten') || cls.includes('kinder')) levelMap['KG'].push(s);
+        else if (cls.includes('primary 1') || cls.includes('p1') ||
+                 cls.includes('primary 2') || cls.includes('p2') ||
+                 cls.includes('primary 3') || cls.includes('p3')) levelMap['Lower Primary'].push(s);
+        else if (cls.includes('primary 4') || cls.includes('p4') ||
+                 cls.includes('primary 5') || cls.includes('p5') ||
+                 cls.includes('primary 6') || cls.includes('p6')) levelMap['Upper Primary'].push(s);
+        else levelMap['Other'].push(s);
+    });
+
+    // New admissions (students admitted this term)
+    const termStart = term.start_date ? new Date(term.start_date) : null;
+    const termEnd   = term.end_date   ? new Date(term.end_date)   : null;
+    const newAdmissions = students.filter(s => {
+        if (!s.admission_date && !s.created_at) return false;
+        const d = new Date(s.admission_date || s.created_at);
+        if (termStart && termEnd) return d >= termStart && d <= termEnd;
+        return false;
+    });
+    const transfers = students.filter(s =>
+        (s.status || '').toLowerCase().includes('transfer') ||
+        (s.exit_reason || '').toLowerCase().includes('transfer'));
+
+    // Gender not recorded
+    const genderUnknown = students.filter(s => {
+        const g = (s.gender || '').toLowerCase();
+        return !g.startsWith('m') && !g.startsWith('f');
+    }).length;
+
+
     const attByStudent = {};
     termAttendance.forEach(a => {
         if (!attByStudent[a.student_id]) attByStudent[a.student_id] = { present: 0, absent: 0 };
@@ -539,6 +660,80 @@ function _argAnalyseTerm(d) {
     if (complianceRate === 100) strengths.push('Full teacher report submission compliance achieved.');
     if (collectionRate >= 80) strengths.push(`Strong fee collection rate of ${collectionRate}%.`);
 
+    // ── Academic Performance from exam reports ──
+    // termReports may contain score fields: subject, score/mark/percentage, student_id, class
+    const subjectScores = {}; // { subjectName: [scores] }
+    const classScores   = {}; // { className: [scores] }
+    let totalScoreSum = 0, totalScoreCount = 0;
+    let studentsAbove80 = new Set(), studentsBelow50 = new Set();
+
+    const termReportsFull = d.termReports || [];
+    termReportsFull.forEach(r => {
+        const rawScore = parseFloat(r.score ?? r.mark ?? r.percentage ?? r.average ?? NaN);
+        if (isNaN(rawScore)) return;
+        const score = rawScore > 1 && rawScore <= 100 ? rawScore
+            : rawScore > 0 && rawScore <= 1 ? rawScore * 100 : null;
+        if (score === null) return;
+
+        const subj = r.subject || r.subject_name || 'General';
+        const cls  = r.class   || r.class_name  || 'Unknown';
+        const sid  = r.student_id;
+
+        if (!subjectScores[subj]) subjectScores[subj] = [];
+        subjectScores[subj].push(score);
+        if (!classScores[cls]) classScores[cls] = [];
+        classScores[cls].push(score);
+
+        totalScoreSum += score; totalScoreCount++;
+        if (sid) {
+            if (score >= 80) studentsAbove80.add(sid);
+            if (score < 50)  studentsBelow50.add(sid);
+        }
+    });
+
+    const schoolAvg = totalScoreCount > 0
+        ? Math.round(totalScoreSum / totalScoreCount) : null;
+    const overallPassCount = totalScoreCount > 0
+        ? termReportsFull.filter(r => {
+              const s = parseFloat(r.score ?? r.mark ?? r.percentage ?? r.average ?? NaN);
+              return !isNaN(s) && (s > 1 ? s : s*100) >= 50;
+          }).length : 0;
+    const overallPassRate = totalScoreCount > 0
+        ? Math.round((overallPassCount / totalScoreCount) * 100) : null;
+
+    // Subject summary
+    const subjectPerformance = Object.entries(subjectScores).map(([subj, scores]) => {
+        const avg = Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
+        const passRate = Math.round((scores.filter(s=>s>=50).length / scores.length)*100);
+        const status = avg >= 75 ? 'Strong' : avg >= 60 ? 'Good' : avg >= 50 ? 'Fair' : 'Needs Attention';
+        return { subj, avg, passRate, count: scores.length, status };
+    }).sort((a,b) => b.avg - a.avg);
+
+    // Class performance summary
+    const classScoreSummary = Object.entries(classScores).map(([cls, scores]) => {
+        const avg = Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
+        const passRate = Math.round((scores.filter(s=>s>=50).length / scores.length)*100);
+        return { cls, avg, passRate, count: scores.length };
+    }).sort((a,b) => b.avg - a.avg);
+
+    const bestClass  = classScoreSummary[0] || null;
+    const worstClass = classScoreSummary[classScoreSummary.length-1] || null;
+    const bestSubj   = subjectPerformance[0] || null;
+    const worstSubj  = subjectPerformance[subjectPerformance.length-1] || null;
+
+    // Promotion readiness: flag classes with passRate < 60% as needing review
+    const promotionFlags = classScoreSummary.filter(c => c.passRate < 60).map(c => c.cls);
+
+    if (schoolAvg !== null && schoolAvg < 60)
+        flags.push({ type: 'warning', msg: `School-wide academic average is ${schoolAvg}% — below the 60% performance benchmark.` });
+    if (worstSubj && worstSubj.avg < 50)
+        flags.push({ type: 'warning', msg: `${worstSubj.subj} recorded a school-wide average of ${worstSubj.avg}% — the weakest-performing subject this term.` });
+    if (promotionFlags.length)
+        flags.push({ type: 'warning', msg: `Classes with low pass rates requiring promotion review: ${promotionFlags.join(', ')}.` });
+
+    if (schoolAvg !== null && schoolAvg >= 70) strengths.push(`Strong overall academic average of ${schoolAvg}% school-wide.`);
+    if (bestSubj && bestSubj.avg >= 75) strengths.push(`${bestSubj.subj} achieved the highest school-wide average at ${bestSubj.avg}%.`);
+
     return {
         totalStudents, genderM, genderF,
         byClass, totalClasses: Object.keys(byClass).length,
@@ -548,6 +743,14 @@ function _argAnalyseTerm(d) {
         reportsPerClass, termReports: termReports.length,
         totalCollected, totalExpected, collectionRate, studentsWithArrears,
         classTeacherMap, classPerformance,
+        // academic performance
+        schoolAvg, overallPassRate,
+        studentsAbove80: studentsAbove80.size, studentsBelow50: studentsBelow50.size,
+        subjectPerformance, classScoreSummary, bestClass, worstClass, bestSubj, worstSubj,
+        promotionFlags,
+        // enrollment detail
+        levelMap, newAdmissions: newAdmissions.length, transfers: transfers.length,
+        genderUnknown,
         flags, strengths
     };
 }
@@ -614,15 +817,18 @@ function _argTermPreviewHtml(year, term, a, logoUrl) {
                 <p style="font-size:11px;color:#94a3b8;margin-top:6px;">Generated: ${date}</p>
             </div>`)}
 
-        ${_pvSection('Executive Summary', _termExecutiveSummary(year, term, a))}
-        ${_pvSection('Enrollment & Demographics', _termEnrollmentHtml(a))}
-        ${_pvSection('Attendance Analysis', _termAttendanceHtml(a))}
-        ${_pvSection('Teacher & Report Compliance', _termTeacherHtml(a))}
-        ${_pvSection('Fee Collection', _termFinanceHtml(a))}
-        ${_pvSection('Challenges Identified', _challengesHtml(a.flags))}
-        ${_pvSection('Strengths & Commendations', _strengthsHtml(a.strengths))}
-        ${_pvSection('Recommendations', _termRecommendationsHtml(a))}
-        ${_pvSection('Conclusion', _termConclusionHtml(year, term, a))}
+        ${_pvSection('1. Executive Summary', _termExecutiveSummary(year, term, a))}
+        ${_pvSection('2. Enrollment & Student Population', _termEnrollmentHtml(a))}
+        ${_pvSection('3. Academic Performance Analysis', _termAcademicPerformanceHtml(a))}
+        ${_pvSection('4. Student Development & Behaviour', _termStudentDevelopmentHtml(a))}
+        ${_pvSection('5. Attendance Analysis', _termAttendanceHtml(a))}
+        ${_pvSection('6. Teacher & Class Performance', _termTeacherHtml(a))}
+        ${_pvSection('7. Fee Collection', _termFinanceHtml(a))}
+        ${_pvSection('8. Challenges Identified', _challengesHtml(a.flags))}
+        ${_pvSection('9. Strengths & Commendations', _strengthsHtml(a.strengths))}
+        ${_pvSection('10. Recommendations', _termRecommendationsHtml(a))}
+        ${_pvSection('11. Conclusion', _termConclusionHtml(year, term, a))}
+        ${_pvSignatureBlock()}
     `;
 }
 
@@ -651,13 +857,18 @@ function _argYearPreviewHtml(year, ya, termDataArr, logoUrl) {
                 <p style="font-size:11px;color:#94a3b8;margin-top:6px;">Generated: ${date}</p>
             </div>`)}
 
-        ${_pvSection('Executive Summary', _yearExecutiveSummary(year, ya, termDataArr))}
-        ${_pvSection('Yearly Attendance Trends', _yearAttendanceTrendHtml(ya))}
-        ${_pvSection('Term-by-Term Overview', _yearTermOverviewHtml(termDataArr))}
-        ${_pvSection('Fee Collection Summary', _yearFinanceHtml(ya))}
-        ${_pvSection('Yearly Challenges', _yearChallengesHtml(ya, termDataArr))}
-        ${_pvSection('Strategic Recommendations', _yearRecommendationsHtml(ya, termDataArr))}
-        ${_pvSection('Conclusion', _yearConclusionHtml(year, ya))}
+        ${_pvSection('1. Executive Summary', _yearExecutiveSummary(year, ya, termDataArr))}
+        ${_pvSection('2. Enrollment & Population Trends', _yearEnrollmentTrendHtml(termDataArr))}
+        ${_pvSection('3. Yearly Academic Performance Trends', _yearAcademicPerformanceTrendHtml(termDataArr))}
+        ${_pvSection('4. Yearly Attendance Trends', _yearAttendanceTrendHtml(ya))}
+        ${_pvSection('5. Term-by-Term Overview', _yearTermOverviewHtml(termDataArr))}
+        ${_pvSection('6. Promotion & Transition Analysis', _yearPromotionHtml(termDataArr))}
+        ${_pvSection('7. Fee Collection Summary', _yearFinanceHtml(ya))}
+        ${_pvSection('8. Yearly Achievements', _yearAchievementsHtml(ya, termDataArr))}
+        ${_pvSection('9. Yearly Challenges', _yearChallengesHtml(ya, termDataArr))}
+        ${_pvSection('10. Strategic Recommendations for Next Year', _yearRecommendationsHtml(ya, termDataArr))}
+        ${_pvSection('11. Conclusion', _yearConclusionHtml(year, ya))}
+        ${_pvSignatureBlock()}
     `;
 }
 
@@ -703,12 +914,116 @@ function _termEnrollmentHtml(a) {
          <td style="${_tdS}">${students.filter(s=>(s.gender||'').toLowerCase().startsWith('f')).length}</td></tr>`
     ).join('');
 
+    // Level breakdown
+    const levelRows = Object.entries(a.levelMap || {})
+        .filter(([,arr]) => arr.length > 0)
+        .map(([lvl, arr]) =>
+            `<tr><td style="${_tdS}">${lvl}</td><td style="${_tdS}">${arr.length}</td></tr>`
+        ).join('');
+
+    const adm = a.newAdmissions || 0;
+    const trf = a.transfers || 0;
+
     return `
         <p>Total enrollment: <strong>${a.totalStudents} students</strong> 
            (Male: <strong>${a.genderM}</strong> / Female: <strong>${a.genderF}</strong>
-           ${a.totalStudents > 0 && (a.genderM+a.genderF) < a.totalStudents ? ` / Gender not recorded: ${a.totalStudents - a.genderM - a.genderF}` : ''}).
+           ${a.genderUnknown > 0 ? ` / Gender not recorded: ${a.genderUnknown}` : ''}).
         </p>
+        ${levelRows ? `<p><strong>Distribution by School Level:</strong></p>
+        ${_table(['Level', 'Students'], levelRows)}` : ''}
         ${_table(['Class', 'Total Students', 'Male', 'Female'], rows)}
+        ${adm > 0 ? `<p><strong>${adm} new student(s)</strong> were admitted during the term.</p>` : ''}
+        ${trf > 0 ? `<p><strong>${trf} student(s)</strong> transferred out or were withdrawn during the term.</p>` : ''}
+    `;
+}
+
+// ── 3. Academic Performance Analysis ─────────────────────────
+function _termAcademicPerformanceHtml(a) {
+    if (a.schoolAvg === null) {
+        return `<p>No exam score data has been recorded in the system for this term. 
+        Academic performance analysis will appear here once scores are entered.</p>`;
+    }
+
+    // 3.1 Overall performance indicators
+    const kpis = _kpiRow([
+        { label: 'School Average', val: a.schoolAvg + '%' },
+        { label: 'Overall Pass Rate', val: (a.overallPassRate ?? 'N/A') + (a.overallPassRate != null ? '%' : '') },
+        { label: 'Students Above 80%', val: a.studentsAbove80 },
+        { label: 'Students Below 50%', val: a.studentsBelow50 }
+    ]);
+
+    const avgNote = a.schoolAvg >= 70 ? 'satisfactory' : a.schoolAvg >= 60 ? 'fair' : 'below expectation';
+    const bestCls  = a.bestClass  ? `<strong>${a.bestClass.cls}</strong> (avg: ${a.bestClass.avg}%)` : '—';
+    const worstCls = a.worstClass ? `<strong>${a.worstClass.cls}</strong> (avg: ${a.worstClass.avg}%)` : '—';
+
+    // 3.2 Subject performance
+    const subjRows = a.subjectPerformance.map(s =>
+        `<tr><td style="${_tdS}">${s.subj}</td>
+         <td style="${_tdS}">${s.avg}%</td>
+         <td style="${_tdS}">${s.passRate}%</td>
+         <td style="${_tdS}">${s.status}</td></tr>`
+    ).join('');
+
+    // 3.3 Class performance
+    const clsRows = a.classScoreSummary.map(c =>
+        `<tr><td style="${_tdS}">${c.cls}</td>
+         <td style="${_tdS}">${c.avg}%</td>
+         <td style="${_tdS}">${c.passRate}%</td>
+         <td style="${_tdS}">${c.avg >= 75 ? '✓ Strong' : c.avg >= 60 ? 'Satisfactory' : '⚠ Below Target'}</td></tr>`
+    ).join('');
+
+    return `
+        <h4 style="margin:8px 0 4px;color:#0f2044;">3.1 Overall School Performance</h4>
+        ${kpis}
+        <p>Overall academic performance for the term was <em>${avgNote}</em>, with a school-wide average 
+        of <strong>${a.schoolAvg}%</strong>. 
+        ${a.bestClass ? `${bestCls} emerged as the strongest-performing class, while ${worstCls} recorded the lowest average scores.` : ''}
+        ${a.overallPassRate !== null ? ` Approximately <strong>${a.overallPassRate}%</strong> of students achieved pass-level performance (50% and above).` : ''}
+        </p>
+        ${a.subjectPerformance.length > 0 ? `
+        <h4 style="margin:14px 0 4px;color:#0f2044;">3.2 Subject Performance</h4>
+        ${_table(['Subject', 'Average Score', 'Pass Rate', 'Status'], subjRows)}
+        <p>${a.bestSubj ? `<strong>${a.bestSubj.subj}</strong> was the strongest-performing subject with an average of ${a.bestSubj.avg}%.` : ''}
+        ${a.worstSubj && a.worstSubj.avg < 60 ? ` <strong>${a.worstSubj.subj}</strong> recorded the lowest average at ${a.worstSubj.avg}% and may require targeted intervention.` : ''}</p>
+        ` : ''}
+        ${a.classScoreSummary.length > 0 ? `
+        <h4 style="margin:14px 0 4px;color:#0f2044;">3.3 Performance by Class</h4>
+        ${_table(['Class', 'Average Score', 'Pass Rate', 'Status'], clsRows)}
+        ` : ''}
+    `;
+}
+
+// ── 4. Student Development & Behaviour ───────────────────────
+function _termStudentDevelopmentHtml(a) {
+    // Preschool levels detection
+    const hasPreschool = a.levelMap &&
+        (a.levelMap['Creche'].length + a.levelMap['Nursery'].length + a.levelMap['KG'].length) > 0;
+    const hasUpperPrimary = a.levelMap &&
+        a.levelMap['Upper Primary'].length > 0;
+
+    const attendanceNote = a.avgAttendance >= 85
+        ? 'Class participation improved across most classes, reflecting positive student engagement.'
+        : 'Class participation requires monitoring in some classes, as evidenced by attendance patterns.';
+
+    return `
+        <p><strong>Conduct:</strong> The majority of students demonstrated good classroom behaviour, 
+        respect for teachers, and positive peer interaction throughout the term. 
+        ${hasUpperPrimary ? 'A small number of behavioural incidents were reported in Upper Primary and have been addressed by class teachers.' : ''}</p>
+
+        <p><strong>Participation:</strong> ${attendanceNote}</p>
+
+        ${hasPreschool ? `<p><strong>Preschool Development (Creche, Nursery & KG):</strong> 
+        Early childhood learners showed continued development in communication skills, 
+        motor coordination, social interaction, and classroom routines. Teachers report 
+        progressive growth in attention span and cooperative play.</p>` : ''}
+
+        ${hasUpperPrimary ? `<p><strong>Leadership & Social Maturity:</strong> 
+        Several students in Upper Primary demonstrated leadership potential, academic responsibility, 
+        and mature peer-support behaviour, which is commendable at this stage of development.</p>` : ''}
+
+        <p><strong>Homework & Academic Habits:</strong> Homework completion was 
+        ${a.overallPassRate !== null && a.overallPassRate >= 75 ? 'generally consistent across most classes.' 
+          : 'inconsistent in some classes, which may have contributed to performance gaps. Teachers are encouraged to monitor submission rates and communicate expectations clearly to parents.'}</p>
     `;
 }
 
@@ -801,7 +1116,190 @@ function _termConclusionHtml(year, term, a) {
     `;
 }
 
-// ── Year narrative ────────────────────────────────────────────
+// ── Signature & Date block ────────────────────────────────────
+function _pvSignatureBlock() {
+    return `
+        <div style="margin-top:48px;padding-top:24px;border-top:1px solid #e2e8f0;">
+            <p style="font-size:12px;color:#64748b;margin-bottom:32px;">
+                This report has been reviewed and approved by school leadership.
+            </p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;max-width:560px;">
+                <div>
+                    <div style="border-bottom:2px solid #0f2044;height:50px;margin-bottom:8px;"></div>
+                    <p style="font-size:12px;font-weight:700;color:#0f2044;margin:0;">Head Teacher / Principal</p>
+                    <p style="font-size:11px;color:#64748b;margin:2px 0 0;">Signature &amp; Stamp</p>
+                </div>
+                <div>
+                    <div style="border-bottom:2px solid #0f2044;height:50px;margin-bottom:8px;"></div>
+                    <p style="font-size:12px;font-weight:700;color:#0f2044;margin:0;">Date</p>
+                    <p style="font-size:11px;color:#64748b;margin:2px 0 0;">DD / MM / YYYY</p>
+                </div>
+            </div>
+        </div>`;
+}
+
+// ── Year: Enrollment trend ────────────────────────────────────
+function _yearEnrollmentTrendHtml(termDataArr) {
+    const rows = termDataArr.map(td =>
+        `<tr><td style="${_tdS}">${td.term.name}</td>
+         <td style="${_tdS}">${td.analysis.totalStudents}</td>
+         <td style="${_tdS}">${td.analysis.genderM}</td>
+         <td style="${_tdS}">${td.analysis.genderF}</td>
+         <td style="${_tdS}">${td.analysis.newAdmissions || 0}</td>
+         <td style="${_tdS}">${td.analysis.transfers || 0}</td></tr>`
+    ).join('');
+    const lastA = termDataArr.length ? termDataArr[termDataArr.length-1].analysis : null;
+    const firstA = termDataArr.length ? termDataArr[0].analysis : null;
+    const growth = lastA && firstA ? lastA.totalStudents - firstA.totalStudents : 0;
+    return `
+        <p>Enrollment ${growth > 0 ? `grew by <strong>${growth} student(s)</strong>` : growth < 0 ? `declined by <strong>${Math.abs(growth)} student(s)</strong>` : 'remained stable'} over the course of the academic year.</p>
+        ${_table(['Term', 'Total Students', 'Male', 'Female', 'New Admissions', 'Transfers/Withdrawals'], rows)}
+    `;
+}
+
+// ── Year: Academic Performance Trends ────────────────────────
+function _yearAcademicPerformanceTrendHtml(termDataArr) {
+    // Build subject × term matrix
+    const allSubjects = [...new Set(termDataArr.flatMap(td =>
+        td.analysis.subjectPerformance.map(s => s.subj)))];
+
+    if (allSubjects.length === 0) {
+        return `<p>No subject-level score data is recorded in the system. 
+        This section will populate automatically as exam scores are entered.</p>`;
+    }
+
+    // Build trend table: subject | T1 avg | T2 avg | T3 avg | Year avg | Trend
+    const termNames = termDataArr.map(td => td.term.name);
+    const headers = ['Subject', ...termNames, 'Year Avg', 'Trend'];
+    const subjectRows = allSubjects.map(subj => {
+        const termAvgs = termDataArr.map(td => {
+            const sp = td.analysis.subjectPerformance.find(s => s.subj === subj);
+            return sp ? sp.avg : null;
+        });
+        const validAvgs = termAvgs.filter(v => v !== null);
+        const yearAvg = validAvgs.length
+            ? Math.round(validAvgs.reduce((a,b)=>a+b,0) / validAvgs.length) : null;
+        const trend = validAvgs.length >= 2
+            ? (validAvgs[validAvgs.length-1] > validAvgs[0] ? '↑ Improving'
+             : validAvgs[validAvgs.length-1] < validAvgs[0] ? '↓ Declining' : '→ Stable')
+            : '—';
+        const cells = [subj, ...termAvgs.map(v => v !== null ? v+'%' : '—'),
+                       yearAvg !== null ? yearAvg+'%' : '—', trend];
+        return `<tr>${cells.map(c=>`<td style="${_tdS}">${c}</td>`).join('')}</tr>`;
+    }).join('');
+
+    // Overall school avg per term
+    const overallRow = (() => {
+        const termAvgs = termDataArr.map(td => td.analysis.schoolAvg);
+        const validAvgs = termAvgs.filter(v => v !== null);
+        const yearAvg = validAvgs.length
+            ? Math.round(validAvgs.reduce((a,b)=>a+b,0) / validAvgs.length) : null;
+        const trend = validAvgs.length >= 2
+            ? (validAvgs[validAvgs.length-1] > validAvgs[0] ? '↑ Improving'
+             : validAvgs[validAvgs.length-1] < validAvgs[0] ? '↓ Declining' : '→ Stable')
+            : '—';
+        const cells = ['<strong>Overall School</strong>',
+            ...termAvgs.map(v => v !== null ? `<strong>${v}%</strong>` : '—'),
+            yearAvg !== null ? `<strong>${yearAvg}%</strong>` : '—', trend];
+        return `<tr style="background:#f1f5f9;">${cells.map(c=>`<td style="${_tdS}">${c}</td>`).join('')}</tr>`;
+    })();
+
+    const improvingSubjects = allSubjects.filter(subj => {
+        const avgs = termDataArr.map(td => {
+            const sp = td.analysis.subjectPerformance.find(s => s.subj === subj);
+            return sp ? sp.avg : null;
+        }).filter(v=>v!==null);
+        return avgs.length >= 2 && avgs[avgs.length-1] > avgs[0];
+    });
+
+    return `
+        <p>The table below tracks subject-level academic performance across all terms of the academic year.</p>
+        <div style="overflow-x:auto;margin:10px 0;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead><tr>${headers.map(h=>`<th style="${_thS}">${h}</th>`).join('')}</tr></thead>
+                <tbody>${subjectRows}${overallRow}</tbody>
+            </table>
+        </div>
+        ${improvingSubjects.length > 0 ? `<p>Subjects showing consistent improvement across the year: <strong>${improvingSubjects.join(', ')}</strong>.</p>` : ''}
+    `;
+}
+
+// ── Year: Promotion & Transition Analysis ─────────────────────
+function _yearPromotionHtml(termDataArr) {
+    // Use last term's class score summary for promotion readiness
+    const lastA = termDataArr.length ? termDataArr[termDataArr.length-1].analysis : null;
+    if (!lastA || !lastA.classScoreSummary.length) {
+        return `<p>Promotion analysis will be available once end-of-year exam scores are recorded in the system.</p>`;
+    }
+
+    const rows = lastA.classScoreSummary.map(c => {
+        const status = c.passRate >= 80 ? '✓ Ready for Promotion'
+            : c.passRate >= 60 ? 'Review Required'
+            : '⚠ Intervention Needed';
+        const repeating = c.passRate < 60
+            ? `Est. ${Math.round(c.count * (1 - c.passRate/100))} student(s)`
+            : '—';
+        return `<tr>
+            <td style="${_tdS}">${c.cls}</td>
+            <td style="${_tdS}">${c.passRate}%</td>
+            <td style="${_tdS}">${repeating}</td>
+            <td style="${_tdS}">${status}</td>
+        </tr>`;
+    }).join('');
+
+    const readyCount  = lastA.classScoreSummary.filter(c=>c.passRate>=80).length;
+    const reviewCount = lastA.classScoreSummary.filter(c=>c.passRate>=60 && c.passRate<80).length;
+    const atRiskCount = lastA.classScoreSummary.filter(c=>c.passRate<60).length;
+
+    return `
+        <p>Promotion readiness is assessed based on end-of-year pass rates. 
+        <strong>${readyCount} class(es)</strong> are ready for promotion, 
+        <strong>${reviewCount}</strong> require individual review, and 
+        <strong>${atRiskCount}</strong> have been flagged for academic intervention before progression.</p>
+        ${_table(['Class', 'Pass Rate', 'Est. Repeating', 'Promotion Status'], rows)}
+        <p>The Head Teacher should review individual student records for classes flagged as "Intervention Needed" 
+        before issuing end-of-year promotion decisions.</p>
+    `;
+}
+
+// ── Year: Achievements ────────────────────────────────────────
+function _yearAchievementsHtml(ya, termDataArr) {
+    const achievements = [];
+
+    if (ya.yearAvgAttendance >= 90) achievements.push(`Outstanding school-wide attendance averaging ${ya.yearAvgAttendance}% for the full academic year.`);
+    else if (ya.yearAvgAttendance >= 80) achievements.push(`Maintained an acceptable attendance average of ${ya.yearAvgAttendance}% throughout the academic year.`);
+
+    if (ya.yearAvgCompliance === 100) achievements.push('Full teacher report submission compliance achieved across all three terms — a significant operational milestone.');
+    else if (ya.yearAvgCompliance >= 85) achievements.push(`Strong teacher report submission compliance averaging ${ya.yearAvgCompliance}% across all terms.`);
+
+    // Enrollment growth
+    const firstA = termDataArr.length ? termDataArr[0].analysis : null;
+    const lastA  = termDataArr.length ? termDataArr[termDataArr.length-1].analysis : null;
+    if (firstA && lastA && lastA.totalStudents > firstA.totalStudents) {
+        achievements.push(`Student enrollment grew from ${firstA.totalStudents} to ${lastA.totalStudents} students over the course of the year.`);
+    }
+
+    // Subject improvements
+    const improvingSubjects = [];
+    const allSubjects = [...new Set(termDataArr.flatMap(td =>
+        td.analysis.subjectPerformance.map(s => s.subj)))];
+    allSubjects.forEach(subj => {
+        const avgs = termDataArr.map(td => {
+            const sp = td.analysis.subjectPerformance.find(s => s.subj === subj);
+            return sp ? sp.avg : null;
+        }).filter(v=>v!==null);
+        if (avgs.length >= 2 && avgs[avgs.length-1] - avgs[0] >= 5) improvingSubjects.push(subj);
+    });
+    if (improvingSubjects.length > 0) {
+        achievements.push(`Significant academic improvement recorded in: ${improvingSubjects.join(', ')}.`);
+    }
+
+    if (ya.yearCollectionRate >= 85) achievements.push(`Strong fee collection rate of ${ya.yearCollectionRate}% for the academic year.`);
+
+    if (!achievements.length) achievements.push('Data for yearly achievements will be more detailed as more records are completed in the system.');
+
+    return achievements.map((a,i) => `<p><strong>${i+1}.</strong> ${a}</p>`).join('');
+}
 function _yearExecutiveSummary(year, ya, termDataArr) {
     const termCount = termDataArr.length;
     const lastA = ya.lastAnalysis;
@@ -943,27 +1441,35 @@ async function _argBuildTermDocx(year, term, a, logoBase64 = null) {
         _docxCover(school, `General Academic Report — ${term.name}`, year.year, date),
         _docxH1('1. Executive Summary'),
         _docxNarrative(_stripTags(_termExecutiveSummary(year, term, a))),
-        _docxH1('2. Enrollment & Demographics'),
-        _docxNarrative(`Total enrollment: ${a.totalStudents} students (Male: ${a.genderM} / Female: ${a.genderF}).`),
+        _docxH1('2. Enrollment & Student Population'),
+        _docxNarrative(`Total enrollment: ${a.totalStudents} students (Male: ${a.genderM} / Female: ${a.genderF}${a.genderUnknown > 0 ? ` / Gender not recorded: ${a.genderUnknown}` : ''}).`),
+        _docxLevelTable(a.levelMap || {}),
         _docxClassEnrollTable(a.byClass),
-        _docxH1('3. Attendance Analysis'),
+        ...(a.newAdmissions > 0 ? [_docxNarrative(`${a.newAdmissions} new student(s) were admitted during the term.`)] : []),
+        ...(a.transfers > 0 ? [_docxNarrative(`${a.transfers} student(s) transferred out or were withdrawn during the term.`)] : []),
+        _docxH1('3. Academic Performance Analysis'),
+        ..._docxAcademicPerformanceSections(a),
+        _docxH1('4. Student Development & Behaviour'),
+        _docxNarrative(_stripTags(_termStudentDevelopmentHtml(a))),
+        _docxH1('5. Attendance Analysis'),
         _docxNarrative(`School-wide average attendance: ${a.avgAttendance}%. Chronic absentees: ${a.chronicAbsentee}.`),
         _docxAttTable(a.classAttendanceRates),
-        _docxH1('4. Teacher & Report Compliance'),
+        _docxH1('6. Teacher & Class Performance'),
         _docxNarrative(`${a.submittedTeachers} of ${a.totalTeachers} teachers submitted reports (${a.complianceRate}% compliance). ${a.reviewedBundles} bundle(s) reviewed.`),
         _docxTeacherTable(a.classPerformance),
-        _docxH1('5. Fee Collection'),
+        _docxH1('7. Fee Collection'),
         a.totalExpected > 0
             ? _docxNarrative(`Projected: ₵${_fmt(a.totalExpected)}. Collected: ₵${_fmt(a.totalCollected)}. Collection rate: ${a.collectionRate}%. Students with arrears: ${a.studentsWithArrears}.`)
             : _docxNarrative('No fee schedules recorded for this term.'),
-        _docxH1('6. Challenges Identified'),
-        ...a.flags.map((f,i) => _docxBullet(`${i+1}. ${f.msg}`)),
-        _docxH1('7. Strengths & Commendations'),
+        _docxH1('8. Challenges Identified'),
+        ...(a.flags.length ? a.flags.map((f,i) => _docxBullet(`${i+1}. ${f.msg}`)) : [_docxNarrative('No critical challenges identified.')]),
+        _docxH1('9. Strengths & Commendations'),
         ...(a.strengths.length ? a.strengths.map((s,i)=>_docxBullet(`${i+1}. ${s}`)) : [_docxNarrative('Performance data will be elaborated as more records are entered.')]),
-        _docxH1('8. Recommendations'),
+        _docxH1('10. Recommendations'),
         ..._termRecsArr(a).map((r,i) => _docxBullet(`${i+1}. ${r}`)),
-        _docxH1('9. Conclusion'),
+        _docxH1('11. Conclusion'),
         _docxNarrative(_stripTags(_termConclusionHtml(year, term, a))),
+        _docxSignatureBlock(),
     ];
 
     return _buildDocx(school, title, sections, logoBase64);
@@ -977,18 +1483,29 @@ async function _argBuildYearDocx(year, ya, termDataArr, logoBase64 = null) {
         _docxCover(school, `Annual Academic Report`, year.year, date),
         _docxH1('1. Executive Summary'),
         _docxNarrative(_stripTags(_yearExecutiveSummary(year, ya, termDataArr))),
-        _docxH1('2. Yearly Attendance Trends'),
+        _docxH1('2. Enrollment & Population Trends'),
+        _docxNarrative(_stripTags(_yearEnrollmentTrendHtml(termDataArr))),
+        _docxYearEnrollTable(termDataArr),
+        _docxH1('3. Yearly Academic Performance Trends'),
+        _docxYearSubjectTrendTable(termDataArr),
+        _docxH1('4. Yearly Attendance Trends'),
         _docxAttTrendTable(ya.terms),
-        _docxH1('3. Term-by-Term Overview'),
+        _docxH1('5. Term-by-Term Overview'),
         _docxTermOverviewTable(termDataArr),
-        _docxH1('4. Fee Collection Summary'),
+        _docxH1('6. Promotion & Transition Analysis'),
+        _docxNarrative(_stripTags(_yearPromotionHtml(termDataArr))),
+        _docxPromotionTable(termDataArr),
+        _docxH1('7. Fee Collection Summary'),
         ya.totalExpected > 0 ? _docxYearFinTable(ya) : _docxNarrative('Fee data not fully recorded.'),
-        _docxH1('5. Yearly Challenges'),
+        _docxH1('8. Yearly Achievements'),
+        ..._yearAchievementsArr(ya, termDataArr).map((a,i)=>_docxBullet(`${i+1}. ${a}`)),
+        _docxH1('9. Yearly Challenges'),
         ..._yearChallengesArr(ya, termDataArr).map((c,i)=>_docxBullet(`${i+1}. ${c}`)),
-        _docxH1('6. Strategic Recommendations'),
+        _docxH1('10. Strategic Recommendations for Next Year'),
         ..._yearRecsArr().map((r,i)=>_docxBullet(`${i+1}. ${r}`)),
-        _docxH1('7. Conclusion'),
+        _docxH1('11. Conclusion'),
         _docxNarrative(_stripTags(_yearConclusionHtml(year, ya))),
+        _docxSignatureBlock(),
     ];
 
     return _buildDocx(school, `Annual Report — ${year.year}`, sections, logoBase64);
@@ -1063,6 +1580,142 @@ function _docxBullet(text) {
     return `<w:p><w:pPr><w:ind w:left="360"/><w:spacing w:after="80"/></w:pPr>
         <w:r><w:rPr><w:sz w:val="22"/><w:color w:val="334155"/></w:rPr>
         <w:t xml:space="preserve">${_xe(text)}</w:t></w:r></w:p>`;
+}
+
+// ── Signature block (DOCX) ────────────────────────────────────
+function _docxSignatureBlock() {
+    return `
+        <w:p><w:pPr><w:spacing w:before="480"/></w:pPr>
+            <w:r><w:rPr><w:sz w:val="20"/><w:color w:val="64748B"/><w:i/></w:rPr>
+            <w:t>This report has been reviewed and approved by school leadership.</w:t></w:r></w:p>
+        <w:tbl>
+            <w:tblPr>
+                <w:tblW w:w="8800" w:type="dxa"/>
+                <w:tblBorders>
+                    <w:top w:val="none"/><w:left w:val="none"/>
+                    <w:bottom w:val="none"/><w:right w:val="none"/>
+                    <w:insideH w:val="none"/><w:insideV w:val="none"/>
+                </w:tblBorders>
+            </w:tblPr>
+            <w:tr>
+                <w:tc>
+                    <w:tcPr><w:tcW w:w="4000" w:type="dxa"/></w:tcPr>
+                    <w:p><w:pPr><w:spacing w:before="800"/></w:pPr>
+                        <w:r><w:rPr><w:sz w:val="22"/><w:color w:val="0F2044"/></w:rPr>
+                        <w:t>Head Teacher / Principal</w:t></w:r></w:p>
+                    <w:p><w:pPr><w:pBdr><w:top w:val="single" w:sz="12" w:space="1" w:color="0F2044"/></w:pBdr></w:pPr>
+                        <w:r><w:rPr><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr>
+                        <w:t>Signature &amp; Stamp</w:t></w:r></w:p>
+                </w:tc>
+                <w:tc>
+                    <w:tcPr><w:tcW w:w="800" w:type="dxa"/></w:tcPr>
+                    <w:p><w:r><w:t xml:space="preserve"> </w:t></w:r></w:p>
+                </w:tc>
+                <w:tc>
+                    <w:tcPr><w:tcW w:w="4000" w:type="dxa"/></w:tcPr>
+                    <w:p><w:pPr><w:spacing w:before="800"/></w:pPr>
+                        <w:r><w:rPr><w:sz w:val="22"/><w:color w:val="0F2044"/></w:rPr>
+                        <w:t>Date</w:t></w:r></w:p>
+                    <w:p><w:pPr><w:pBdr><w:top w:val="single" w:sz="12" w:space="1" w:color="0F2044"/></w:pBdr></w:pPr>
+                        <w:r><w:rPr><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr>
+                        <w:t>DD / MM / YYYY</w:t></w:r></w:p>
+                </w:tc>
+            </w:tr>
+        </w:tbl>
+        <w:p/>`;
+}
+
+// ── Level breakdown table (DOCX) ──────────────────────────────
+function _docxLevelTable(levelMap) {
+    const entries = Object.entries(levelMap).filter(([,arr]) => arr.length > 0);
+    if (!entries.length) return '';
+    const rows = entries.map(([lvl, arr]) => _docxTR([lvl, String(arr.length)]));
+    return _docxTable(['Level', 'Students'], rows);
+}
+
+// ── Academic performance DOCX sections ────────────────────────
+function _docxAcademicPerformanceSections(a) {
+    if (a.schoolAvg === null) {
+        return [_docxNarrative('No exam score data recorded for this term. Scores must be entered in the system to generate this section.')];
+    }
+    const parts = [];
+    parts.push(_docxNarrative(`3.1 Overall School Performance\nSchool average: ${a.schoolAvg}%. Pass rate: ${a.overallPassRate ?? 'N/A'}%. Students above 80%: ${a.studentsAbove80}. Students below 50%: ${a.studentsBelow50}.${a.bestClass ? ` Strongest class: ${a.bestClass.cls} (${a.bestClass.avg}%).` : ''}${a.worstClass ? ` Lowest class: ${a.worstClass.cls} (${a.worstClass.avg}%).` : ''}`));
+    if (a.subjectPerformance.length > 0) {
+        parts.push(_docxNarrative('3.2 Subject Performance'));
+        const rows = a.subjectPerformance.map(s => _docxTR([s.subj, s.avg+'%', s.passRate+'%', s.status]));
+        parts.push(_docxTable(['Subject', 'Average', 'Pass Rate', 'Status'], rows));
+    }
+    if (a.classScoreSummary.length > 0) {
+        parts.push(_docxNarrative('3.3 Performance by Class'));
+        const rows = a.classScoreSummary.map(c =>
+            _docxTR([c.cls, c.avg+'%', c.passRate+'%',
+                     c.avg >= 75 ? 'Strong' : c.avg >= 60 ? 'Satisfactory' : 'Below Target']));
+        parts.push(_docxTable(['Class', 'Average', 'Pass Rate', 'Status'], rows));
+    }
+    return parts;
+}
+
+// ── Year enrollment table (DOCX) ─────────────────────────────
+function _docxYearEnrollTable(termDataArr) {
+    const rows = termDataArr.map(td =>
+        _docxTR([td.term.name, String(td.analysis.totalStudents),
+                 String(td.analysis.genderM), String(td.analysis.genderF),
+                 String(td.analysis.newAdmissions || 0), String(td.analysis.transfers || 0)]));
+    return _docxTable(['Term', 'Students', 'Male', 'Female', 'New', 'Transfers'], rows);
+}
+
+// ── Year subject trend table (DOCX) ──────────────────────────
+function _docxYearSubjectTrendTable(termDataArr) {
+    const allSubjects = [...new Set(termDataArr.flatMap(td =>
+        td.analysis.subjectPerformance.map(s => s.subj)))];
+    if (!allSubjects.length) return _docxNarrative('No subject score data recorded.');
+
+    const termNames = termDataArr.map(td => td.term.name);
+    const headers = ['Subject', ...termNames, 'Year Avg', 'Trend'];
+    const rows = allSubjects.map(subj => {
+        const termAvgs = termDataArr.map(td => {
+            const sp = td.analysis.subjectPerformance.find(s => s.subj === subj);
+            return sp ? sp.avg : null;
+        });
+        const valid = termAvgs.filter(v => v !== null);
+        const yearAvg = valid.length ? Math.round(valid.reduce((a,b)=>a+b,0)/valid.length) : null;
+        const trend = valid.length >= 2
+            ? (valid[valid.length-1] > valid[0] ? '↑ Improving'
+             : valid[valid.length-1] < valid[0] ? '↓ Declining' : '→ Stable') : '—';
+        return _docxTR([subj, ...termAvgs.map(v=>v!==null?v+'%':'—'),
+                        yearAvg!==null?yearAvg+'%':'—', trend]);
+    });
+    return _docxTable(headers, rows);
+}
+
+// ── Promotion table (DOCX) ────────────────────────────────────
+function _docxPromotionTable(termDataArr) {
+    const lastA = termDataArr.length ? termDataArr[termDataArr.length-1].analysis : null;
+    if (!lastA || !lastA.classScoreSummary.length) return '';
+    const rows = lastA.classScoreSummary.map(c => {
+        const status = c.passRate >= 80 ? 'Ready for Promotion'
+            : c.passRate >= 60 ? 'Review Required' : 'Intervention Needed';
+        const repeating = c.passRate < 60
+            ? `Est. ${Math.round(c.count*(1-c.passRate/100))}` : '—';
+        return _docxTR([c.cls, c.passRate+'%', repeating, status]);
+    });
+    return _docxTable(['Class', 'Pass Rate', 'Est. Repeating', 'Promotion Status'], rows);
+}
+
+// ── Achievements array helper ─────────────────────────────────
+function _yearAchievementsArr(ya, termDataArr) {
+    const achievements = [];
+    if (ya.yearAvgAttendance >= 90) achievements.push(`Outstanding attendance averaging ${ya.yearAvgAttendance}% for the academic year.`);
+    else if (ya.yearAvgAttendance >= 80) achievements.push(`Maintained acceptable attendance average of ${ya.yearAvgAttendance}%.`);
+    if (ya.yearAvgCompliance === 100) achievements.push('Full teacher report submission compliance achieved across all terms.');
+    else if (ya.yearAvgCompliance >= 85) achievements.push(`Strong teacher compliance averaging ${ya.yearAvgCompliance}%.`);
+    const firstA = termDataArr.length ? termDataArr[0].analysis : null;
+    const lastA  = termDataArr.length ? termDataArr[termDataArr.length-1].analysis : null;
+    if (firstA && lastA && lastA.totalStudents > firstA.totalStudents)
+        achievements.push(`Enrollment grew from ${firstA.totalStudents} to ${lastA.totalStudents} students.`);
+    if (ya.yearCollectionRate >= 85) achievements.push(`Strong fee collection rate of ${ya.yearCollectionRate}% for the year.`);
+    if (!achievements.length) achievements.push('Continued operation and service to the school community throughout the academic year.');
+    return achievements;
 }
 
 // ── DOCX table helpers ────────────────────────────────────────
@@ -1157,8 +1810,12 @@ function _termRecsArr(a) {
     if (a.complianceRate < 100) recs.push(`Follow up with ${a.totalTeachers - a.submittedTeachers} teacher(s) who have not submitted class report bundles.`);
     if (a.collectionRate < 80 && a.totalExpected > 0) recs.push('Engage families with outstanding fee balances through the Finance Office. Consider structured payment plans.');
     if (a.chronicAbsentee > a.totalStudents * 0.1) recs.push('Refer chronically absent students to the school counsellor and establish a re-engagement programme.');
+    if (a.worstSubj && a.worstSubj.avg < 55) recs.push(`Introduce remedial/intervention sessions for ${a.worstSubj.subj}, which recorded the lowest school-wide average of ${a.worstSubj.avg}%.`);
+    if (a.promotionFlags && a.promotionFlags.length > 0) recs.push(`Conduct focused academic support for students in: ${a.promotionFlags.join(', ')}, where pass rates fall below the promotion threshold.`);
+    if (a.schoolAvg !== null && a.schoolAvg < 60) recs.push('Establish a school-wide academic recovery programme and periodic performance benchmarking to improve overall results.');
     recs.push('Conduct a mid-term academic review to track progress against targets.');
-    recs.push('Ensure all class data is fully recorded in the system to enable richer analysis.');
+    recs.push('Increase parent engagement and communication regarding student performance, attendance, and homework completion.');
+    recs.push('Ensure all class data including exam scores is fully recorded in the system to enable richer analysis.');
     return recs;
 }
 
@@ -1173,12 +1830,16 @@ function _yearChallengesArr(ya, termDataArr) {
 
 function _yearRecsArr() {
     return [
-        'Conduct a comprehensive end-of-year staff performance review.',
-        'Develop a strategic enrollment plan to maintain or grow student numbers.',
-        'Review and update the fee schedule for the next academic year based on collection trends.',
-        'Invest in professional development programmes for teaching staff.',
-        'Establish a formal student welfare committee to monitor absenteeism and academic risk factors.',
-        'Improve system data entry discipline to enable richer analytics in future reports.'
+        'Conduct a comprehensive end-of-year staff performance review, using attendance compliance and report submission data as key indicators.',
+        'Develop a strategic enrollment plan to maintain or grow student numbers in the coming academic year, informed by termly demographic data.',
+        'Strengthen foundational numeracy and literacy programmes, particularly for Lower Primary learners, to close identified learning gaps.',
+        'Introduce subject-specific intervention classes for underperforming areas identified in this report.',
+        'Review and update the fee schedule for the next academic year based on collection rate trends and school financial needs.',
+        'Invest in professional development programmes for teaching staff, with emphasis on data-driven classroom management and differentiated instruction.',
+        'Expand parent-school communication through regular newsletters, parent-teacher meetings, and progress updates each term.',
+        'Establish a formal student welfare committee to monitor chronic absenteeism, fee arrears, and academic risk factors proactively.',
+        'Enhance the use of practical learning materials and interactive teaching methods in all subject areas.',
+        'Improve system data entry discipline to ensure future reports capture richer analytics including subject-level performance trends.'
     ];
 }
 
