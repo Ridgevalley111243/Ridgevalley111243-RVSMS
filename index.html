@@ -25,6 +25,10 @@
     <!-- SheetJS for Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
+    <!-- JSZip + FileSaver — required by Academic Report Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -554,6 +558,8 @@
         <p id="loading-text" class="text-slate-400 text-sm mt-2">Please wait</p>
     </div>
 
+    <!-- Academic Report Generator module — must load before app.js delegates to it -->
+    <script src="academic-report-generator.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
