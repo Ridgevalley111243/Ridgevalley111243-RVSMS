@@ -1619,19 +1619,6 @@ const ui = {
         state.isSidebarOpen = !state.isSidebarOpen;
         const isMobile = window.innerWidth <= 768;
 
-        if (overlay) {
-            // Remove any backdrop-blur/backdrop-filter Tailwind classes — they blur the
-            // sidebar itself because it sits in the same stacking context as the overlay.
-            overlay.classList.remove(
-                'backdrop-blur', 'backdrop-blur-sm', 'backdrop-blur-md',
-                'backdrop-blur-lg', 'backdrop-blur-xl', 'backdrop-blur-2xl',
-                'backdrop-blur-3xl'
-            );
-            // Ensure overlay never blurs via inline style either
-            overlay.style.backdropFilter = 'none';
-            overlay.style.webkitBackdropFilter = 'none';
-        }
-
         if (state.isSidebarOpen) {
             if (isMobile) {
                 sidebar?.classList.add('mobile-open');
@@ -1987,20 +1974,13 @@ const ui = {
                         left: 0 !important;
                         top: 0 !important;
                         bottom: 0 !important;
-                        z-index: 60 !important;
+                        z-index: 50 !important;
                         transform: translateX(-100%) !important;
                         transition: transform 0.3s ease !important;
                         width: 260px !important;
                     }
                     #admin-sidebar.mobile-open {
                         transform: translateX(0) !important;
-                    }
-
-                    /* Overlay sits BELOW the sidebar — no blur so sidebar content is crisp */
-                    #sidebar-overlay {
-                        z-index: 55 !important;
-                        backdrop-filter: none !important;
-                        -webkit-backdrop-filter: none !important;
                     }
 
                     /* Always show hamburger on mobile */
@@ -2204,31 +2184,52 @@ const ui = {
         });
 
         setTimeout(() => {
-            switch(view) {
-                case 'overview':               views.renderOverview(); break;
-                case 'academic':               views.renderAcademic(); break;
-                case 'classes':                views.renderClasses(); break;
-                case 'students':               views.renderStudents(); break;
-                case 'teachers':               views.renderTeachers(); break;
-                case 'parents':                views.renderParents(); break;
-                case 'finance':                views.renderFinance(); break;
-                case 'attendance':             views.renderAttendance(); break;
-                case 'received_reports':       views.renderReceivedReports(); break;
-                case 'admin_upload_reports':   views.renderAdminUploadReports(); break;
-                case 'screenshots':            views.renderScreenshots(); break;
-                case 'approvals':              views.renderApprovals(); break;
-                case 'announcements':          views.renderAnnouncements(); break;
-                case 'data_analysis':          views.renderDataAnalysis(); break;
-                case 'teacher_dashboard':      views.renderTeacherDashboard(); break;
-                case 'teacher_students':       views.renderTeacherStudents(); break;
-                case 'teacher_attendance':     views.renderTeacherAttendance(); break;
-                case 'teacher_total_attendance': views.renderTeacherTotalAttendance(); break;
-                case 'teacher_create_report':  views.renderTeacherCreateReport(); break;
-                case 'parent_dashboard':       views.renderParentDashboard(); break;
-                case 'parent_children':        views.renderParentChildren(); break;
-                case 'parent_finance':         views.renderParentFinance(); break;
-                case 'parent_reports':         views.renderParentReports(); break;
-                default: views.renderOverview();
+            try {
+                switch(view) {
+                    case 'overview':               views.renderOverview(); break;
+                    case 'academic':               views.renderAcademic(); break;
+                    case 'classes':                views.renderClasses(); break;
+                    case 'students':               views.renderStudents(); break;
+                    case 'teachers':               views.renderTeachers(); break;
+                    case 'parents':                views.renderParents(); break;
+                    case 'finance':                views.renderFinance(); break;
+                    case 'attendance':             views.renderAttendance(); break;
+                    case 'received_reports':       views.renderReceivedReports(); break;
+                    case 'admin_upload_reports':   views.renderAdminUploadReports(); break;
+                    case 'screenshots':            views.renderScreenshots(); break;
+                    case 'approvals':              views.renderApprovals(); break;
+                    case 'announcements':          views.renderAnnouncements(); break;
+                    case 'data_analysis':          views.renderDataAnalysis(); break;
+                    case 'teacher_dashboard':      views.renderTeacherDashboard(); break;
+                    case 'teacher_students':       views.renderTeacherStudents(); break;
+                    case 'teacher_attendance':     views.renderTeacherAttendance(); break;
+                    case 'teacher_total_attendance': views.renderTeacherTotalAttendance(); break;
+                    case 'teacher_create_report':  views.renderTeacherCreateReport(); break;
+                    case 'parent_dashboard':       views.renderParentDashboard(); break;
+                    case 'parent_children':        views.renderParentChildren(); break;
+                    case 'parent_finance':         views.renderParentFinance(); break;
+                    case 'parent_reports':         views.renderParentReports(); break;
+                    default: views.renderOverview();
+                }
+            } catch (err) {
+                console.error(`Route render error [${view}]:`, err);
+                const container = document.getElementById('view-content');
+                if (container) {
+                    container.innerHTML = `
+                        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;gap:16px;text-align:center;padding:24px;">
+                            <div style="width:56px;height:56px;background:#fef2f2;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                                <i class="fas fa-exclamation-triangle" style="color:#ef4444;font-size:22px;"></i>
+                            </div>
+                            <div>
+                                <p style="font-weight:700;font-size:16px;color:var(--rv-navy,#0f2044);margin:0 0 6px;">Something went wrong</p>
+                                <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:0;">${err.message || 'An unexpected error occurred loading this section.'}</p>
+                            </div>
+                            <button onclick="ui.route('${view}')" style="padding:10px 24px;background:#1a56db;color:#fff;border:none;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;">
+                                <i class="fas fa-redo" style="margin-right:6px;"></i>Retry
+                            </button>
+                        </div>
+                    `;
+                }
             }
         }, 80);
     },
@@ -2663,13 +2664,13 @@ const views = {
         // separate tables for the same class.
         // e.g. "Class 1  - A", "class 1 - a", "Class 1 - A" → all become "Class 1 - A"
         const normaliseClass = raw => {
-            if (!raw) return 'unassigned';
+            if (!raw) return 'Unassigned';
+            // Collapse multiple spaces, trim around the separator dash, then title-case
             return raw
                 .trim()
-                .replace(/[\u2013\u2014\u2012\u2015]/g, '-') // en-dash, em-dash → hyphen
-                .replace(/\s{2,}/g, ' ')                     // collapse multiple spaces
-                .replace(/\s*-\s*/g, ' - ')                  // normalise spaces around dash
-                .toLowerCase();                              // case-insensitive matching
+                .replace(/\s{2,}/g, ' ')          // collapse runs of spaces
+                .replace(/\s*-\s*/g, ' - ')        // normalise spaces around dash
+                .replace(/\b\w/g, c => c.toUpperCase()); // title-case each word
         };
 
         // Build a map from normalised key → display label (use first seen canonical form)
@@ -2681,11 +2682,9 @@ const views = {
             const key = normaliseClass(raw);
             if (!studentsByClass[key]) {
                 studentsByClass[key] = [];
-                // Prefer the canonical label from state.classes; fall back to title-casing the raw value
+                // Prefer a label from state.classes if we can match it, otherwise use normalised key
                 const matchedClass = state.classes.find(c => normaliseClass(`${c.level} - ${c.grade}`) === key);
-                keyToLabel[key] = matchedClass
-                    ? `${matchedClass.level} - ${matchedClass.grade}`
-                    : raw.trim().replace(/[\u2013\u2014\u2012\u2015]/g, '-').replace(/\s*-\s*/g, ' - ') || 'Unassigned';
+                keyToLabel[key] = matchedClass ? `${matchedClass.level} - ${matchedClass.grade}` : key;
             }
             studentsByClass[key].push(s);
         });
@@ -2709,6 +2708,12 @@ const views = {
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <input type="text" id="student-admission" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Admission Number">
                     <input type="text" id="student-name" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Full Name">
+                    <select id="student-gender" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
                     <input type="date" id="student-dob" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" onchange="actions.calculateAge()">
                     <input type="text" id="student-age" class="input-field rounded-xl px-4 py-3 bg-slate-100 dark:bg-slate-600 text-slate-800 dark:text-white" placeholder="Age (auto-calculated)" readonly>
                     <select id="student-class" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
@@ -2743,6 +2748,7 @@ const views = {
                                     <tr>
                                         <th class="px-5 py-3 font-bold text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wide">Adm. No.</th>
                                         <th class="px-5 py-3 font-bold text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wide">Name</th>
+                                        <th class="px-5 py-3 font-bold text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wide">Gender</th>
                                         <th class="px-5 py-3 font-bold text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wide">Date of Birth</th>
                                         <th class="px-5 py-3 font-bold text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wide">Age</th>
                                         <th class="px-5 py-3 font-bold text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wide">Parent Phone</th>
@@ -2754,6 +2760,12 @@ const views = {
                                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                                             <td class="px-5 py-3 font-mono text-xs text-ridge-600 dark:text-ridge-400 font-bold">${s.admission_number || '—'}</td>
                                             <td class="px-5 py-3 font-semibold text-slate-800 dark:text-slate-200">${s.name}</td>
+                                            <td class="px-5 py-3 text-slate-600 dark:text-slate-400">
+                                                ${s.gender ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${s.gender.toLowerCase().startsWith('m') ? 'rgba(59,130,246,0.15)' : s.gender.toLowerCase().startsWith('f') ? 'rgba(236,72,153,0.15)' : 'rgba(100,116,139,0.15)'};color:${s.gender.toLowerCase().startsWith('m') ? '#3b82f6' : s.gender.toLowerCase().startsWith('f') ? '#ec4899' : '#64748b'};">
+                                                    <i class="fas fa-${s.gender.toLowerCase().startsWith('m') ? 'mars' : s.gender.toLowerCase().startsWith('f') ? 'venus' : 'genderless'}"></i>
+                                                    ${s.gender}
+                                                </span>` : '<span style="color:#64748b;">—</span>'}
+                                            </td>
                                             <td class="px-5 py-3 text-slate-600 dark:text-slate-400">${s.dob ? new Date(s.dob).toLocaleDateString('en-GB') : '—'}</td>
                                             <td class="px-5 py-3 text-slate-800 dark:text-slate-200">${s.age || '—'}</td>
                                             <td class="px-5 py-3 text-slate-600 dark:text-slate-400">${s.parent_phone || '—'}</td>
@@ -3596,51 +3608,32 @@ const views = {
     },
 
     renderDataAnalysis() {
-        const html = `
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Data Analysis</h2>
-            </div>
-
-            <div class="glass-panel rounded-2xl p-6 mb-6 bg-white dark:bg-slate-800 shadow-lg">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div>
-                        <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Academic Year</label>
-                        <select id="analysis-year" onchange="actions.updateTermOptions()" class="input-field w-full rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
-                            <option value="">Select Year</option>
-                            ${state.academicYears.map(y => `<option value="${y.id}">${y.year}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Term</label>
-                        <select id="analysis-term" class="input-field w-full rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-slate-700 dark:to-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
-                            <option value="">Select Term</option>
-                        </select>
-                    </div>
-                    <div class="flex items-end">
-                        <button onclick="actions.loadAnalysisData()" class="w-full px-6 py-3 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
-                            <i class="fas fa-chart-bar mr-2"></i> Generate Report
+        // Delegated to the Academic Report Generator module (academic-report-generator.js)
+        try {
+            if (typeof renderDataAnalysis !== 'function') {
+                throw new Error('Academic Report Generator module not loaded.');
+            }
+            renderDataAnalysis();
+        } catch (err) {
+            console.error('renderDataAnalysis error:', err);
+            const container = document.getElementById('view-content');
+            if (container) {
+                container.innerHTML = `
+                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;gap:16px;text-align:center;padding:24px;">
+                        <div style="width:56px;height:56px;background:#fef2f2;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                            <i class="fas fa-exclamation-triangle" style="color:#ef4444;font-size:22px;"></i>
+                        </div>
+                        <div>
+                            <p style="font-weight:700;font-size:16px;color:var(--rv-navy,#0f2044);margin:0 0 6px;">Failed to load Data Analysis</p>
+                            <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:0;">${err.message || 'An unexpected error occurred.'}</p>
+                        </div>
+                        <button onclick="ui.route('data_analysis')" style="padding:10px 24px;background:#1a56db;color:#fff;border:none;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;">
+                            <i class="fas fa-redo" style="margin-right:6px;"></i>Retry
                         </button>
                     </div>
-                </div>
-                <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-                    <p class="text-sm text-blue-800 dark:text-blue-200">
-                        <i class="fas fa-info-circle mr-2"></i>
-                        Select a year and term to filter and view data. All historical data is preserved and accessible through filtering - no data is archived or deleted when switching periods.
-                    </p>
-                </div>
-            </div>
-
-            <div id="analysis-results" class="space-y-6">
-                <div class="glass-panel rounded-2xl p-12 bg-white dark:bg-slate-800 shadow-lg text-center text-slate-500">
-                    <i class="fas fa-chart-pie text-6xl mb-4 text-slate-300"></i>
-                    <p class="text-lg">Select academic year and term to view detailed analysis</p>
-                    <p class="text-sm mt-2">Use the filters above to access data from any period</p>
-                </div>
-            </div>
-        `;
-        
-        const container = document.getElementById('view-content');
-        if (container) container.innerHTML = html;
+                `;
+            }
+        }
     },
 
     renderTeacherDashboard() {
@@ -4345,15 +4338,8 @@ const actions = {
     },
 
     updateTermOptions() {
-        const yearId = document.getElementById('analysis-year')?.value;
-        const termSelect = document.getElementById('analysis-term');
-        if (!yearId || !termSelect) return;
-        
-        const year = state.academicYears.find(y => y.id === yearId);
-        if (year && year.terms) {
-            termSelect.innerHTML = '<option value="">Select Term</option>' + 
-                year.terms.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-        }
+        // Delegated to Academic Report Generator module
+        academicReportGenerator.onYearChange();
     },
 
     async addClass() {
@@ -4428,6 +4414,7 @@ const actions = {
     async addStudent() {
         const admissionNumber = document.getElementById('student-admission')?.value?.trim();
         const name = document.getElementById('student-name')?.value?.trim();
+        const gender = document.getElementById('student-gender')?.value;
         const dob = document.getElementById('student-dob')?.value;
         const age = document.getElementById('student-age')?.value;
         const studentClass = document.getElementById('student-class')?.value;
@@ -4436,13 +4423,14 @@ const actions = {
         if (!admissionNumber || !name || !dob || !studentClass) return modal.alert('Validation Error', 'Please fill in Admission Number, Name, Date of Birth, and Class', 'warning');
 
         // Normalise to canonical "Level - Grade" format to avoid duplicate tables
-        const normalisedClass = studentClass.trim().replace(/[\u2013\u2014\u2012\u2015]/g, '-').replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
+        const normalisedClass = studentClass.trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
 
         try {
             app.showLoading('Registering student...');
             const { error } = await supabaseClient.from('students').insert([{
                 admission_number: admissionNumber,
                 name,
+                gender: gender || null,
                 dob,
                 age,
                 class: normalisedClass,
@@ -4490,6 +4478,15 @@ const actions = {
                             <input type="text" id="${modalId}-name" value="${student.name || ''}" style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;outline:none;" placeholder="Full Name">
                         </div>
                         <div>
+                            <label style="display:block;color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Gender</label>
+                            <select id="${modalId}-gender" style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;outline:none;">
+                                <option value="">Select Gender</option>
+                                <option value="Male" ${student.gender === 'Male' ? 'selected' : ''}>Male</option>
+                                <option value="Female" ${student.gender === 'Female' ? 'selected' : ''}>Female</option>
+                                <option value="Other" ${student.gender === 'Other' ? 'selected' : ''}>Other</option>
+                            </select>
+                        </div>
+                        <div>
                             <label style="display:block;color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Date of Birth</label>
                             <input type="date" id="${modalId}-dob" value="${student.dob || ''}" style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;outline:none;" onchange="(function(){const d=document.getElementById('${modalId}-dob').value;if(d){const age=Math.floor((new Date()-new Date(d))/31557600000);document.getElementById('${modalId}-age').value=age+' years';}})()">
                         </div>
@@ -4523,6 +4520,7 @@ const actions = {
         document.getElementById(`${modalId}-save`).onclick = async () => {
             const admissionNumber = document.getElementById(`${modalId}-admission`)?.value?.trim();
             const name = document.getElementById(`${modalId}-name`)?.value?.trim();
+            const gender = document.getElementById(`${modalId}-gender`)?.value;
             const dob = document.getElementById(`${modalId}-dob`)?.value;
             const age = document.getElementById(`${modalId}-age`)?.value;
             const studentClass = document.getElementById(`${modalId}-class`)?.value;
@@ -4538,6 +4536,7 @@ const actions = {
                 const { error } = await supabaseClient.from('students').update({
                     admission_number: admissionNumber || null,
                     name,
+                    gender: gender || null,
                     dob: dob || null,
                     age: age || null,
                     class: studentClass,
@@ -5540,122 +5539,8 @@ const actions = {
     },
 
     async loadAnalysisData() {
-        const yearId = document.getElementById('analysis-year')?.value;
-        const termId = document.getElementById('analysis-term')?.value;
-        
-        if (!yearId || !termId) {
-            modal.alert('Validation Error', 'Please select both year and term', 'warning');
-            return;
-        }
-        
-        app.showLoading('Generating analysis...');
-        
-        try {
-            const year = state.academicYears.find(y => y.id === yearId);
-            const term = year?.terms?.find(t => t.id === termId);
-            
-            const periodFees = state.fees.filter(f => f.year_id === yearId && f.term_id === termId);
-            const periodTransactions = state.transactions.filter(t => t.year_id === yearId && t.term_id === termId);
-            const periodReports = state.reports.filter(r => r.year_id === yearId && r.term_id === termId);
-            const periodAttendance = state.attendance.filter(a => a.year_id === yearId && a.term_id === termId);
-            
-            const totalRevenue = periodTransactions
-                .filter(t => t.status === 'confirmed')
-                .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
-            
-            const pendingPayments = periodTransactions.filter(t => t.status === 'pending');
-            const totalPending = pendingPayments.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
-            
-            const allArrears = dataManager.getAllArrears();
-            const totalArrears = allArrears.reduce((sum, a) => sum + a.amount, 0);
-            
-            const container = document.getElementById('analysis-results');
-            if (container) {
-                container.innerHTML = `
-                    <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
-                        <div class="glass-panel p-6 rounded-2xl bg-white dark:bg-slate-800 shadow-lg border-l-4 border-emerald-500 cursor-pointer hover:shadow-xl transition-all" onclick="views.showDetailModal('revenue')">
-                            <p class="text-sm text-slate-500 mb-1">Total Revenue</p>
-                            <h3 class="text-2xl font-black text-emerald-600">₵${totalRevenue.toLocaleString()}</h3>
-                        </div>
-                        <div class="glass-panel p-6 rounded-2xl bg-white dark:bg-slate-800 shadow-lg border-l-4 border-amber-500 cursor-pointer hover:shadow-xl transition-all" onclick="views.showDetailModal('pending')">
-                            <p class="text-sm text-slate-500 mb-1">Pending Payments</p>
-                            <h3 class="text-2xl font-black text-amber-600">₵${totalPending.toLocaleString()}</h3>
-                        </div>
-                        <div class="glass-panel p-6 rounded-2xl bg-white dark:bg-slate-800 shadow-lg border-l-4 border-blue-500 cursor-pointer hover:shadow-xl transition-all">
-                            <p class="text-sm text-slate-500 mb-1">Reports Generated</p>
-                            <h3 class="text-2xl font-black text-blue-600">${periodReports.length}</h3>
-                        </div>
-                        <div class="glass-panel p-6 rounded-2xl bg-white dark:bg-slate-800 shadow-lg border-l-4 border-purple-500 cursor-pointer hover:shadow-xl transition-all">
-                            <p class="text-sm text-slate-500 mb-1">Attendance Records</p>
-                            <h3 class="text-2xl font-black text-purple-600">${periodAttendance.length}</h3>
-                        </div>
-                        <div class="glass-panel p-6 rounded-2xl bg-white dark:bg-slate-800 shadow-lg border-l-4 border-red-500 cursor-pointer hover:shadow-xl transition-all" onclick="views.showDetailModal('arrears')">
-                            <p class="text-sm text-slate-500 mb-1">Total Arrears</p>
-                            <h3 class="text-2xl font-black text-red-600">₵${totalArrears.toLocaleString()}</h3>
-                        </div>
-                    </div>
-                    
-                    <div class="glass-panel rounded-2xl p-6 bg-white dark:bg-slate-800 shadow-lg">
-                        <h3 class="text-lg font-bold mb-4 text-slate-800 dark:text-white">
-                            Detailed Breakdown for ${year.year} - ${term?.name}
-                        </h3>
-                        <div class="space-y-6">
-                            <div>
-                                <h4 class="font-bold text-slate-700 dark:text-slate-300 mb-2">Fee Structure</h4>
-                                ${periodFees.length === 0 ? '<p class="text-sm text-slate-500">No fees set for this period</p>' : `
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        ${periodFees.map(f => `
-                                            <div class="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl">
-                                                <p class="font-semibold">${f.description}</p>
-                                                <p class="text-sm text-slate-500">₵${f.amount} • ${f.scope}</p>
-                                            </div>
-                                        `).join('')}
-                                    </div>
-                                `}
-                            </div>
-                            
-                            <div>
-                                <h4 class="font-bold text-slate-700 dark:text-slate-300 mb-2">Transaction Summary</h4>
-                                <div class="overflow-x-auto">
-                                    <table class="w-full text-left">
-                                        <thead class="bg-slate-50 dark:bg-slate-700 border-b">
-                                            <tr>
-                                                <th class="px-4 py-2 text-sm">Student</th>
-                                                <th class="px-4 py-2 text-sm">Amount</th>
-                                                <th class="px-4 py-2 text-sm">Status</th>
-                                                <th class="px-4 py-2 text-sm">Date</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y">
-                                            ${periodTransactions.slice(0, 10).map(t => {
-                                                const student = state.students.find(s => s.id === t.student_id);
-                                                return `
-                                                    <tr class="text-sm">
-                                                        <td class="px-4 py-2">${student?.name || 'Unknown'}</td>
-                                                        <td class="px-4 py-2">₵${t.amount}</td>
-                                                        <td class="px-4 py-2">
-                                                            <span class="px-2 py-1 rounded text-xs ${t.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' : t.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}">
-                                                                ${t.status}
-                                                            </span>
-                                                        </td>
-                                                        <td class="px-4 py-2 text-slate-500">${new Date(t.created_at).toLocaleDateString()}</td>
-                                                    </tr>
-                                                `;
-                                            }).join('')}
-                                        </tbody>
-                                    </table>
-                                    ${periodTransactions.length > 10 ? `<p class="text-center text-sm text-slate-500 mt-2">... and ${periodTransactions.length - 10} more</p>` : ''}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-        } catch (err) {
-            modal.alert('Error', 'Failed to load analysis: ' + extractErrorMessage(err), 'error');
-        } finally {
-            app.hideLoading();
-        }
+        // Delegated to Academic Report Generator module (academic-report-generator.js)
+        await academicReportGenerator.generate();
     },
 
     async downloadReceipt(transactionId) {
@@ -6196,7 +6081,7 @@ const actions = {
                     <!-- Step 2: File Upload (hidden initially) -->
                     <div id="${modalId}-step2" style="padding:24px;display:none;">
                         <p style="color:#94a3b8;font-size:13px;margin-bottom:6px;">Upload an Excel file (.xlsx / .xls) containing student data.</p>
-                        <p style="color:#64748b;font-size:12px;margin-bottom:16px;">Your file should have columns for student <strong style="color:#94a3b8;">Name</strong> and <strong style="color:#94a3b8;">Date of Birth</strong>.</p>
+                        <p style="color:#64748b;font-size:12px;margin-bottom:16px;">Your file should have columns for student <strong style="color:#94a3b8;">Name</strong>, <strong style="color:#94a3b8;">Gender</strong>, and <strong style="color:#94a3b8;">Date of Birth</strong>.</p>
                         <label style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;border:2px dashed #334155;border-radius:14px;cursor:pointer;background:#0f172a;transition:border-color 0.2s;gap:10px;" 
                                onmouseover="this.style.borderColor='#1a56db'" onmouseout="this.style.borderColor='#334155'">
                             <i class="fas fa-cloud-upload-alt" style="font-size:32px;color:#1a56db;"></i>
@@ -6324,6 +6209,12 @@ const actions = {
                         <select id="${modalId}-map-name" style="width:100%;padding:12px;border-radius:8px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;outline:none;" onchange="actions._bulkWizardUpdatePreview('${modalId}')">${optionHtml}</select>
                     </div>
                     <div>
+                        <div style="padding:12px;background:#0f172a;border-radius:8px;border:1.5px solid #ec4899;color:#e2e8f0;font-size:13px;font-weight:600;"><i class="fas fa-venus-mars mr-2 text-pink-400"></i>Gender</div>
+                    </div>
+                    <div>
+                        <select id="${modalId}-map-gender" style="width:100%;padding:12px;border-radius:8px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;outline:none;" onchange="actions._bulkWizardUpdatePreview('${modalId}')">${optionHtml}</select>
+                    </div>
+                    <div>
                         <div style="padding:12px;background:#0f172a;border-radius:8px;border:1.5px solid #7c3aed;color:#e2e8f0;font-size:13px;font-weight:600;"><i class="fas fa-birthday-cake mr-2 text-purple-400"></i>Date of Birth</div>
                     </div>
                     <div>
@@ -6344,16 +6235,19 @@ const actions = {
             // Auto-detect common column names
             const admCandidates = ['admission', 'admission number', 'adm', 'adm no', 'adm number', 'admission no', 'student id', 'id'];
             const nameCandidates = ['name', 'student name', 'full name', 'student'];
+            const genderCandidates = ['gender', 'sex', 'gender/sex'];
             const dobCandidates = ['dob', 'date of birth', 'birth date', 'birthday', 'dateofbirth'];
             const phoneCandidates = ['parent phone', 'phone', 'phone number', 'parent contact', 'contact', 'mobile', 'tel'];
             const admSel = document.getElementById(`${modalId}-map-admission`);
             const nameSel = document.getElementById(`${modalId}-map-name`);
+            const genderSel = document.getElementById(`${modalId}-map-gender`);
             const dobSel = document.getElementById(`${modalId}-map-dob`);
             const phoneSel = document.getElementById(`${modalId}-map-phone`);
             headers.forEach(h => {
                 const hl = h.toLowerCase();
                 if (admCandidates.includes(hl) && admSel.value === '') admSel.value = h;
                 if (nameCandidates.includes(hl) && nameSel.value === '') nameSel.value = h;
+                if (genderCandidates.includes(hl) && genderSel.value === '') genderSel.value = h;
                 if (dobCandidates.includes(hl) && dobSel.value === '') dobSel.value = h;
                 if (phoneCandidates.includes(hl) && phoneSel.value === '') phoneSel.value = h;
             });
@@ -6375,14 +6269,17 @@ const actions = {
         if (!fileData || fileData.length < 2) return;
         const admSel = document.getElementById(`${modalId}-map-admission`);
         const nameSel = document.getElementById(`${modalId}-map-name`);
+        const genderSel = document.getElementById(`${modalId}-map-gender`);
         const dobSel = document.getElementById(`${modalId}-map-dob`);
         const phoneSel = document.getElementById(`${modalId}-map-phone`);
         const admCol = admSel?.value;
         const nameCol = nameSel?.value;
+        const genderCol = genderSel?.value;
         const dobCol = dobSel?.value;
         const phoneCol = phoneSel?.value;
         const admIdx = headers.indexOf(admCol);
         const nameIdx = headers.indexOf(nameCol);
+        const genderIdx = headers.indexOf(genderCol);
         const dobIdx = headers.indexOf(dobCol);
         const phoneIdx = headers.indexOf(phoneCol);
         const previewRows = fileData.slice(1, 6);
@@ -6391,11 +6288,12 @@ const actions = {
         previewArea.innerHTML = `
             <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Preview (first 5 rows)</div>
             <div style="background:#0f172a;border-radius:10px;overflow:hidden;border:1px solid #334155;overflow-x:auto;">
-                <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:500px;">
+                <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:580px;">
                     <thead>
                         <tr style="background:#1e293b;">
                             <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Adm. No.</th>
                             <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Name</th>
+                            <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Gender</th>
                             <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Date of Birth</th>
                             <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Age</th>
                             <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Parent Phone</th>
@@ -6405,6 +6303,7 @@ const actions = {
                         ${previewRows.map(row => {
                             const adm = admIdx >= 0 ? String(row[admIdx] || '') : '';
                             const name = nameIdx >= 0 ? String(row[nameIdx] || '') : '';
+                            const gender = genderIdx >= 0 ? String(row[genderIdx] || '') : '';
                             const dob = dobIdx >= 0 ? row[dobIdx] : '';
                             const dobStr = dob instanceof Date ? dob.toISOString().split('T')[0] : this._parseDobString(String(dob || ''));
                             const age = dobStr ? this._calculateAgeFromDob(dobStr) : '—';
@@ -6412,6 +6311,7 @@ const actions = {
                             return `<tr style="border-top:1px solid #1e293b;">
                                 <td style="padding:8px 12px;color:#67e8f9;">${adm || '<span style="color:#64748b;">—</span>'}</td>
                                 <td style="padding:8px 12px;color:#e2e8f0;">${name || '<span style="color:#64748b;">—</span>'}</td>
+                                <td style="padding:8px 12px;color:#f9a8d4;">${gender || '<span style="color:#64748b;">—</span>'}</td>
                                 <td style="padding:8px 12px;color:#e2e8f0;">${dobStr || '<span style="color:#64748b;">—</span>'}</td>
                                 <td style="padding:8px 12px;color:#10b981;font-weight:600;">${age}</td>
                                 <td style="padding:8px 12px;color:#a78bfa;">${phone || '<span style="color:#64748b;">—</span>'}</td>
@@ -6482,10 +6382,12 @@ const actions = {
         const { selectedClass, fileData, headers } = modalEl._wizardState;
         const admSel = document.getElementById(`${modalId}-map-admission`);
         const nameSel = document.getElementById(`${modalId}-map-name`);
+        const genderSel = document.getElementById(`${modalId}-map-gender`);
         const dobSel = document.getElementById(`${modalId}-map-dob`);
         const phoneSel = document.getElementById(`${modalId}-map-phone`);
         const admCol = admSel?.value;
         const nameCol = nameSel?.value;
+        const genderCol = genderSel?.value;
         const dobCol = dobSel?.value;
         const phoneCol = phoneSel?.value;
 
@@ -6494,6 +6396,7 @@ const actions = {
 
         const admIdx = headers.indexOf(admCol);
         const nameIdx = headers.indexOf(nameCol);
+        const genderIdx = headers.indexOf(genderCol);
         const dobIdx = headers.indexOf(dobCol);
         const phoneIdx = headers.indexOf(phoneCol);
         const dataRows = (fileData || []).slice(1).filter(row => row[nameIdx]?.toString().trim());
@@ -6501,7 +6404,7 @@ const actions = {
         if (dataRows.length === 0) { ui.showToast('No valid student rows found in the file', 'warning'); return; }
 
         // Normalise the class key to avoid duplicate tables
-        const normalisedClass = selectedClass.trim().replace(/[\u2013\u2014\u2012\u2015]/g, '-').replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
+        const normalisedClass = selectedClass.trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
 
         modalEl.remove();
         app.showLoading(`Uploading ${dataRows.length} students...`);
@@ -6510,6 +6413,11 @@ const actions = {
             const records = dataRows.map(row => {
                 const admission_number = admIdx >= 0 ? String(row[admIdx] || '').trim() : '';
                 const name = String(row[nameIdx] || '').trim();
+                const genderRaw = genderIdx >= 0 ? String(row[genderIdx] || '').trim() : '';
+                // Normalise gender value to Male/Female/Other
+                const genderNorm = genderRaw.toLowerCase().startsWith('m') ? 'Male'
+                    : genderRaw.toLowerCase().startsWith('f') ? 'Female'
+                    : genderRaw ? 'Other' : null;
                 const dobRaw = dobIdx >= 0 ? row[dobIdx] : '';
                 let dobStr = '';
                 if (dobRaw instanceof Date) {
@@ -6522,6 +6430,7 @@ const actions = {
                 return {
                     admission_number: admission_number || null,
                     name,
+                    gender: genderNorm,
                     dob: dobStr || null,
                     age: typeof age === 'number' ? age : null,
                     class: normalisedClass,
