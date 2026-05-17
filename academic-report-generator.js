@@ -652,13 +652,13 @@ function _argAnalyseTerm(d) {
     if (avgAttendance < 80) flags.push({ type: 'warning', msg: 'School-wide attendance is below the 80% benchmark.' });
     if (chronicAbsentee > totalStudents * 0.1) flags.push({ type: 'warning', msg: `${chronicAbsentee} students have chronic absenteeism (below 75% attendance).` });
     if (complianceRate < 80) flags.push({ type: 'warning', msg: `Teacher report submission compliance is low at ${complianceRate}%.` });
-    if (studentsWithArrears > 0) flags.push({ type: 'info', msg: `${studentsWithArrears} student(s) have pending fee payments.` });
+
     if (totalStudents === 0) flags.push({ type: 'info', msg: 'No student records found for this period.' });
 
     const strengths = [];
     if (avgAttendance >= 90) strengths.push('Excellent school-wide attendance rate.');
     if (complianceRate === 100) strengths.push('Full teacher report submission compliance achieved.');
-    if (collectionRate >= 80) strengths.push(`Strong fee collection rate of ${collectionRate}%.`);
+
 
     // ── Academic Performance from exam reports ──
     // termReports may contain score fields: subject, score/mark/percentage, student_id, class
@@ -823,11 +823,10 @@ function _argTermPreviewHtml(year, term, a, logoUrl) {
         ${_pvSection('4. Student Development & Behaviour', _termStudentDevelopmentHtml(a))}
         ${_pvSection('5. Attendance Analysis', _termAttendanceHtml(a))}
         ${_pvSection('6. Teacher & Class Performance', _termTeacherHtml(a))}
-        ${_pvSection('7. Fee Collection', _termFinanceHtml(a))}
-        ${_pvSection('8. Challenges Identified', _challengesHtml(a.flags))}
-        ${_pvSection('9. Strengths & Commendations', _strengthsHtml(a.strengths))}
-        ${_pvSection('10. Recommendations', _termRecommendationsHtml(a))}
-        ${_pvSection('11. Conclusion', _termConclusionHtml(year, term, a))}
+        ${_pvSection('7. Challenges Identified', _challengesHtml(a.flags))}
+        ${_pvSection('8. Strengths & Commendations', _strengthsHtml(a.strengths))}
+        ${_pvSection('9. Recommendations', _termRecommendationsHtml(a))}
+        ${_pvSection('10. Conclusion', _termConclusionHtml(year, term, a))}
         ${_pvSignatureBlock()}
     `;
 }
@@ -863,11 +862,10 @@ function _argYearPreviewHtml(year, ya, termDataArr, logoUrl) {
         ${_pvSection('4. Yearly Attendance Trends', _yearAttendanceTrendHtml(ya))}
         ${_pvSection('5. Term-by-Term Overview', _yearTermOverviewHtml(termDataArr))}
         ${_pvSection('6. Promotion & Transition Analysis', _yearPromotionHtml(termDataArr))}
-        ${_pvSection('7. Fee Collection Summary', _yearFinanceHtml(ya))}
-        ${_pvSection('8. Yearly Achievements', _yearAchievementsHtml(ya, termDataArr))}
-        ${_pvSection('9. Yearly Challenges', _yearChallengesHtml(ya, termDataArr))}
-        ${_pvSection('10. Strategic Recommendations for Next Year', _yearRecommendationsHtml(ya, termDataArr))}
-        ${_pvSection('11. Conclusion', _yearConclusionHtml(year, ya))}
+        ${_pvSection('7. Yearly Achievements', _yearAchievementsHtml(ya, termDataArr))}
+        ${_pvSection('8. Yearly Challenges', _yearChallengesHtml(ya, termDataArr))}
+        ${_pvSection('9. Strategic Recommendations for Next Year', _yearRecommendationsHtml(ya, termDataArr))}
+        ${_pvSection('10. Conclusion', _yearConclusionHtml(year, ya))}
         ${_pvSignatureBlock()}
     `;
 }
@@ -895,14 +893,10 @@ function _termExecutiveSummary(year, term, a) {
         : a.complianceRate >= 80 ? `The majority of teaching staff (${a.complianceRate}%) submitted their class reports.`
         : `Teacher report submission compliance requires urgent attention, currently standing at ${a.complianceRate}%.`;
 
-    const finNote = a.totalExpected > 0
-        ? `Fee collection for the term stood at ${a.collectionRate}% of projected revenue${a.studentsWithArrears > 0 ? `, with ${a.studentsWithArrears} student(s) carrying outstanding balances` : ''}.`
-        : 'Fee collection data is not yet fully recorded for this period.';
-
     return `
         <p>This report presents a comprehensive academic intelligence overview for <strong>${term.name}</strong> of the <strong>${year.year}</strong> academic year at Ridgevalley Hybrid School. It is intended to support leadership decision-making, strategic planning, and operational improvement.</p>
         <p>During this term, the school enrolled a total of <strong>${a.totalStudents} students</strong> across <strong>${a.totalClasses} classes</strong>, supported by <strong>${a.totalTeachers} members of teaching staff</strong>. The school recorded ${attNote}.</p>
-        <p>${compNote} ${finNote}</p>
+        <p>${compNote}</p>
         ${a.flags.length > 0 ? `<p>The analysis identified <strong>${a.flags.length} area(s) of concern</strong> requiring leadership attention, as detailed in subsequent sections.</p>` : '<p>No critical operational concerns were identified for this period.</p>'}
     `;
 }
@@ -1065,24 +1059,6 @@ function _termTeacherHtml(a) {
     `;
 }
 
-function _termFinanceHtml(a) {
-    if (a.totalExpected === 0) return '<p>No fee schedules have been recorded for this term. Finance analysis is unavailable.</p>';
-    return `
-        <p>Total projected fee income for this term: <strong>₵${_fmt(a.totalExpected)}</strong>. 
-        Confirmed collections: <strong>₵${_fmt(a.totalCollected)}</strong> 
-        (<strong>${a.collectionRate}%</strong> collection rate).</p>
-        ${a.studentsWithArrears > 0
-            ? `<p><strong>${a.studentsWithArrears} student(s)</strong> carry outstanding fee balances. The Finance Office should engage these families to facilitate payment before the next term.</p>`
-            : '<p>No outstanding fee arrears are recorded for this term.</p>'}
-        ${_kpiRow([
-            { label: 'Projected', val: '₵'+_fmt(a.totalExpected) },
-            { label: 'Collected', val: '₵'+_fmt(a.totalCollected) },
-            { label: 'Collection Rate', val: a.collectionRate+'%' },
-            { label: 'Students in Arrears', val: a.studentsWithArrears }
-        ])}
-    `;
-}
-
 function _challengesHtml(flags) {
     if (!flags.length) return '<p>No critical challenges were identified during this review period.</p>';
     return flags.map((f,i) =>
@@ -1099,7 +1075,7 @@ function _termRecommendationsHtml(a) {
     const recs = [];
     if (a.avgAttendance < 80) recs.push('Implement targeted attendance improvement strategies including parent engagement letters, home visits for chronically absent students, and class-level attendance awards.');
     if (a.complianceRate < 100) recs.push(`Follow up with ${a.totalTeachers - a.submittedTeachers} teacher(s) who have not submitted class report bundles. Consider establishing clear submission deadlines with consequences for non-compliance.`);
-    if (a.collectionRate < 80 && a.totalExpected > 0) recs.push('Engage families with outstanding fee balances through the Finance Office. Consider structured payment plans for economically vulnerable families.');
+
     if (a.chronicAbsentee > a.totalStudents * 0.1) recs.push('Refer chronically absent students to the school counsellor and establish a structured re-engagement programme.');
     recs.push('Conduct a mid-term academic review to track progress against targets set at the beginning of the term.');
     recs.push('Ensure all class data is fully recorded in the system to enable richer analysis in future report cycles.');
@@ -1294,7 +1270,7 @@ function _yearAchievementsHtml(ya, termDataArr) {
         achievements.push(`Significant academic improvement recorded in: ${improvingSubjects.join(', ')}.`);
     }
 
-    if (ya.yearCollectionRate >= 85) achievements.push(`Strong fee collection rate of ${ya.yearCollectionRate}% for the academic year.`);
+
 
     if (!achievements.length) achievements.push('Data for yearly achievements will be more detailed as more records are completed in the system.');
 
@@ -1306,7 +1282,6 @@ function _yearExecutiveSummary(year, ya, termDataArr) {
     return `
         <p>This Annual Academic Report provides a consolidated strategic overview of the <strong>${year.year}</strong> academic year at Ridgevalley Hybrid School. The report aggregates data across <strong>${termCount} term(s)</strong> to present a comprehensive picture of academic performance, enrollment trends, attendance, and operational compliance.</p>
         <p>The school maintained a yearly average attendance rate of <strong>${ya.yearAvgAttendance}%</strong> — a <strong>${ya.attTrend}</strong> trend compared to the start of the year. Teacher report submission compliance averaged <strong>${ya.yearAvgCompliance}%</strong> across all terms.</p>
-        ${ya.totalExpected > 0 ? `<p>Total fee collection for the year reached <strong>₵${_fmt(ya.totalCollected)}</strong> against a projected <strong>₵${_fmt(ya.totalExpected)}</strong>, representing an overall collection rate of <strong>${ya.yearCollectionRate}%</strong>.</p>` : ''}
         ${lastA ? `<p>At year-end, the school was serving <strong>${lastA.totalStudents} students</strong> across <strong>${lastA.totalClasses} classes</strong>, supported by <strong>${lastA.totalTeachers} teaching staff</strong>.</p>` : ''}
     `;
 }
@@ -1331,35 +1306,22 @@ function _yearTermOverviewHtml(termDataArr) {
             <td style="${_tdS}">${td.analysis.totalStudents}</td>
             <td style="${_tdS}">${td.analysis.avgAttendance}%</td>
             <td style="${_tdS}">${td.analysis.complianceRate}%</td>
-            <td style="${_tdS}">${td.analysis.totalExpected > 0 ? td.analysis.collectionRate+'%' : 'N/A'}</td>
             <td style="${_tdS}">${td.analysis.termReports}</td>
          </tr>`
     ).join('');
     return `
         <p>The table below summarises key metrics across all terms for the academic year.</p>
-        ${_table(['Term','Enrollment','Attendance','Report Compliance','Fee Collection','Reports Uploaded'], rows)}
+        ${_table(['Term','Enrollment','Attendance','Report Compliance','Reports Uploaded'], rows)}
     `;
 }
 
-function _yearFinanceHtml(ya) {
-    if (ya.totalExpected === 0) return '<p>Comprehensive fee data is not fully available for this academic year.</p>';
-    const rows = ya.terms.map(t =>
-        `<tr><td style="${_tdS}">${t.name}</td>
-         <td style="${_tdS}">₵${_fmt(t.analysis.totalExpected)}</td>
-         <td style="${_tdS}">₵${_fmt(t.analysis.totalCollected)}</td>
-         <td style="${_tdS}">${t.analysis.collectionRate}%</td></tr>`
-    ).join('');
-    return `
-        ${_table(['Term','Projected','Collected','Collection Rate'], rows)}
-        <p style="margin-top:10px;">Annual total: Projected <strong>₵${_fmt(ya.totalExpected)}</strong> · Collected <strong>₵${_fmt(ya.totalCollected)}</strong> · Rate <strong>${ya.yearCollectionRate}%</strong></p>
-    `;
-}
+
 
 function _yearChallengesHtml(ya, termDataArr) {
     const challenges = [];
     if (ya.yearAvgAttendance < 80) challenges.push(`Attendance averaged below the 80% benchmark throughout the year (${ya.yearAvgAttendance}%), indicating a systemic challenge requiring a school-wide intervention strategy.`);
     if (ya.yearAvgCompliance < 80) challenges.push(`Teacher report submission compliance averaged ${ya.yearAvgCompliance}% for the year. This requires policy enforcement and accountability measures.`);
-    if (ya.yearCollectionRate < 75 && ya.totalExpected > 0) challenges.push(`Fee collection averaged ${ya.yearCollectionRate}% for the year, below the 75% target. A structured debt recovery plan is recommended.`);
+
     if (!challenges.length) challenges.push('No persistent systemic challenges were identified across the full academic year. This reflects sound operational management.');
     return challenges.map((c,i) => `<p><strong>${i+1}.</strong> ${c}</p>`).join('');
 }
@@ -1368,9 +1330,8 @@ function _yearRecommendationsHtml(ya, termDataArr) {
     const recs = [
         'Conduct a comprehensive end-of-year staff performance review, using attendance compliance and report submission data as key indicators.',
         'Develop a strategic enrollment plan to maintain or grow student numbers in the coming academic year, informed by termly demographic data.',
-        'Review and update the fee schedule for the next academic year based on collection rate trends and school financial needs.',
         'Invest in professional development programmes for teaching staff, with emphasis on data-driven classroom management and differentiated instruction.',
-        'Establish a formal student welfare committee to monitor chronic absenteeism, fee arrears, and academic risk factors proactively.',
+        'Establish a formal student welfare committee to monitor chronic absenteeism and academic risk factors proactively.',
         'Improve system data entry discipline to ensure future reports capture richer analytics including subject-level performance trends.'
     ];
     return recs.map((r,i) => `<p><strong>${i+1}.</strong> ${r}</p>`).join('');
@@ -1457,17 +1418,13 @@ async function _argBuildTermDocx(year, term, a, logoBase64 = null) {
         _docxH1('6. Teacher & Class Performance'),
         _docxNarrative(`${a.submittedTeachers} of ${a.totalTeachers} teachers submitted reports (${a.complianceRate}% compliance). ${a.reviewedBundles} bundle(s) reviewed.`),
         _docxTeacherTable(a.classPerformance),
-        _docxH1('7. Fee Collection'),
-        a.totalExpected > 0
-            ? _docxNarrative(`Projected: ₵${_fmt(a.totalExpected)}. Collected: ₵${_fmt(a.totalCollected)}. Collection rate: ${a.collectionRate}%. Students with arrears: ${a.studentsWithArrears}.`)
-            : _docxNarrative('No fee schedules recorded for this term.'),
-        _docxH1('8. Challenges Identified'),
+        _docxH1('7. Challenges Identified'),
         ...(a.flags.length ? a.flags.map((f,i) => _docxBullet(`${i+1}. ${f.msg}`)) : [_docxNarrative('No critical challenges identified.')]),
-        _docxH1('9. Strengths & Commendations'),
+        _docxH1('8. Strengths & Commendations'),
         ...(a.strengths.length ? a.strengths.map((s,i)=>_docxBullet(`${i+1}. ${s}`)) : [_docxNarrative('Performance data will be elaborated as more records are entered.')]),
-        _docxH1('10. Recommendations'),
+        _docxH1('9. Recommendations'),
         ..._termRecsArr(a).map((r,i) => _docxBullet(`${i+1}. ${r}`)),
-        _docxH1('11. Conclusion'),
+        _docxH1('10. Conclusion'),
         _docxNarrative(_stripTags(_termConclusionHtml(year, term, a))),
         _docxSignatureBlock(),
     ];
@@ -1495,15 +1452,13 @@ async function _argBuildYearDocx(year, ya, termDataArr, logoBase64 = null) {
         _docxH1('6. Promotion & Transition Analysis'),
         _docxNarrative(_stripTags(_yearPromotionHtml(termDataArr))),
         _docxPromotionTable(termDataArr),
-        _docxH1('7. Fee Collection Summary'),
-        ya.totalExpected > 0 ? _docxYearFinTable(ya) : _docxNarrative('Fee data not fully recorded.'),
-        _docxH1('8. Yearly Achievements'),
+        _docxH1('7. Yearly Achievements'),
         ..._yearAchievementsArr(ya, termDataArr).map((a,i)=>_docxBullet(`${i+1}. ${a}`)),
-        _docxH1('9. Yearly Challenges'),
+        _docxH1('8. Yearly Challenges'),
         ..._yearChallengesArr(ya, termDataArr).map((c,i)=>_docxBullet(`${i+1}. ${c}`)),
-        _docxH1('10. Strategic Recommendations for Next Year'),
+        _docxH1('9. Strategic Recommendations for Next Year'),
         ..._yearRecsArr().map((r,i)=>_docxBullet(`${i+1}. ${r}`)),
-        _docxH1('11. Conclusion'),
+        _docxH1('10. Conclusion'),
         _docxNarrative(_stripTags(_yearConclusionHtml(year, ya))),
         _docxSignatureBlock(),
     ];
@@ -1713,7 +1668,7 @@ function _yearAchievementsArr(ya, termDataArr) {
     const lastA  = termDataArr.length ? termDataArr[termDataArr.length-1].analysis : null;
     if (firstA && lastA && lastA.totalStudents > firstA.totalStudents)
         achievements.push(`Enrollment grew from ${firstA.totalStudents} to ${lastA.totalStudents} students.`);
-    if (ya.yearCollectionRate >= 85) achievements.push(`Strong fee collection rate of ${ya.yearCollectionRate}% for the year.`);
+
     if (!achievements.length) achievements.push('Continued operation and service to the school community throughout the academic year.');
     return achievements;
 }
@@ -1753,17 +1708,8 @@ function _docxTermOverviewTable(termDataArr) {
     const rows = termDataArr.map(td =>
         _docxTR([td.term.name, String(td.analysis.totalStudents),
                  td.analysis.avgAttendance+'%', td.analysis.complianceRate+'%',
-                 td.analysis.totalExpected > 0 ? td.analysis.collectionRate+'%' : 'N/A',
                  String(td.analysis.termReports)]));
-    return _docxTable(['Term','Enrollment','Attendance','Compliance','Fee Collection','Reports'], rows);
-}
-
-function _docxYearFinTable(ya) {
-    const rows = ya.terms.map(t =>
-        _docxTR([t.name, '₵'+_fmt(t.analysis.totalExpected),
-                 '₵'+_fmt(t.analysis.totalCollected), t.analysis.collectionRate+'%']));
-    rows.push(_docxTR(['Total', '₵'+_fmt(ya.totalExpected), '₵'+_fmt(ya.totalCollected), ya.yearCollectionRate+'%'], true));
-    return _docxTable(['Term','Projected','Collected','Rate'], rows);
+    return _docxTable(['Term','Enrollment','Attendance','Compliance','Reports'], rows);
 }
 
 function _docxTable(headers, rows) {
@@ -1808,7 +1754,7 @@ function _termRecsArr(a) {
     const recs = [];
     if (a.avgAttendance < 80) recs.push('Implement targeted attendance improvement strategies including parent engagement letters and class-level attendance awards.');
     if (a.complianceRate < 100) recs.push(`Follow up with ${a.totalTeachers - a.submittedTeachers} teacher(s) who have not submitted class report bundles.`);
-    if (a.collectionRate < 80 && a.totalExpected > 0) recs.push('Engage families with outstanding fee balances through the Finance Office. Consider structured payment plans.');
+
     if (a.chronicAbsentee > a.totalStudents * 0.1) recs.push('Refer chronically absent students to the school counsellor and establish a re-engagement programme.');
     if (a.worstSubj && a.worstSubj.avg < 55) recs.push(`Introduce remedial/intervention sessions for ${a.worstSubj.subj}, which recorded the lowest school-wide average of ${a.worstSubj.avg}%.`);
     if (a.promotionFlags && a.promotionFlags.length > 0) recs.push(`Conduct focused academic support for students in: ${a.promotionFlags.join(', ')}, where pass rates fall below the promotion threshold.`);
@@ -1823,7 +1769,7 @@ function _yearChallengesArr(ya, termDataArr) {
     const c = [];
     if (ya.yearAvgAttendance < 80) c.push(`Attendance averaged below benchmark throughout the year (${ya.yearAvgAttendance}%).`);
     if (ya.yearAvgCompliance < 80) c.push(`Teacher report submission compliance averaged ${ya.yearAvgCompliance}% — requires policy enforcement.`);
-    if (ya.yearCollectionRate < 75 && ya.totalExpected > 0) c.push(`Fee collection averaged ${ya.yearCollectionRate}% — a structured debt recovery plan is recommended.`);
+
     if (!c.length) c.push('No persistent systemic challenges were identified across the full academic year.');
     return c;
 }
@@ -1834,10 +1780,9 @@ function _yearRecsArr() {
         'Develop a strategic enrollment plan to maintain or grow student numbers in the coming academic year, informed by termly demographic data.',
         'Strengthen foundational numeracy and literacy programmes, particularly for Lower Primary learners, to close identified learning gaps.',
         'Introduce subject-specific intervention classes for underperforming areas identified in this report.',
-        'Review and update the fee schedule for the next academic year based on collection rate trends and school financial needs.',
         'Invest in professional development programmes for teaching staff, with emphasis on data-driven classroom management and differentiated instruction.',
         'Expand parent-school communication through regular newsletters, parent-teacher meetings, and progress updates each term.',
-        'Establish a formal student welfare committee to monitor chronic absenteeism, fee arrears, and academic risk factors proactively.',
+        'Establish a formal student welfare committee to monitor chronic absenteeism and academic risk factors proactively.',
         'Enhance the use of practical learning materials and interactive teaching methods in all subject areas.',
         'Improve system data entry discipline to ensure future reports capture richer analytics including subject-level performance trends.'
     ];
