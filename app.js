@@ -1972,9 +1972,9 @@ const ui = {
                     #admin-sidebar {
                         position: fixed !important;
                         left: 0 !important;
-                        top: 0 !important;
+                        top: 4rem !important;
                         bottom: 0 !important;
-                        z-index: 50 !important;
+                        z-index: 90 !important;
                         transform: translateX(-100%) !important;
                         transition: transform 0.3s ease !important;
                         width: 260px !important;
