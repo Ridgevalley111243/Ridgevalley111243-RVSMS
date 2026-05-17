@@ -29,6 +29,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
+    <script src="financial-report.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -473,7 +474,7 @@
     </nav>
 
     <!-- Sidebar Overlay -->
-    <div id="sidebar-overlay" onclick="ui.toggleSidebar()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[80] hidden opacity-0 transition-opacity duration-300"></div>
+    <div id="sidebar-overlay" onclick="ui.toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-[80] hidden opacity-0 transition-opacity duration-300"></div>
 
     <!-- Sidebar -->
     <aside id="admin-sidebar" class="fixed left-0 top-16 h-[calc(100vh-4rem)] w-72 glass-panel border-r border-slate-200 dark:border-slate-700 transform -translate-x-full transition-transform duration-300 z-[85] overflow-y-auto">
