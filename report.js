@@ -3059,6 +3059,22 @@ async function buildReportDocx(student, reportData) {
         bodyXml += wPara('', { spaceAfter: 80 });
     });
 
+    // ── Append Bills for Next Term (from features.js / billing system) ──────
+    if (typeof buildReportUpcomingBills === 'function') {
+        try {
+            const ayId   = typeof state.academicYearId !== 'undefined' ? state.academicYearId
+                         : (typeof state.academicYears !== 'undefined'
+                            ? (state.academicYears.find(y => y.active) || {}).id
+                            : undefined);
+            const termId = typeof state.termId !== 'undefined' ? state.termId
+                         : (typeof state.academicYears !== 'undefined'
+                            ? ((state.academicYears.find(y => y.active)?.terms || []).find(t => t.active) || {}).id
+                            : undefined);
+            const billsXml = await buildReportUpcomingBills(student.id, ayId, termId);
+            if (billsXml) bodyXml += billsXml;
+        } catch (_) { /* bills are non-critical — never block report generation */ }
+    }
+
     // ── Assemble .docx with JSZip ────────────────────────────────────────────
     const zip = new JSZip();
 
