@@ -679,6 +679,15 @@ const app = {
             ]);
             state.dataLoaded = true;
             console.log('Data loaded successfully');
+
+            // Now that state.currentAY and state.currentTerm are set (by
+            // loadAcademicYears above), reload weeks so the week pill in the
+            // nav bar shows correctly for ALL roles — admin, teacher, parent.
+            // This runs after the Promise.all so the AY/term context is
+            // guaranteed to be populated before _autoActivateCurrentWeek runs.
+            if (typeof featureDB !== 'undefined') {
+                featureDB.loadWeeks().catch(() => {});
+            }
         } catch (err) {
             console.error('Error loading initial data:', err);
             ui.showToast('Some data failed to load', 'warning');
@@ -2149,12 +2158,36 @@ const ui = {
 
     updatePeriodDisplay() {
         const display = document.getElementById('active-period-display');
+        const weekBadge = document.getElementById('week-badge');
+        const weekDisplay = document.getElementById('active-week-display');
+
         if (display) {
             if (state.currentAY && state.currentTerm) {
                 display.textContent = `${state.currentAY.year} • ${state.currentTerm.name}`;
             } else {
                 display.textContent = 'No Active Period';
             }
+        }
+
+        // Update the separate week pill in the nav
+        if (weekBadge && weekDisplay && state.currentAY && state.currentTerm) {
+            const today = new Date().toISOString().split('T')[0];
+            let activeWeek = null;
+            if (typeof featureState !== 'undefined' && featureState.weeks) {
+                activeWeek = featureState.weeks.find(w =>
+                    w.status === 'active' &&
+                    w.academic_year_id === state.currentAY.id &&
+                    w.term_id === state.currentTerm.id
+                );
+            }
+            if (activeWeek) {
+                weekDisplay.textContent = activeWeek.week_name;
+                weekBadge.style.display = 'flex';
+            } else {
+                weekBadge.style.display = 'none';
+            }
+        } else if (weekBadge) {
+            weekBadge.style.display = 'none';
         }
     },
 
@@ -2193,6 +2226,7 @@ const ui = {
                     case 'teachers':               views.renderTeachers(); break;
                     case 'parents':                views.renderParents(); break;
                     case 'finance':                views.renderFinance(); break;
+                    case 'financial_analytics':    /* handled by features.js */ break;
                     case 'attendance':             views.renderAttendance(); break;
                     case 'received_reports':       views.renderReceivedReports(); break;
                     case 'admin_upload_reports':   views.renderAdminUploadReports(); break;
@@ -2591,6 +2625,25 @@ const views = {
                         </div>
                     </div>
                 ` : ''}
+            </div>
+
+            <!-- ── Weeks Sub-section ── -->
+            <div class="mt-8">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                            <i class="fas fa-calendar-week text-blue-600 dark:text-blue-400 text-sm"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800 dark:text-white">Academic Weeks</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Manage weekly periods for attendance, finance &amp; planning</p>
+                        </div>
+                    </div>
+                    <button onclick="ui.route('weeks')"
+                        class="px-5 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all">
+                        <i class="fas fa-arrow-right mr-2"></i>Manage Weeks
+                    </button>
+                </div>
             </div>
         `;
         
@@ -3608,31 +3661,87 @@ const views = {
     },
 
     renderDataAnalysis() {
-        // Delegated to the Academic Report Generator module (academic-report-generator.js)
+        // Only the Financial Report Generator sub-section is locked behind email verification.
+        // The main academic analysis section is always accessible.
+        const isFinancialLocked = typeof financialSecurity !== 'undefined' && !financialSecurity.isFinancialAccessActive();
+
+        const financialReportSection = isFinancialLocked ? `
+            <div style="background:var(--rv-surface);border:1px solid var(--rv-border);border-radius:16px;padding:40px 24px;text-align:center;box-shadow:var(--rv-shadow);">
+                <div style="width:72px;height:72px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                    <i class="fas fa-lock" style="color:#f59e0b;font-size:28px;"></i>
+                </div>
+                <h3 style="font-size:18px;font-weight:700;color:var(--rv-text);margin:0 0 8px;">Financial Reports Protected</h3>
+                <p style="font-size:13px;color:var(--rv-muted);margin:0 0 20px;line-height:1.6;">
+                    The Financial Report Generator requires email verification.<br>
+                    A verification code will be sent to the registered admin email to unlock.
+                </p>
+                <button onclick="financialSecurity.requestEmailVerification()"
+                    style="padding:12px 28px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;border:none;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;">
+                    <i class="fas fa-envelope" style="margin-right:8px;"></i>Send Verification Email
+                </button>
+                <p style="font-size:11px;color:var(--rv-muted);margin-top:10px;">6-digit code • Expires in 10 minutes</p>
+            </div>
+        ` : (() => {
+            try {
+                if (typeof renderFinancialReportGenerator === 'function') {
+                    return renderFinancialReportGenerator();
+                }
+                return `<p style="color:var(--rv-muted);text-align:center;padding:32px;">Financial Report Generator module not loaded.</p>`;
+            } catch (e) {
+                return `<p style="color:#ef4444;text-align:center;padding:32px;">${e.message}</p>`;
+            }
+        })();
+
+        // Render the top-level page then inject the academic analysis content
+        const container = document.getElementById('view-content');
+        if (!container) return;
+
+        container.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+                <h2 style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:700;color:var(--rv-navy,#0f2044);margin:0;">Data Analysis</h2>
+            </div>
+
+            <!-- Academic Analysis (always open) -->
+            <div id="data-analysis-academic" style="margin-bottom:32px;"></div>
+
+            <!-- Financial Report Generator (locked) -->
+            <div style="margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+                    <div style="width:36px;height:36px;border-radius:10px;background:rgba(245,158,11,0.1);display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-file-invoice-dollar" style="color:#f59e0b;font-size:15px;"></i>
+                    </div>
+                    <div>
+                        <h3 style="font-size:16px;font-weight:700;color:var(--rv-text);margin:0;">Financial Report Generator</h3>
+                        <p style="font-size:12px;color:var(--rv-muted);margin:2px 0 0;">Generate leadership-level school financial intelligence reports.</p>
+                    </div>
+                    <span style="margin-left:auto;padding:3px 10px;background:rgba(245,158,11,0.1);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);border-radius:20px;font-size:11px;font-weight:700;">
+                        <i class="fas fa-shield-alt" style="margin-right:4px;"></i>Admin Only
+                    </span>
+                </div>
+                ${financialReportSection}
+            </div>
+        `;
+
+        // Now render academic data analysis into its slot
         try {
             if (typeof renderDataAnalysis !== 'function') {
-                throw new Error('Academic Report Generator module not loaded.');
+                document.getElementById('data-analysis-academic').innerHTML =
+                    `<p style="color:var(--rv-muted);text-align:center;padding:32px;">Academic Report Generator module not loaded.</p>`;
+            } else {
+                renderDataAnalysis();
             }
-            renderDataAnalysis();
         } catch (err) {
             console.error('renderDataAnalysis error:', err);
-            const container = document.getElementById('view-content');
-            if (container) {
-                container.innerHTML = `
-                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;gap:16px;text-align:center;padding:24px;">
-                        <div style="width:56px;height:56px;background:#fef2f2;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-                            <i class="fas fa-exclamation-triangle" style="color:#ef4444;font-size:22px;"></i>
-                        </div>
-                        <div>
-                            <p style="font-weight:700;font-size:16px;color:var(--rv-navy,#0f2044);margin:0 0 6px;">Failed to load Data Analysis</p>
-                            <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:0;">${err.message || 'An unexpected error occurred.'}</p>
-                        </div>
-                        <button onclick="ui.route('data_analysis')" style="padding:10px 24px;background:#1a56db;color:#fff;border:none;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;">
-                            <i class="fas fa-redo" style="margin-right:6px;"></i>Retry
-                        </button>
-                    </div>
-                `;
-            }
+            document.getElementById('data-analysis-academic').innerHTML = `
+                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;gap:12px;text-align:center;padding:24px;">
+                    <i class="fas fa-exclamation-triangle" style="color:#ef4444;font-size:24px;"></i>
+                    <p style="font-weight:700;color:var(--rv-navy,#0f2044);margin:0;">Failed to load Academic Data Analysis</p>
+                    <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:0;">${err.message || 'An unexpected error occurred.'}</p>
+                    <button onclick="ui.route('data_analysis')" style="padding:8px 20px;background:#1a56db;color:#fff;border:none;border-radius:10px;font-weight:600;font-size:13px;cursor:pointer;">
+                        <i class="fas fa-redo" style="margin-right:6px;"></i>Retry
+                    </button>
+                </div>
+            `;
         }
     },
 
@@ -3789,15 +3898,89 @@ const views = {
 
     renderTeacherAttendance() {
         const myStudents = dataManager.getTeacherStudents();
-        
+
+        // Resolve the active week for the current AY/term
+        const today = new Date().toISOString().split('T')[0];
+        let activeWeek = null;
+        if (typeof featureState !== 'undefined' && featureState.weeks && state.currentAY && state.currentTerm) {
+            activeWeek = featureState.weeks.find(w =>
+                w.status === 'active' &&
+                w.academic_year_id === state.currentAY.id &&
+                w.term_id === state.currentTerm.id &&
+                w.start_date <= today &&
+                w.end_date >= today
+            ) || featureState.weeks.find(w =>
+                w.status === 'active' &&
+                w.academic_year_id === state.currentAY.id &&
+                w.term_id === state.currentTerm.id
+            );
+        }
+
+        // Build date options for the active week's range (Mon–Fri within window)
+        let weekDateOptions = '';
+        let defaultDate = today;
+        if (activeWeek) {
+            const start = new Date(activeWeek.start_date);
+            const end   = new Date(activeWeek.end_date);
+            const dates = [];
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                const dayOfWeek = d.getDay();
+                if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Mon–Fri only
+                    const iso = d.toISOString().split('T')[0];
+                    dates.push(iso);
+                }
+            }
+            weekDateOptions = dates.map(iso => {
+                const label = new Date(iso).toLocaleDateString('en-GH', { weekday: 'short', day: '2-digit', month: 'short' });
+                return `<option value="${iso}" ${iso === today ? 'selected' : ''}>${label}</option>`;
+            }).join('');
+            // Set default to today if it falls in the week, else the first day
+            if (!dates.includes(today)) defaultDate = dates[0] || today;
+        }
+
+        const weekInfoBanner = activeWeek ? `
+            <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:rgba(26,86,219,0.08);border:1px solid rgba(26,86,219,0.2);border-radius:12px;margin-bottom:16px;">
+                <i class="fas fa-calendar-week" style="color:#1a56db;font-size:16px;"></i>
+                <div>
+                    <p style="font-weight:700;font-size:13px;color:var(--rv-navy,#0f2044);margin:0;">
+                        ${activeWeek.week_name}
+                    </p>
+                    <p style="font-size:11px;color:var(--rv-muted,#64748b);margin:0;">
+                        ${new Date(activeWeek.start_date).toLocaleDateString('en-GH', {day:'2-digit',month:'short'})} — ${new Date(activeWeek.end_date).toLocaleDateString('en-GH', {day:'2-digit',month:'short',year:'numeric'})}
+                        • Attendance must be marked within this week's school days
+                    </p>
+                </div>
+            </div>
+        ` : `
+            <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:12px;margin-bottom:16px;">
+                <i class="fas fa-exclamation-triangle" style="color:#f59e0b;font-size:16px;"></i>
+                <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:0;">No active week set. Contact your administrator to configure academic weeks.</p>
+            </div>
+        `;
+
+        const dateSelector = activeWeek ? `
+            <div class="mb-6">
+                <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
+                    Select School Day <span style="font-size:11px;color:#64748b;">(${activeWeek.week_name})</span>
+                </label>
+                <select id="attendance-date" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white w-full md:w-auto focus:ring-2 focus:ring-ridge-500 outline-none">
+                    ${weekDateOptions}
+                </select>
+            </div>
+        ` : `
+            <div class="mb-6">
+                <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Select Date</label>
+                <input type="date" id="attendance-date" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white w-full md:w-auto focus:ring-2 focus:ring-ridge-500 outline-none" value="${today}">
+            </div>
+        `;
+
         const html = `
             <div class="glass-panel rounded-2xl p-6 bg-white dark:bg-slate-800 shadow-lg">
-                <h2 class="text-2xl font-bold mb-6 text-slate-800 dark:text-white">Daily Attendance</h2>
-                
-                <div class="mb-6">
-                    <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Select Date</label>
-                    <input type="date" id="attendance-date" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white w-full md:w-auto focus:ring-2 focus:ring-ridge-500 outline-none" value="${new Date().toISOString().split('T')[0]}">
-                </div>
+                <h2 class="text-2xl font-bold mb-2 text-slate-800 dark:text-white">Weekly Attendance</h2>
+                <p class="text-sm text-slate-500 mb-6">Mark attendance for school days within the active academic week.</p>
+
+                ${weekInfoBanner}
+                ${dateSelector}
 
                 ${myStudents.length === 0 ? `
                     <p class="text-slate-500 text-center py-8">No students assigned to your class</p>
@@ -3835,7 +4018,7 @@ const views = {
                 `}
             </div>
         `;
-        
+
         const container = document.getElementById('view-content');
         if (container) container.innerHTML = html;
     },
@@ -5096,7 +5279,8 @@ const actions = {
     },
 
     async saveAttendance() {
-        const date = document.getElementById('attendance-date')?.value;
+        const dateEl = document.getElementById('attendance-date');
+        const date = dateEl?.value || dateEl?.options?.[dateEl.selectedIndex]?.value;
         const myStudents = dataManager.getTeacherStudents();
         const teacher = dataManager.getCurrentTeacher();
         
@@ -5107,6 +5291,24 @@ const actions = {
         
         const assignedClass = state.classes.find(c => c.id === teacher.assigned_class);
         const classString = assignedClass ? `${assignedClass.level} - ${assignedClass.grade}` : '';
+
+        // Resolve active week
+        let activeWeekId = null;
+        if (typeof featureState !== 'undefined' && featureState.weeks && state.currentAY && state.currentTerm) {
+            const today = new Date().toISOString().split('T')[0];
+            const activeWeek = featureState.weeks.find(w =>
+                w.status === 'active' &&
+                w.academic_year_id === state.currentAY.id &&
+                w.term_id === state.currentTerm.id &&
+                w.start_date <= (date || today) &&
+                w.end_date >= (date || today)
+            ) || featureState.weeks.find(w =>
+                w.status === 'active' &&
+                w.academic_year_id === state.currentAY.id &&
+                w.term_id === state.currentTerm.id
+            );
+            if (activeWeek) activeWeekId = activeWeek.id;
+        }
         
         try {
             app.showLoading('Saving attendance...');
@@ -5126,6 +5328,7 @@ const actions = {
                         teacher_id: state.currentUser?.id,
                         year_id: state.currentAY?.id,
                         term_id: state.currentTerm?.id,
+                        week_id: activeWeekId,
                         created_at: new Date().toISOString()
                     });
                 }
