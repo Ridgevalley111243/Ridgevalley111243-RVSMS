@@ -1929,12 +1929,15 @@ const featureActions = {
 
 async function buildReportUpcomingBills(studentId, ayId, termId) {
     try {
-        const sc = (typeof supabaseClient !== 'undefined' ? supabaseClient : null);
+        // Prefer the report.js state client, then any global supabaseClient
+        const sc = (typeof state !== 'undefined' && state.supabaseClient ? state.supabaseClient
+                  : (typeof supabaseClient !== 'undefined' ? supabaseClient
+                  : null));
 
         let assignments, bills;
 
         if (sc) {
-            // ── Live path: running inside the main app tab ──────────────────────
+            // ── Live path: query DB directly ────────────────────────────────────
             const { data: aData, error: aErr } = await sc
                 .from('bill_assignments')
                 .select('bill_id')
@@ -1952,15 +1955,17 @@ async function buildReportUpcomingBills(studentId, ayId, termId) {
             bills = bData;
 
         } else {
-            // ── Cache path: running inside report.html (separate tab, no supabase) ─
-            // Data was serialised into localStorage by patchReportOpeners() below.
+            // ── Cache path: localStorage snapshot written by patchReportOpeners ─
             let cachedBills = [], cachedAssignments = [];
             try {
                 cachedBills       = JSON.parse(localStorage.getItem('rv_bills_cache')       || '[]');
                 cachedAssignments = JSON.parse(localStorage.getItem('rv_bill_assignments_cache') || '[]');
             } catch (_) {}
 
-            if (!cachedBills.length || !cachedAssignments.length) return '';
+            if (!cachedBills.length || !cachedAssignments.length) {
+                console.warn('[buildReportUpcomingBills] No DB client and no cache — bills cannot be shown.');
+                return '';
+            }
 
             const assignedBillIds = cachedAssignments
                 .filter(a => a.student_id === studentId)
