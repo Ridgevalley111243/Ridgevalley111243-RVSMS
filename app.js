@@ -4020,7 +4020,47 @@ const views = {
         `;
 
         const container = document.getElementById('view-content');
-        if (container) container.innerHTML = html;
+        if (container) {
+            container.innerHTML = html;
+
+            // Pre-fill attendance statuses for the initially selected date
+            const fillAttendanceForDate = (date) => {
+                const myStudents = dataManager.getTeacherStudents();
+                myStudents.forEach(s => {
+                    const record = state.attendance.find(a => a.student_id === s.id && a.date === date);
+                    const statusEl = document.getElementById(`attendance-status-${s.id}`);
+                    if (!statusEl) return;
+                    if (record) {
+                        if (record.status === 'present') {
+                            statusEl.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300';
+                            statusEl.textContent = 'Present';
+                            statusEl.dataset.status = 'present';
+                        } else {
+                            statusEl.className = 'px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
+                            statusEl.textContent = 'Absent';
+                            statusEl.dataset.status = 'absent';
+                        }
+                    } else {
+                        statusEl.className = 'px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
+                        statusEl.textContent = 'Not Marked';
+                        delete statusEl.dataset.status;
+                    }
+                });
+            };
+
+            // Fill for the initial date
+            const dateEl = document.getElementById('attendance-date');
+            if (dateEl) {
+                const initialDate = dateEl.value || dateEl.options?.[dateEl.selectedIndex]?.value;
+                if (initialDate) fillAttendanceForDate(initialDate);
+
+                // Re-fill whenever the date selection changes
+                dateEl.addEventListener('change', () => {
+                    const selectedDate = dateEl.value || dateEl.options?.[dateEl.selectedIndex]?.value;
+                    if (selectedDate) fillAttendanceForDate(selectedDate);
+                });
+            }
+        }
     },
 
     renderTeacherTotalAttendance() {
