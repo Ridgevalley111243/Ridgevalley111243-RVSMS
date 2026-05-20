@@ -2990,6 +2990,129 @@ function buildDocxHeader(schoolName, logoRelId) {
     return xml;
 }
 
+// ==================== BILLS FOR NEXT TERM ====================
+// Fetches bills assigned to this student from Supabase and returns OOXML
+// representing a "Bills for Next Term" table to append to the report card.
+// Self-contained — does not depend on features.js being loaded.
+async function buildReportUpcomingBills(studentId, ayId, termId) {
+    try {
+        const sc = state.supabaseClient;
+        if (!sc) return '';
+
+        // Fetch assignments for this student
+        const { data: aData, error: aErr } = await sc
+            .from('bill_assignments')
+            .select('bill_id')
+            .eq('student_id', studentId);
+        if (aErr || !aData || aData.length === 0) return '';
+
+        const billIds = aData.map(a => a.bill_id);
+
+        // Fetch the active bills
+        const { data: bData, error: bErr } = await sc
+            .from('bills')
+            .select('*')
+            .eq('status', 'active')
+            .in('id', billIds);
+        if (bErr || !bData || bData.length === 0) return '';
+
+        // Optional AY / term filter
+        const myBills = bData.filter(b => {
+            if (ayId   && b.academic_year_id && b.academic_year_id !== ayId)   return false;
+            if (termId && b.term_id          && b.term_id          !== termId) return false;
+            return true;
+        });
+        if (myBills.length === 0) return '';
+
+        const fmtCur  = (v) => `GH\u20B5 ${parseFloat(v || 0).toLocaleString('en-GH', { minimumFractionDigits: 2 })}`;
+        const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GH', { day: '2-digit', month: 'short', year: 'numeric' }) : 'TBA';
+        const esc     = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        const bodyW = 9360;
+        const cW    = [3600, 1800, 1980, 1980];
+
+        const tcPr = (w) =>
+            `<w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>` +
+            `<w:tcBorders><w:top w:val="single" w:sz="4" w:color="e2e8f0"/>` +
+            `<w:left w:val="none"/><w:right w:val="none"/>` +
+            `<w:bottom w:val="single" w:sz="4" w:color="e2e8f0"/></w:tcBorders>` +
+            `<w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/>` +
+            `<w:left w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tcMar></w:tcPr>`;
+
+        const cell = (text, w, { bold = false, color = '0f172a', align = 'left', size = 18 } = {}) =>
+            `<w:tc>${tcPr(w)}<w:p><w:pPr><w:jc w:val="${align}"/></w:pPr>` +
+            `<w:r><w:rPr>${bold ? '<w:b/><w:bCs/>' : ''}<w:color w:val="${color}"/>` +
+            `<w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr>` +
+            `<w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p></w:tc>`;
+
+        const headerRow =
+            `<w:tr><w:trPr><w:trHeight w:val="400"/>` +
+            `<w:shd w:val="clear" w:color="auto" w:fill="1a56db"/></w:trPr>` +
+            cell('Description',  cW[0], { bold: true, color: 'FFFFFF', size: 18 }) +
+            cell('Category',     cW[1], { bold: true, color: 'FFFFFF', size: 18 }) +
+            cell('Amount (GH₵)', cW[2], { bold: true, color: 'FFFFFF', align: 'right', size: 18 }) +
+            cell('Due Date',     cW[3], { bold: true, color: 'FFFFFF', align: 'center', size: 18 }) +
+            `</w:tr>`;
+
+        const dataRows = myBills.map((b, i) => {
+            const shade = i % 2 === 0 ? 'f8fafc' : 'ffffff';
+            return `<w:tr><w:trPr><w:shd w:val="clear" w:color="auto" w:fill="${shade}"/></w:trPr>` +
+                cell(b.bill_name || b.name || 'Unnamed Bill', cW[0], { size: 18 }) +
+                cell(b.bill_category || b.category || '—',   cW[1], { color: '64748b', size: 18 }) +
+                cell(fmtCur(b.amount),                        cW[2], { align: 'right', size: 18 }) +
+                cell(fmtDate(b.due_date),                     cW[3], { align: 'center', color: '64748b', size: 18 }) +
+                `</w:tr>`;
+        }).join('');
+
+        const grandTotal = myBills.reduce((s, b) => s + parseFloat(b.amount || 0), 0);
+        const totalRow =
+            `<w:tr><w:trPr><w:shd w:val="clear" w:color="auto" w:fill="eff6ff"/></w:trPr>` +
+            cell('Total Obligations', cW[0], { bold: true, color: '1a56db', size: 18 }) +
+            cell('',                  cW[1]) +
+            cell(fmtCur(grandTotal),  cW[2], { bold: true, color: '1a56db', align: 'right', size: 18 }) +
+            cell('',                  cW[3]) +
+            `</w:tr>`;
+
+        // Spacer paragraph
+        let xml = `<w:p><w:pPr><w:spacing w:before="200" w:after="80"/></w:pPr></w:p>`;
+
+        // Section heading with top/bottom border
+        xml +=
+            `<w:p><w:pPr><w:jc w:val="left"/><w:spacing w:before="120" w:after="80"/>` +
+            `<w:pBdr><w:top w:val="single" w:sz="12" w:space="1" w:color="1a56db"/>` +
+            `<w:bottom w:val="single" w:sz="4" w:space="1" w:color="e2e8f0"/></w:pBdr></w:pPr>` +
+            `<w:r><w:rPr><w:b/><w:bCs/><w:color w:val="1a56db"/>` +
+            `<w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>` +
+            `<w:t>BILLS FOR NEXT TERM</w:t></w:r></w:p>`;
+
+        // Subtitle
+        xml +=
+            `<w:p><w:pPr><w:spacing w:before="0" w:after="100"/></w:pPr>` +
+            `<w:r><w:rPr><w:i/><w:iCs/><w:color w:val="64748b"/>` +
+            `<w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr>` +
+            `<w:t>The following payments will be due at the commencement of next term. ` +
+            `Payment history and outstanding balances are managed through the school\u2019s fee portal.</w:t></w:r></w:p>`;
+
+        // Bills table
+        xml +=
+            `<w:tbl><w:tblPr><w:tblW w:w="${bodyW}" w:type="dxa"/>` +
+            `<w:tblBorders>` +
+            `<w:top    w:val="single" w:sz="6" w:color="1a56db"/>` +
+            `<w:bottom w:val="single" w:sz="6" w:color="1a56db"/>` +
+            `<w:insideH w:val="single" w:sz="4" w:color="e2e8f0"/>` +
+            `<w:insideV w:val="none"/></w:tblBorders></w:tblPr>` +
+            `<w:tblGrid>${cW.map(w => `<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>` +
+            headerRow + dataRows + totalRow +
+            `</w:tbl>`;
+
+        return xml;
+
+    } catch (err) {
+        console.warn('[buildReportUpcomingBills] Non-critical error:', err);
+        return '';
+    }
+}
+
 // ── MAIN BUILD FUNCTION ───────────────────────────────────────────────────────
 async function buildReportDocx(student, reportData) {
     const config     = TEMPLATE_CONFIG[state.classLevel];
@@ -3059,21 +3182,15 @@ async function buildReportDocx(student, reportData) {
         bodyXml += wPara('', { spaceAfter: 80 });
     });
 
-    // ── Append Bills for Next Term (from features.js / billing system) ──────
-    if (typeof buildReportUpcomingBills === 'function') {
-        try {
-            const ayId   = typeof state.academicYearId !== 'undefined' ? state.academicYearId
-                         : (typeof state.academicYears !== 'undefined'
-                            ? (state.academicYears.find(y => y.active) || {}).id
-                            : undefined);
-            const termId = typeof state.termId !== 'undefined' ? state.termId
-                         : (typeof state.academicYears !== 'undefined'
-                            ? ((state.academicYears.find(y => y.active)?.terms || []).find(t => t.active) || {}).id
-                            : undefined);
-            const billsXml = await buildReportUpcomingBills(student.id, ayId, termId);
-            if (billsXml) bodyXml += billsXml;
-        } catch (_) { /* bills are non-critical — never block report generation */ }
-    }
+    // ── Append Bills for Next Term ───────────────────────────────────────────
+    // buildReportUpcomingBills is defined in this file — no features.js needed.
+    // ayId scopes to the current AY; termId is null so term-specific bills are
+    // never silently filtered out by a mismatched term ID.
+    try {
+        const ayId = state.currentAcademicYear?.id;
+        const billsXml = await buildReportUpcomingBills(student.id, ayId, null);
+        if (billsXml) bodyXml += billsXml;
+    } catch (_) { /* bills are non-critical — never block report generation */ }
 
     // ── Assemble .docx with JSZip ────────────────────────────────────────────
     const zip = new JSZip();
