@@ -4609,20 +4609,74 @@ const actions = {
     },
 
     async deleteClass(id) {
-        modal.confirmDelete('this class', async () => {
-            try {
-                app.showLoading('Deleting...');
-                const { error } = await supabaseClient.from('classes').delete().eq('id', id);
-                if (error) throw error;
-                await dataManager.loadClasses();
-                ui.route('classes');
-                ui.showToast('Class deleted', 'success');
-            } catch (err) {
-                modal.alert('Error', extractErrorMessage(err), 'error');
-            } finally {
-                app.hideLoading();
-            }
-        });
+        // Find the class record so we can show its name and count enrolled students
+        const classRecord = state.classes.find(c => c.id === id);
+        const className = classRecord ? `${classRecord.level} - ${classRecord.grade}` : 'this class';
+        const enrolledCount = state.students.filter(s => {
+            const normalise = v => (v || '').trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
+            return normalise(s.class) === normalise(className);
+        }).length;
+
+        const warningHtml = enrolledCount > 0
+            ? `<div style="margin-top:12px;padding:10px 14px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);border-radius:10px;display:flex;align-items:flex-start;gap:10px;">
+                <i class="fas fa-users" style="color:#ef4444;margin-top:2px;flex-shrink:0;"></i>
+                <span style="color:#fca5a5;font-size:13px;line-height:1.5;">
+                    <strong style="color:#ef4444;">${enrolledCount} student${enrolledCount !== 1 ? 's' : ''}</strong> enrolled in this class will also be permanently deleted.
+                </span>
+               </div>`
+            : `<div style="margin-top:12px;padding:10px 14px;background:rgba(100,116,139,0.12);border:1px solid rgba(100,116,139,0.25);border-radius:10px;display:flex;align-items:center;gap:10px;">
+                <i class="fas fa-info-circle" style="color:#64748b;flex-shrink:0;"></i>
+                <span style="color:#94a3b8;font-size:13px;">No students are currently enrolled in this class.</span>
+               </div>`;
+
+        modal.createModal(
+            'Delete Class',
+            `<p style="color:#cbd5e1;">Are you sure you want to delete <strong style="color:#e2e8f0;">${className}</strong>? This action cannot be undone.</p>
+            ${warningHtml}`,
+            async () => {
+                try {
+                    app.showLoading('Deleting class and enrolled students...');
+
+                    // 1. Delete all students enrolled in this class first
+                    if (enrolledCount > 0) {
+                        const normalise = v => (v || '').trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
+                        const normalisedClassName = normalise(className);
+                        const studentIds = state.students
+                            .filter(s => normalise(s.class) === normalisedClassName)
+                            .map(s => s.id);
+                        if (studentIds.length > 0) {
+                            const { error: studentsError } = await supabaseClient
+                                .from('students')
+                                .delete()
+                                .in('id', studentIds);
+                            if (studentsError) throw studentsError;
+                        }
+                    }
+
+                    // 2. Delete the class itself
+                    const { error } = await supabaseClient.from('classes').delete().eq('id', id);
+                    if (error) throw error;
+
+                    // 3. Reload both lists
+                    await Promise.all([dataManager.loadClasses(), dataManager.loadStudents()]);
+                    ui.route('classes');
+                    ui.showToast(
+                        enrolledCount > 0
+                            ? `Class deleted along with ${enrolledCount} enrolled student${enrolledCount !== 1 ? 's' : ''}`
+                            : 'Class deleted',
+                        'success'
+                    );
+                } catch (err) {
+                    modal.alert('Error', extractErrorMessage(err), 'error');
+                } finally {
+                    app.hideLoading();
+                }
+            },
+            () => {}, // onCancel — do nothing
+            'Delete',
+            'Cancel',
+            'danger'
+        );
     },
 
     calculateAge() {
@@ -4677,10 +4731,24 @@ const actions = {
         if (!student) return;
 
         const modalId = 'edit-student-modal-' + Date.now();
+
+        // Normalise helper — handles extra spaces / dash variants for reliable auto-detection
+        const normaliseClass = v => (v || '').trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
+        const studentClassNorm = normaliseClass(student.class);
+
         const classOptions = state.classes.map(c => {
             const val = `${c.level} - ${c.grade}`;
-            return `<option value="${val}" ${student.class === val ? 'selected' : ''}>${val}</option>`;
+            const isMatch = normaliseClass(val) === studentClassNorm;
+            return `<option value="${val}" ${isMatch ? 'selected' : ''}>${val}</option>`;
         }).join('');
+
+        // Small badge shown above the dropdown so the admin sees the current class clearly
+        const currentClassBadge = student.class
+            ? `<div style="margin-bottom:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                <span style="font-size:11px;color:#64748b;">Currently enrolled in:</span>
+                <span style="font-size:11px;font-weight:700;color:#38bdf8;background:rgba(56,189,248,0.1);padding:2px 8px;border-radius:20px;border:1px solid rgba(56,189,248,0.2);">${student.class}</span>
+               </div>`
+            : '';
 
         const html = `
             <div id="${modalId}" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:16px;overflow-y:auto;">
@@ -4719,6 +4787,7 @@ const actions = {
                         </div>
                         <div>
                             <label style="display:block;color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Class</label>
+                            ${currentClassBadge}
                             <select id="${modalId}-class" style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;outline:none;">
                                 <option value="">Select Class</option>
                                 ${classOptions}
