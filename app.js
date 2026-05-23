@@ -6540,7 +6540,7 @@ const actions = {
                     </div>
                 </div>
                 <div style="padding:10px 14px;background:rgba(26,86,219,0.1);border:1px solid rgba(26,86,219,0.3);border-radius:8px;margin-bottom:4px;">
-                    <p style="color:#93c5fd;font-size:12px;"><i class="fas fa-info-circle mr-2"></i>Date of Birth accepts formats: <strong>YYYY-MM-DD</strong>, <strong>MM/DD/YYYY</strong>, <strong>DD/MM/YYYY</strong>, or any standard date format.</p>
+                    <p style="color:#93c5fd;font-size:12px;"><i class="fas fa-info-circle mr-2"></i>Date of Birth accepts formats: <strong>YYYY-MM-DD</strong>, <strong>MM/DD/YYYY</strong>, <strong>DD/MM/YYYY</strong>, <strong>MM/YY</strong> (e.g. 02/25 = Feb 2025), or any standard date format.</p>
                 </div>
             `;
 
@@ -6648,7 +6648,7 @@ const actions = {
         } catch { return '—'; }
     },
 
-    // Parse DOB strings — supports YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY, and JS Date serial numbers
+    // Parse DOB strings — supports YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY, MM/YY, and JS Date serial numbers
     _parseDobString(dobRaw) {
         if (!dobRaw) return '';
         const s = String(dobRaw).trim();
@@ -6656,6 +6656,19 @@ const actions = {
 
         // Already ISO: YYYY-MM-DD
         if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+        // MM/YY — month/2-digit year (e.g. 02/25 = Feb 2025, 06/12 = Jun 2012)
+        const mmyyMatch = s.match(/^(\d{1,2})\/(\d{2})$/);
+        if (mmyyMatch) {
+            const mm = parseInt(mmyyMatch[1], 10);
+            const yy = parseInt(mmyyMatch[2], 10);
+            if (mm >= 1 && mm <= 12) {
+                // Interpret 2-digit year: treat 00-99 as 2000-2099
+                const yyyy = 2000 + yy;
+                const d = new Date(`${yyyy}-${String(mm).padStart(2,'0')}-01`);
+                if (!isNaN(d)) return d.toISOString().split('T')[0];
+            }
+        }
 
         // MM/DD/YYYY (US format) — primary requested format
         const mdyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
