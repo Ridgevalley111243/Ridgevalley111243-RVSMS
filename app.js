@@ -2726,6 +2726,11 @@ const views = {
                 .replace(/\b\w/g, c => c.toUpperCase()); // title-case each word
         };
 
+        // Build the set of valid class keys from state.classes (the source of truth)
+        const validClassKeys = new Set(
+            state.classes.map(c => normaliseClass(`${c.level} - ${c.grade}`))
+        );
+
         // Build a map from normalised key → display label (use first seen canonical form)
         const keyToLabel = {};
         const studentsByClass = {};
@@ -2733,9 +2738,10 @@ const views = {
         sortedStudents.forEach(s => {
             const raw = s.class || '';
             const key = normaliseClass(raw);
+            // Only include students whose class still exists — skip orphaned records
+            if (!validClassKeys.has(key)) return;
             if (!studentsByClass[key]) {
                 studentsByClass[key] = [];
-                // Prefer a label from state.classes if we can match it, otherwise use normalised key
                 const matchedClass = state.classes.find(c => normaliseClass(`${c.level} - ${c.grade}`) === key);
                 keyToLabel[key] = matchedClass ? `${matchedClass.level} - ${matchedClass.grade}` : key;
             }
@@ -4609,13 +4615,16 @@ const actions = {
     },
 
     async deleteClass(id) {
-        // Find the class record so we can show its name and count enrolled students
         const classRecord = state.classes.find(c => c.id === id);
-        const className = classRecord ? `${classRecord.level} - ${classRecord.grade}` : 'this class';
-        const enrolledCount = state.students.filter(s => {
-            const normalise = v => (v || '').trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
-            return normalise(s.class) === normalise(className);
-        }).length;
+        if (!classRecord) return modal.alert('Error', 'Class not found.', 'error');
+
+        // Canonical class name — exactly as stored in students.class
+        const className = `${classRecord.level} - ${classRecord.grade}`;
+
+        // Use the same normalise logic as renderStudents (with title-case) so the count matches what the UI shows
+        const normalise = raw => (raw || '').trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ').replace(/\b\w/g, c => c.toUpperCase());
+        const normalisedClassName = normalise(className);
+        const enrolledCount = state.students.filter(s => normalise(s.class) === normalisedClassName).length;
 
         const warningHtml = enrolledCount > 0
             ? `<div style="margin-top:12px;padding:10px 14px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);border-radius:10px;display:flex;align-items:flex-start;gap:10px;">
@@ -4637,27 +4646,25 @@ const actions = {
                 try {
                     app.showLoading('Deleting class and enrolled students...');
 
-                    // 1. Delete all students enrolled in this class first
-                    if (enrolledCount > 0) {
-                        const normalise = v => (v || '').trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
-                        const normalisedClassName = normalise(className);
-                        const studentIds = state.students
-                            .filter(s => normalise(s.class) === normalisedClassName)
-                            .map(s => s.id);
-                        if (studentIds.length > 0) {
-                            const { error: studentsError } = await supabaseClient
-                                .from('students')
-                                .delete()
-                                .in('id', studentIds);
-                            if (studentsError) throw studentsError;
-                        }
+                    // 1. Delete students directly from DB — no if-gate so no student survives
+                    //    even if local state is stale. Send both raw and title-cased name variants.
+                    const namesToDelete = [...new Set([className, normalisedClassName])];
+                    for (const name of namesToDelete) {
+                        const { error: studentsError } = await supabaseClient
+                            .from('students')
+                            .delete()
+                            .eq('class', name);
+                        if (studentsError) throw studentsError;
                     }
 
                     // 2. Delete the class itself
-                    const { error } = await supabaseClient.from('classes').delete().eq('id', id);
-                    if (error) throw error;
+                    const { error: classError } = await supabaseClient
+                        .from('classes')
+                        .delete()
+                        .eq('id', id);
+                    if (classError) throw classError;
 
-                    // 3. Reload both lists
+                    // 3. Sync local state and refresh the view
                     await Promise.all([dataManager.loadClasses(), dataManager.loadStudents()]);
                     ui.route('classes');
                     ui.showToast(
@@ -4672,7 +4679,7 @@ const actions = {
                     app.hideLoading();
                 }
             },
-            () => {}, // onCancel — do nothing
+            () => {},
             'Delete',
             'Cancel',
             'danger'
