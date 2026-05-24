@@ -688,6 +688,10 @@ const app = {
             if (typeof featureDB !== 'undefined') {
                 featureDB.loadWeeks().catch(() => {});
             }
+
+            // Silently backfill class_id on any legacy student records that
+            // still only have a class string.  Non-fatal — runs in background.
+            dataManager.migrateStudentClassIds().catch(() => {});
         } catch (err) {
             console.error('Error loading initial data:', err);
             ui.showToast('Some data failed to load', 'warning');
@@ -1272,26 +1276,28 @@ const dataManager = {
 
             if (teachersError) console.warn('teachers table query error:', teachersError);
 
-            // For any profile that has no teachers row yet, insert one
-            const missingRows = (profiles || []).filter(p =>
-                !(teacherRows || []).some(t => t.profile_id === p.id)
-            );
-            for (const p of missingRows) {
-                await supabaseClient.from('teachers').insert([{
-                    profile_id: p.id,
-                    email: p.email,
-                    full_name: p.full_name,
-                    assigned_class: null
-                }]);
-            }
-
-            // Re-fetch teachers rows if we inserted any missing ones
+            // Only attempt to backfill missing teachers rows when running as admin
+            // (teachers may only be able to read their own row via RLS, which would
+            // make every other teacher look "missing" and trigger spurious inserts).
             let finalTeacherRows = teacherRows || [];
-            if (missingRows.length > 0) {
-                const { data: refreshed } = await supabaseClient
-                    .from('teachers')
-                    .select('id, profile_id, assigned_class, email, full_name');
-                finalTeacherRows = refreshed || [];
+            if (state.role === 'admin') {
+                const missingRows = (profiles || []).filter(p =>
+                    !(teacherRows || []).some(t => t.profile_id === p.id)
+                );
+                for (const p of missingRows) {
+                    await supabaseClient.from('teachers').insert([{
+                        profile_id: p.id,
+                        email: p.email,
+                        full_name: p.full_name,
+                        assigned_class: null
+                    }]);
+                }
+                if (missingRows.length > 0) {
+                    const { data: refreshed } = await supabaseClient
+                        .from('teachers')
+                        .select('id, profile_id, assigned_class, email, full_name');
+                    finalTeacherRows = refreshed || [];
+                }
             }
 
             // Merge: always use profile_id as the stable identifier
@@ -1513,6 +1519,48 @@ const dataManager = {
         }
     },
 
+    // ── UUID MIGRATION ──────────────────────────────────────────────────────
+    // Backfills class_id on any student record that has a class string but no
+    // class_id UUID yet.  Runs silently in the background after initial load;
+    // failures are non-fatal so they never block the UI.
+    async migrateStudentClassIds() {
+        try {
+            if (!state.classes || state.classes.length === 0) return;
+
+            // Helper: normalise a class string the same way everywhere
+            const norm = s => (s || '').trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ').toLowerCase();
+
+            // Build a lookup from normalised string → UUID
+            const classMap = {};
+            state.classes.forEach(c => {
+                classMap[norm(`${c.level} - ${c.grade}`)] = c.id;
+            });
+
+            // Find students whose class_id is missing but whose class string
+            // can be matched to a known class
+            const unmigrated = state.students.filter(s => !s.class_id && s.class);
+            if (unmigrated.length === 0) return;
+
+            for (const student of unmigrated) {
+                const uuid = classMap[norm(student.class)];
+                if (!uuid) continue; // unknown class string — skip safely
+                const { error } = await supabaseClient
+                    .from('students')
+                    .update({ class_id: uuid })
+                    .eq('id', student.id);
+                if (!error) {
+                    // Patch in-memory state too so the dashboard benefits immediately
+                    const idx = state.students.findIndex(s => s.id === student.id);
+                    if (idx !== -1) state.students[idx].class_id = uuid;
+                }
+            }
+            console.log(`[migration] backfilled class_id for ${unmigrated.length} student(s)`);
+        } catch (e) {
+            console.warn('[migration] migrateStudentClassIds error (non-fatal):', e);
+        }
+    },
+    // ────────────────────────────────────────────────────────────────────────
+
     async loadPendingAdmins() {
         try {
             const { data, error } = await supabaseClient
@@ -1554,18 +1602,86 @@ const dataManager = {
     },
 
     getCurrentTeacher() {
-        return state.teachers.find(t => t.profile_id === state.currentUser?.id);
+        // Primary: find by profile_id (standard merge path)
+        const byProfile = state.teachers.find(t => t.profile_id === state.currentUser?.id);
+        if (byProfile) return byProfile;
+        // Fallback: find by email in case profile_id linkage is missing
+        const email = state.currentUser?.email;
+        if (email) return state.teachers.find(t => t.email === email) || null;
+        return null;
+    },
+
+    // Fetches the current teacher's record directly from the DB and patches
+    // state.teachers so getCurrentTeacher() always returns the latest assignment.
+    // Uses two query strategies so it works regardless of RLS configuration.
+    async refreshCurrentTeacherAssignment() {
+        const userId = state.currentUser?.id;
+        const userEmail = state.currentUser?.email;
+        if (!userId && !userEmail) return;
+        try {
+            // Strategy 1: query teachers table by profile_id
+            let data = null;
+            if (userId) {
+                const { data: byProfile } = await supabaseClient
+                    .from('teachers')
+                    .select('id, profile_id, assigned_class, email, full_name')
+                    .eq('profile_id', userId)
+                    .limit(1);
+                if (byProfile && byProfile.length > 0) data = byProfile[0];
+            }
+            // Strategy 2: fallback — query by email if profile_id returned nothing
+            if (!data && userEmail) {
+                const { data: byEmail } = await supabaseClient
+                    .from('teachers')
+                    .select('id, profile_id, assigned_class, email, full_name')
+                    .eq('email', userEmail)
+                    .limit(1);
+                if (byEmail && byEmail.length > 0) data = byEmail[0];
+            }
+            if (!data) return;
+
+            // Find the matching entry in state.teachers and patch it in-place
+            const idx = state.teachers.findIndex(t =>
+                t.profile_id === userId ||
+                t.profile_id === data.profile_id ||
+                (userEmail && t.email === userEmail)
+            );
+            if (idx !== -1) {
+                state.teachers[idx].assigned_class = data.assigned_class;
+                state.teachers[idx].id = data.id;
+                if (data.profile_id) state.teachers[idx].profile_id = data.profile_id;
+            } else {
+                // Entry not in state.teachers at all — add it so getCurrentTeacher() works
+                state.teachers.push({
+                    id: data.id,
+                    profile_id: data.profile_id || userId,
+                    assigned_class: data.assigned_class,
+                    email: data.email || userEmail || '',
+                    full_name: data.full_name || state.currentUser?.full_name || ''
+                });
+            }
+        } catch (e) { /* non-fatal */ }
     },
 
     getTeacherStudents() {
         const teacher = this.getCurrentTeacher();
         if (!teacher || !teacher.assigned_class) return [];
-        
+
+        // Resolve the assigned class object from state.classes using UUID
         const assignedClass = state.classes.find(c => c.id === teacher.assigned_class);
         if (!assignedClass) return [];
-        
-        const classString = `${assignedClass.level} - ${assignedClass.grade}`;
-        return state.students.filter(s => s.class === classString);
+
+        const classId = assignedClass.id;
+        // Canonical normalised string for legacy fallback
+        const classString = `${assignedClass.level} - ${assignedClass.grade}`.trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
+
+        return state.students.filter(s => {
+            // Primary: UUID match (new records)
+            if (s.class_id) return s.class_id === classId;
+            // Fallback: normalised string match (legacy records without class_id)
+            const sNorm = (s.class || '').trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
+            return sNorm.toLowerCase() === classString.toLowerCase();
+        });
     },
 
     calculateAttendanceStats(studentId) {
@@ -1585,12 +1701,20 @@ const dataManager = {
     getTeacherTotalAttendance() {
         const teacher = this.getCurrentTeacher();
         if (!teacher || !teacher.assigned_class) return [];
-        
+
+        // Resolve the assigned class object from state.classes using UUID
         const assignedClass = state.classes.find(c => c.id === teacher.assigned_class);
         if (!assignedClass) return [];
-        
-        const classString = `${assignedClass.level} - ${assignedClass.grade}`;
-        const classStudents = state.students.filter(s => s.class === classString);
+
+        const classId = assignedClass.id;
+        // Canonical normalised string for legacy fallback
+        const classString = `${assignedClass.level} - ${assignedClass.grade}`.trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
+
+        const classStudents = state.students.filter(s => {
+            if (s.class_id) return s.class_id === classId;
+            const sNorm = (s.class || '').trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
+            return sNorm.toLowerCase() === classString.toLowerCase();
+        });
         
         return classStudents.map(student => {
             const stats = this.calculateAttendanceStats(student.id);
@@ -1635,6 +1759,7 @@ const ui = {
                 sidebar?.classList.remove('-translate-x-full');
             }
             overlay?.classList.remove('hidden');
+            overlay?.classList.remove('pointer-events-none');
             setTimeout(() => overlay?.classList.remove('opacity-0'), 10);
         } else {
             if (isMobile) {
@@ -1643,6 +1768,7 @@ const ui = {
                 sidebar?.classList.add('-translate-x-full');
             }
             overlay?.classList.add('opacity-0');
+            overlay?.classList.add('pointer-events-none');
             setTimeout(() => overlay?.classList.add('hidden'), 300);
         }
     },
@@ -1981,9 +2107,9 @@ const ui = {
                     #admin-sidebar {
                         position: fixed !important;
                         left: 0 !important;
-                        top: 4rem !important;
+                        top: 0 !important;
                         bottom: 0 !important;
-                        z-index: 90 !important;
+                        z-index: 50 !important;
                         transform: translateX(-100%) !important;
                         transition: transform 0.3s ease !important;
                         width: 260px !important;
@@ -2171,7 +2297,6 @@ const ui = {
 
         // Update the separate week pill in the nav
         if (weekBadge && weekDisplay && state.currentAY && state.currentTerm) {
-            const today = new Date().toISOString().split('T')[0];
             let activeWeek = null;
             if (typeof featureState !== 'undefined' && featureState.weeks) {
                 activeWeek = featureState.weeks.find(w =>
@@ -2216,7 +2341,7 @@ const ui = {
             }
         });
 
-        setTimeout(() => {
+        setTimeout(async () => {
             try {
                 switch(view) {
                     case 'overview':               views.renderOverview(); break;
@@ -2226,7 +2351,6 @@ const ui = {
                     case 'teachers':               views.renderTeachers(); break;
                     case 'parents':                views.renderParents(); break;
                     case 'finance':                views.renderFinance(); break;
-                    case 'financial_analytics':    /* handled by features.js */ break;
                     case 'attendance':             views.renderAttendance(); break;
                     case 'received_reports':       views.renderReceivedReports(); break;
                     case 'admin_upload_reports':   views.renderAdminUploadReports(); break;
@@ -2234,10 +2358,10 @@ const ui = {
                     case 'approvals':              views.renderApprovals(); break;
                     case 'announcements':          views.renderAnnouncements(); break;
                     case 'data_analysis':          views.renderDataAnalysis(); break;
-                    case 'teacher_dashboard':      views.renderTeacherDashboard(); break;
-                    case 'teacher_students':       views.renderTeacherStudents(); break;
-                    case 'teacher_attendance':     views.renderTeacherAttendance(); break;
-                    case 'teacher_total_attendance': views.renderTeacherTotalAttendance(); break;
+                    case 'teacher_dashboard':      await views.renderTeacherDashboard(); break;
+                    case 'teacher_students':       await views.renderTeacherStudents(); break;
+                    case 'teacher_attendance':     await views.renderTeacherAttendance(); break;
+                    case 'teacher_total_attendance': await views.renderTeacherTotalAttendance(); break;
                     case 'teacher_create_report':  views.renderTeacherCreateReport(); break;
                     case 'parent_dashboard':       views.renderParentDashboard(); break;
                     case 'parent_children':        views.renderParentChildren(); break;
@@ -2726,11 +2850,6 @@ const views = {
                 .replace(/\b\w/g, c => c.toUpperCase()); // title-case each word
         };
 
-        // Build the set of valid class keys from state.classes (the source of truth)
-        const validClassKeys = new Set(
-            state.classes.map(c => normaliseClass(`${c.level} - ${c.grade}`))
-        );
-
         // Build a map from normalised key → display label (use first seen canonical form)
         const keyToLabel = {};
         const studentsByClass = {};
@@ -2738,10 +2857,9 @@ const views = {
         sortedStudents.forEach(s => {
             const raw = s.class || '';
             const key = normaliseClass(raw);
-            // Only include students whose class still exists — skip orphaned records
-            if (!validClassKeys.has(key)) return;
             if (!studentsByClass[key]) {
                 studentsByClass[key] = [];
+                // Prefer a label from state.classes if we can match it, otherwise use normalised key
                 const matchedClass = state.classes.find(c => normaliseClass(`${c.level} - ${c.grade}`) === key);
                 keyToLabel[key] = matchedClass ? `${matchedClass.level} - ${matchedClass.grade}` : key;
             }
@@ -2777,7 +2895,7 @@ const views = {
                     <input type="text" id="student-age" class="input-field rounded-xl px-4 py-3 bg-slate-100 dark:bg-slate-600 text-slate-800 dark:text-white" placeholder="Age (auto-calculated)" readonly>
                     <select id="student-class" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
                         <option value="">Select Class</option>
-                        ${state.classes.map(c => `<option value="${c.level} - ${c.grade}">${c.level} - ${c.grade}</option>`).join('')}
+                        ${state.classes.map(c => `<option value="${c.id}">${c.level} - ${c.grade}</option>`).join('')}
                     </select>
                     <input type="tel" id="student-parent-phone" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Parent Phone Number">
                     <button onclick="actions.addStudent()" class="md:col-span-3 px-6 py-3 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
@@ -3292,9 +3410,17 @@ const views = {
 
     renderAdminUploadReports() {
         const selectedClass = state.selectedUploadClass || '';
-        const classStudents = selectedClass
-            ? state.students.filter(s => s.class === selectedClass)
-            : [];
+        // selectedUploadClass is a class name string (set from the select's value).
+        // Match students by class_id (UUID) when available, fall back to string.
+        let classStudents = [];
+        if (selectedClass) {
+            const norm = s => (s || '').trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ').toLowerCase();
+            const classObj = state.classes.find(c => norm(`${c.level} - ${c.grade}`) === norm(selectedClass));
+            classStudents = state.students.filter(s => {
+                if (classObj && s.class_id) return s.class_id === classObj.id;
+                return norm(s.class) === norm(selectedClass);
+            });
+        }
 
         // Reports already uploaded by admin — filter by uploaded_by only,
         // fall back gracefully if no active year/term is set
@@ -3667,91 +3793,46 @@ const views = {
     },
 
     renderDataAnalysis() {
-        // Only the Financial Report Generator sub-section is locked behind email verification.
-        // The main academic analysis section is always accessible.
-        const isFinancialLocked = typeof financialSecurity !== 'undefined' && !financialSecurity.isFinancialAccessActive();
-
-        const financialReportSection = isFinancialLocked ? `
-            <div style="background:var(--rv-surface);border:1px solid var(--rv-border);border-radius:16px;padding:40px 24px;text-align:center;box-shadow:var(--rv-shadow);">
-                <div style="width:72px;height:72px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-                    <i class="fas fa-lock" style="color:#f59e0b;font-size:28px;"></i>
-                </div>
-                <h3 style="font-size:18px;font-weight:700;color:var(--rv-text);margin:0 0 8px;">Financial Reports Protected</h3>
-                <p style="font-size:13px;color:var(--rv-muted);margin:0 0 20px;line-height:1.6;">
-                    The Financial Report Generator requires email verification.<br>
-                    A verification code will be sent to the registered admin email to unlock.
-                </p>
-                <button onclick="financialSecurity.requestEmailVerification()"
-                    style="padding:12px 28px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;border:none;border-radius:12px;font-weight:700;font-size:14px;cursor:pointer;">
-                    <i class="fas fa-envelope" style="margin-right:8px;"></i>Send Verification Email
-                </button>
-                <p style="font-size:11px;color:var(--rv-muted);margin-top:10px;">6-digit code • Expires in 10 minutes</p>
-            </div>
-        ` : (() => {
-            try {
-                if (typeof renderFinancialReportGenerator === 'function') {
-                    return renderFinancialReportGenerator();
-                }
-                return `<p style="color:var(--rv-muted);text-align:center;padding:32px;">Financial Report Generator module not loaded.</p>`;
-            } catch (e) {
-                return `<p style="color:#ef4444;text-align:center;padding:32px;">${e.message}</p>`;
-            }
-        })();
-
-        // Render the top-level page then inject the academic analysis content
-        const container = document.getElementById('view-content');
-        if (!container) return;
-
-        container.innerHTML = `
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
-                <h2 style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:700;color:var(--rv-navy,#0f2044);margin:0;">Data Analysis</h2>
-            </div>
-
-            <!-- Academic Analysis (always open) -->
-            <div id="data-analysis-academic" style="margin-bottom:32px;"></div>
-
-            <!-- Financial Report Generator (locked) -->
-            <div style="margin-bottom:8px;">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-                    <div style="width:36px;height:36px;border-radius:10px;background:rgba(245,158,11,0.1);display:flex;align-items:center;justify-content:center;">
-                        <i class="fas fa-file-invoice-dollar" style="color:#f59e0b;font-size:15px;"></i>
-                    </div>
-                    <div>
-                        <h3 style="font-size:16px;font-weight:700;color:var(--rv-text);margin:0;">Financial Report Generator</h3>
-                        <p style="font-size:12px;color:var(--rv-muted);margin:2px 0 0;">Generate leadership-level school financial intelligence reports.</p>
-                    </div>
-                    <span style="margin-left:auto;padding:3px 10px;background:rgba(245,158,11,0.1);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);border-radius:20px;font-size:11px;font-weight:700;">
-                        <i class="fas fa-shield-alt" style="margin-right:4px;"></i>Admin Only
-                    </span>
-                </div>
-                ${financialReportSection}
-            </div>
-        `;
-
-        // Now render academic data analysis into its slot
+        // Delegated to the Academic Report Generator module (academic-report-generator.js)
         try {
             if (typeof renderDataAnalysis !== 'function') {
-                document.getElementById('data-analysis-academic').innerHTML =
-                    `<p style="color:var(--rv-muted);text-align:center;padding:32px;">Academic Report Generator module not loaded.</p>`;
-            } else {
-                renderDataAnalysis();
+                throw new Error('Academic Report Generator module not loaded.');
             }
+            renderDataAnalysis();
         } catch (err) {
             console.error('renderDataAnalysis error:', err);
-            document.getElementById('data-analysis-academic').innerHTML = `
-                <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;gap:12px;text-align:center;padding:24px;">
-                    <i class="fas fa-exclamation-triangle" style="color:#ef4444;font-size:24px;"></i>
-                    <p style="font-weight:700;color:var(--rv-navy,#0f2044);margin:0;">Failed to load Academic Data Analysis</p>
-                    <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:0;">${err.message || 'An unexpected error occurred.'}</p>
-                    <button onclick="ui.route('data_analysis')" style="padding:8px 20px;background:#1a56db;color:#fff;border:none;border-radius:10px;font-weight:600;font-size:13px;cursor:pointer;">
-                        <i class="fas fa-redo" style="margin-right:6px;"></i>Retry
-                    </button>
-                </div>
-            `;
+            const container = document.getElementById('view-content');
+            if (container) {
+                container.innerHTML = `
+                    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;gap:16px;text-align:center;padding:24px;">
+                        <div style="width:56px;height:56px;background:#fef2f2;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                            <i class="fas fa-exclamation-triangle" style="color:#ef4444;font-size:22px;"></i>
+                        </div>
+                        <div>
+                            <p style="font-weight:700;font-size:16px;color:var(--rv-navy,#0f2044);margin:0 0 6px;">Failed to load Data Analysis</p>
+                            <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:0;">${err.message || 'An unexpected error occurred.'}</p>
+                        </div>
+                        <button onclick="ui.route('data_analysis')" style="padding:10px 24px;background:#1a56db;color:#fff;border:none;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;">
+                            <i class="fas fa-redo" style="margin-right:6px;"></i>Retry
+                        </button>
+                    </div>
+                `;
+            }
         }
     },
 
-    renderTeacherDashboard() {
+    async renderTeacherDashboard() {
+        // Refresh assignment FIRST so state.teachers has the latest UUID,
+        // THEN reload classes + students so the UUID→string lookup and
+        // UUID-based student filter both work on fresh data.
+        try {
+            await dataManager.refreshCurrentTeacherAssignment();
+            await Promise.all([
+                dataManager.loadClasses(),
+                dataManager.loadStudents()
+            ]);
+        } catch (e) { /* non-fatal – render with cached data */ }
+
         const myStudents = dataManager.getTeacherStudents();
         const totalAttendance = dataManager.getTeacherTotalAttendance();
         const avgAttendance = totalAttendance.length > 0 
@@ -3867,7 +3948,14 @@ const views = {
         if (container) container.innerHTML = html;
     },
 
-    renderTeacherStudents() {
+    async renderTeacherStudents() {
+        try {
+            await dataManager.refreshCurrentTeacherAssignment();
+            await Promise.all([
+                dataManager.loadClasses(),
+                dataManager.loadStudents()
+            ]);
+        } catch (e) { /* non-fatal */ }
         const myStudents = dataManager.getTeacherStudents();
 
         const html = `
@@ -3902,7 +3990,18 @@ const views = {
         if (container) container.innerHTML = html;
     },
 
-    renderTeacherAttendance() {
+    async renderTeacherAttendance() {
+        // Refresh assignment FIRST so state.teachers has the latest UUID,
+        // THEN reload classes + students so the UUID→string lookup and
+        // UUID-based student filter both work on fresh data.
+        try {
+            await dataManager.refreshCurrentTeacherAssignment();
+            await Promise.all([
+                dataManager.loadClasses(),
+                dataManager.loadStudents()
+            ]);
+        } catch (e) { /* non-fatal – render with cached data */ }
+
         const myStudents = dataManager.getTeacherStudents();
 
         // Resolve the active week for the current AY/term
@@ -4024,52 +4123,23 @@ const views = {
                 `}
             </div>
         `;
-
+        
         const container = document.getElementById('view-content');
-        if (container) {
-            container.innerHTML = html;
-
-            // Pre-fill attendance statuses for the initially selected date
-            const fillAttendanceForDate = (date) => {
-                const myStudents = dataManager.getTeacherStudents();
-                myStudents.forEach(s => {
-                    const record = state.attendance.find(a => a.student_id === s.id && a.date === date);
-                    const statusEl = document.getElementById(`attendance-status-${s.id}`);
-                    if (!statusEl) return;
-                    if (record) {
-                        if (record.status === 'present') {
-                            statusEl.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300';
-                            statusEl.textContent = 'Present';
-                            statusEl.dataset.status = 'present';
-                        } else {
-                            statusEl.className = 'px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
-                            statusEl.textContent = 'Absent';
-                            statusEl.dataset.status = 'absent';
-                        }
-                    } else {
-                        statusEl.className = 'px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
-                        statusEl.textContent = 'Not Marked';
-                        delete statusEl.dataset.status;
-                    }
-                });
-            };
-
-            // Fill for the initial date
-            const dateEl = document.getElementById('attendance-date');
-            if (dateEl) {
-                const initialDate = dateEl.value || dateEl.options?.[dateEl.selectedIndex]?.value;
-                if (initialDate) fillAttendanceForDate(initialDate);
-
-                // Re-fill whenever the date selection changes
-                dateEl.addEventListener('change', () => {
-                    const selectedDate = dateEl.value || dateEl.options?.[dateEl.selectedIndex]?.value;
-                    if (selectedDate) fillAttendanceForDate(selectedDate);
-                });
-            }
-        }
+        if (container) container.innerHTML = html;
     },
 
-    renderTeacherTotalAttendance() {
+    async renderTeacherTotalAttendance() {
+        // Refresh assignment FIRST so state.teachers has the latest UUID,
+        // THEN reload classes + students so the UUID→string lookup and
+        // UUID-based student filter both work on fresh data.
+        try {
+            await dataManager.refreshCurrentTeacherAssignment();
+            await Promise.all([
+                dataManager.loadClasses(),
+                dataManager.loadStudents()
+            ]);
+        } catch (e) { /* non-fatal */ }
+
         const totalAttendance = dataManager.getTeacherTotalAttendance();
         
         const html = `
@@ -4117,7 +4187,13 @@ const views = {
         if (container) container.innerHTML = html;
     },
 
-    renderTeacherCreateReport() {
+    async renderTeacherCreateReport() {
+    // Refresh assignment FIRST so state.teachers has the latest UUID,
+    // then reload classes so the UUID→classString lookup is always current.
+    try {
+        await dataManager.refreshCurrentTeacherAssignment();
+        await dataManager.loadClasses();
+    } catch (e) { /* non-fatal */ }
     try {
         // Get teacher data
         const teacher = dataManager.getCurrentTeacher();
@@ -4615,75 +4691,20 @@ const actions = {
     },
 
     async deleteClass(id) {
-        const classRecord = state.classes.find(c => c.id === id);
-        if (!classRecord) return modal.alert('Error', 'Class not found.', 'error');
-
-        // Canonical class name — exactly as stored in students.class
-        const className = `${classRecord.level} - ${classRecord.grade}`;
-
-        // Use the same normalise logic as renderStudents (with title-case) so the count matches what the UI shows
-        const normalise = raw => (raw || '').trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ').replace(/\b\w/g, c => c.toUpperCase());
-        const normalisedClassName = normalise(className);
-        const enrolledCount = state.students.filter(s => normalise(s.class) === normalisedClassName).length;
-
-        const warningHtml = enrolledCount > 0
-            ? `<div style="margin-top:12px;padding:10px 14px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);border-radius:10px;display:flex;align-items:flex-start;gap:10px;">
-                <i class="fas fa-users" style="color:#ef4444;margin-top:2px;flex-shrink:0;"></i>
-                <span style="color:#fca5a5;font-size:13px;line-height:1.5;">
-                    <strong style="color:#ef4444;">${enrolledCount} student${enrolledCount !== 1 ? 's' : ''}</strong> enrolled in this class will also be permanently deleted.
-                </span>
-               </div>`
-            : `<div style="margin-top:12px;padding:10px 14px;background:rgba(100,116,139,0.12);border:1px solid rgba(100,116,139,0.25);border-radius:10px;display:flex;align-items:center;gap:10px;">
-                <i class="fas fa-info-circle" style="color:#64748b;flex-shrink:0;"></i>
-                <span style="color:#94a3b8;font-size:13px;">No students are currently enrolled in this class.</span>
-               </div>`;
-
-        modal.createModal(
-            'Delete Class',
-            `<p style="color:#cbd5e1;">Are you sure you want to delete <strong style="color:#e2e8f0;">${className}</strong>? This action cannot be undone.</p>
-            ${warningHtml}`,
-            async () => {
-                try {
-                    app.showLoading('Deleting class and enrolled students...');
-
-                    // 1. Delete students directly from DB — no if-gate so no student survives
-                    //    even if local state is stale. Send both raw and title-cased name variants.
-                    const namesToDelete = [...new Set([className, normalisedClassName])];
-                    for (const name of namesToDelete) {
-                        const { error: studentsError } = await supabaseClient
-                            .from('students')
-                            .delete()
-                            .eq('class', name);
-                        if (studentsError) throw studentsError;
-                    }
-
-                    // 2. Delete the class itself
-                    const { error: classError } = await supabaseClient
-                        .from('classes')
-                        .delete()
-                        .eq('id', id);
-                    if (classError) throw classError;
-
-                    // 3. Sync local state and refresh the view
-                    await Promise.all([dataManager.loadClasses(), dataManager.loadStudents()]);
-                    ui.route('classes');
-                    ui.showToast(
-                        enrolledCount > 0
-                            ? `Class deleted along with ${enrolledCount} enrolled student${enrolledCount !== 1 ? 's' : ''}`
-                            : 'Class deleted',
-                        'success'
-                    );
-                } catch (err) {
-                    modal.alert('Error', extractErrorMessage(err), 'error');
-                } finally {
-                    app.hideLoading();
-                }
-            },
-            () => {},
-            'Delete',
-            'Cancel',
-            'danger'
-        );
+        modal.confirmDelete('this class', async () => {
+            try {
+                app.showLoading('Deleting...');
+                const { error } = await supabaseClient.from('classes').delete().eq('id', id);
+                if (error) throw error;
+                await dataManager.loadClasses();
+                ui.route('classes');
+                ui.showToast('Class deleted', 'success');
+            } catch (err) {
+                modal.alert('Error', extractErrorMessage(err), 'error');
+            } finally {
+                app.hideLoading();
+            }
+        });
     },
 
     calculateAge() {
@@ -4701,13 +4722,18 @@ const actions = {
         const gender = document.getElementById('student-gender')?.value;
         const dob = document.getElementById('student-dob')?.value;
         const age = document.getElementById('student-age')?.value;
-        const studentClass = document.getElementById('student-class')?.value;
+        // The select now emits the class UUID as its value
+        const classId = document.getElementById('student-class')?.value;
         const parentPhone = document.getElementById('student-parent-phone')?.value?.trim();
 
-        if (!admissionNumber || !name || !dob || !studentClass) return modal.alert('Validation Error', 'Please fill in Admission Number, Name, Date of Birth, and Class', 'warning');
+        if (!admissionNumber || !name || !dob || !classId) return modal.alert('Validation Error', 'Please fill in Admission Number, Name, Date of Birth, and Class', 'warning');
+
+        // Resolve the class object so we can store both the UUID and the canonical string
+        const classObj = state.classes.find(c => c.id === classId);
+        if (!classObj) return modal.alert('Validation Error', 'Selected class not found. Please refresh and try again.', 'warning');
 
         // Normalise to canonical "Level - Grade" format to avoid duplicate tables
-        const normalisedClass = studentClass.trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
+        const normalisedClass = `${classObj.level} - ${classObj.grade}`.trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
 
         try {
             app.showLoading('Registering student...');
@@ -4718,6 +4744,7 @@ const actions = {
                 dob,
                 age,
                 class: normalisedClass,
+                class_id: classId,
                 parent_phone: parentPhone || null
             }]);
 
@@ -4738,24 +4765,15 @@ const actions = {
         if (!student) return;
 
         const modalId = 'edit-student-modal-' + Date.now();
-
-        // Normalise helper — handles extra spaces / dash variants for reliable auto-detection
-        const normaliseClass = v => (v || '').trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
-        const studentClassNorm = normaliseClass(student.class);
-
+        // Use class UUID as the option value; pre-select by matching student.class_id first,
+        // then fall back to matching the class string for legacy records
         const classOptions = state.classes.map(c => {
-            const val = `${c.level} - ${c.grade}`;
-            const isMatch = normaliseClass(val) === studentClassNorm;
-            return `<option value="${val}" ${isMatch ? 'selected' : ''}>${val}</option>`;
+            const classString = `${c.level} - ${c.grade}`;
+            const isSelected = student.class_id
+                ? student.class_id === c.id
+                : student.class === classString;
+            return `<option value="${c.id}" ${isSelected ? 'selected' : ''}>${classString}</option>`;
         }).join('');
-
-        // Small badge shown above the dropdown so the admin sees the current class clearly
-        const currentClassBadge = student.class
-            ? `<div style="margin-bottom:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                <span style="font-size:11px;color:#64748b;">Currently enrolled in:</span>
-                <span style="font-size:11px;font-weight:700;color:#38bdf8;background:rgba(56,189,248,0.1);padding:2px 8px;border-radius:20px;border:1px solid rgba(56,189,248,0.2);">${student.class}</span>
-               </div>`
-            : '';
 
         const html = `
             <div id="${modalId}" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:16px;overflow-y:auto;">
@@ -4794,7 +4812,6 @@ const actions = {
                         </div>
                         <div>
                             <label style="display:block;color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Class</label>
-                            ${currentClassBadge}
                             <select id="${modalId}-class" style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;outline:none;">
                                 <option value="">Select Class</option>
                                 ${classOptions}
@@ -4822,13 +4839,21 @@ const actions = {
             const gender = document.getElementById(`${modalId}-gender`)?.value;
             const dob = document.getElementById(`${modalId}-dob`)?.value;
             const age = document.getElementById(`${modalId}-age`)?.value;
-            const studentClass = document.getElementById(`${modalId}-class`)?.value;
+            // Select emits UUID
+            const classId = document.getElementById(`${modalId}-class`)?.value;
             const parentPhone = document.getElementById(`${modalId}-phone`)?.value?.trim();
 
-            if (!name || !studentClass) {
+            if (!name || !classId) {
                 ui.showToast('Name and class are required', 'warning');
                 return;
             }
+
+            // Resolve class object to get canonical string and UUID
+            const classObj = state.classes.find(c => c.id === classId);
+            const normalisedClass = classObj
+                ? `${classObj.level} - ${classObj.grade}`.trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ')
+                : '';
+
             try {
                 modalEl.remove();
                 app.showLoading('Updating student...');
@@ -4838,7 +4863,8 @@ const actions = {
                     gender: gender || null,
                     dob: dob || null,
                     age: age || null,
-                    class: studentClass,
+                    class: normalisedClass,
+                    class_id: classId,
                     parent_phone: parentPhone || null
                 }).eq('id', id);
                 if (error) throw error;
@@ -4892,9 +4918,17 @@ const actions = {
                 for (const row of json) {
                     if (row.Name && row.Class && row.DOB) {
                         const age = Math.floor((new Date() - new Date(row.DOB)) / 31557600000);
+                        // Normalise the class string from the spreadsheet
+                        const normalisedClass = (row.Class || '').trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
+                        // Try to match to a known class to get the UUID
+                        const classObj = state.classes.find(c => {
+                            const canonical = `${c.level} - ${c.grade}`.trim().replace(/\s{2,}/g, ' ').replace(/\s*-\s*/g, ' - ');
+                            return canonical.toLowerCase() === normalisedClass.toLowerCase();
+                        });
                         await supabaseClient.from('students').insert([{
                             name: row.Name,
-                            class: row.Class,
+                            class: classObj ? `${classObj.level} - ${classObj.grade}` : normalisedClass,
+                            class_id: classObj ? classObj.id : null,
                             dob: row.DOB,
                             age: age + ' years'
                         }]);
@@ -4938,6 +4972,8 @@ const actions = {
             const teachersRowId = teacher.id;
 
             if (classId) {
+                // Unassign any other teacher currently holding this class UUID
+                // so no two teacher rows ever share the same assigned_class.
                 const { data: existing } = await supabaseClient
                     .from('teachers')
                     .select('id')
@@ -4945,10 +4981,11 @@ const actions = {
                     .neq('id', teachersRowId);
 
                 if (existing && existing.length > 0) {
-                    modal.alert('Assignment Error', 'Another teacher is already assigned to this class', 'warning');
-                    await dataManager.loadTeachers();
-                    ui.route('teachers');
-                    return;
+                    const { error: clearErr } = await supabaseClient
+                        .from('teachers')
+                        .update({ assigned_class: null })
+                        .in('id', existing.map(r => r.id));
+                    if (clearErr) throw clearErr;
                 }
             }
 
@@ -4961,7 +4998,13 @@ const actions = {
             if (error) throw error;
 
             ui.showToast('Assignment updated', 'success');
-            await dataManager.loadTeachers();
+            // Reload classes + teachers + students so every layer of state is fresh
+            // and teacher dashboards immediately reflect the new assignment.
+            await Promise.all([
+                dataManager.loadClasses(),
+                dataManager.loadTeachers(),
+                dataManager.loadStudents()
+            ]);
             ui.route('teachers');
         } catch (err) {
             modal.alert('Error', extractErrorMessage(err), 'error');
@@ -5395,8 +5438,7 @@ const actions = {
     },
 
     async saveAttendance() {
-        const dateEl = document.getElementById('attendance-date');
-        const date = dateEl?.value || dateEl?.options?.[dateEl.selectedIndex]?.value;
+        const date = document.getElementById('attendance-date')?.value;
         const myStudents = dataManager.getTeacherStudents();
         const teacher = dataManager.getCurrentTeacher();
         
@@ -6547,7 +6589,7 @@ const actions = {
                     </div>
                 </div>
                 <div style="padding:10px 14px;background:rgba(26,86,219,0.1);border:1px solid rgba(26,86,219,0.3);border-radius:8px;margin-bottom:4px;">
-                    <p style="color:#93c5fd;font-size:12px;"><i class="fas fa-info-circle mr-2"></i>Date of Birth accepts formats: <strong>YYYY-MM-DD</strong>, <strong>MM/DD/YYYY</strong>, <strong>DD/MM/YYYY</strong>, <strong>MM/YY</strong> (e.g. 02/25 = Feb 2025), or any standard date format.</p>
+                    <p style="color:#93c5fd;font-size:12px;"><i class="fas fa-info-circle mr-2"></i>Date of Birth accepts formats: <strong>YYYY-MM-DD</strong>, <strong>MM/DD/YYYY</strong>, <strong>DD/MM/YYYY</strong>, or any standard date format.</p>
                 </div>
             `;
 
@@ -6655,7 +6697,7 @@ const actions = {
         } catch { return '—'; }
     },
 
-    // Parse DOB strings — supports YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY, MM/YY, and JS Date serial numbers
+    // Parse DOB strings — supports YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY, and JS Date serial numbers
     _parseDobString(dobRaw) {
         if (!dobRaw) return '';
         const s = String(dobRaw).trim();
@@ -6663,19 +6705,6 @@ const actions = {
 
         // Already ISO: YYYY-MM-DD
         if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-
-        // MM/YY — month/2-digit year (e.g. 02/25 = Feb 2025, 06/12 = Jun 2012)
-        const mmyyMatch = s.match(/^(\d{1,2})\/(\d{2})$/);
-        if (mmyyMatch) {
-            const mm = parseInt(mmyyMatch[1], 10);
-            const yy = parseInt(mmyyMatch[2], 10);
-            if (mm >= 1 && mm <= 12) {
-                // Interpret 2-digit year: treat 00-99 as 2000-2099
-                const yyyy = 2000 + yy;
-                const d = new Date(`${yyyy}-${String(mm).padStart(2,'0')}-01`);
-                if (!isNaN(d)) return d.toISOString().split('T')[0];
-            }
-        }
 
         // MM/DD/YYYY (US format) — primary requested format
         const mdyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
