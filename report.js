@@ -8,6 +8,7 @@ const state = {
     teacherId: null,
     teacherName: '',
     assignedClass: '',
+    assignedClassId: '',   // UUID — primary key for student/report queries
     classLevel: '',
     academicYear: '',
     term: '',
@@ -486,6 +487,7 @@ async function initializeSupabase() {
         state.teacherId = params.get('teacherId') || localStorage.getItem('rv_report_teacher_id');
         state.teacherName = params.get('teacherName') || localStorage.getItem('rv_report_teacher_name') || 'Teacher';
         state.assignedClass = params.get('class') || localStorage.getItem('rv_report_class') || '';
+        state.assignedClassId = params.get('classId') || localStorage.getItem('rv_report_class_id') || '';
         state.academicYear = params.get('year') || localStorage.getItem('rv_report_year') || '2024/2025';
         state.term = params.get('term') || localStorage.getItem('rv_report_term') || 'Term 1';
         
@@ -493,6 +495,7 @@ async function initializeSupabase() {
         if (state.teacherId) localStorage.setItem('rv_report_teacher_id', state.teacherId);
         if (state.teacherName) localStorage.setItem('rv_report_teacher_name', state.teacherName);
         if (state.assignedClass) localStorage.setItem('rv_report_class', state.assignedClass);
+        if (state.assignedClassId) localStorage.setItem('rv_report_class_id', state.assignedClassId);
         if (state.academicYear) localStorage.setItem('rv_report_year', state.academicYear);
         if (state.term) localStorage.setItem('rv_report_term', state.term);
         
@@ -609,52 +612,75 @@ async function fetchAcademicYearData() {
 }
 
 async function loadStudents() {
-    if (!state.assignedClass) {
+    if (!state.assignedClass && !state.assignedClassId) {
         state.students = [];
         return;
     }
     
     try {
-        // Try multiple column names for class matching
-        const classValue = state.assignedClass.trim();
         let students = null;
         let lastError = null;
-        
-        // Attempt 1: Exact match on 'class'
-        const { data: data1, error: error1 } = await state.supabaseClient
-            .from('students')
-            .select('id, name, class, grade, student_id, gender, date_of_birth')
-            .eq('class', classValue)
-            .order('name', { ascending: true });
-        
-        if (!error1 && data1 && data1.length > 0) {
-            students = data1;
-        } else {
-            if (error1) lastError = error1;
-            
-            // Attempt 2: Match on 'grade'
-            const { data: data2, error: error2 } = await state.supabaseClient
+
+        // ── Primary path: UUID-based query (new students with class_id) ────────
+        if (state.assignedClassId) {
+            const { data: dataUuid, error: errorUuid } = await state.supabaseClient
                 .from('students')
-                .select('id, name, class, grade, student_id, gender, date_of_birth')
-                .eq('grade', classValue)
+                .select('id, name, class, grade, class_id, student_id, gender, date_of_birth')
+                .eq('class_id', state.assignedClassId)
                 .order('name', { ascending: true });
-            
-            if (!error2 && data2 && data2.length > 0) {
-                students = data2;
+
+            if (!errorUuid && dataUuid && dataUuid.length > 0) {
+                students = dataUuid;
+                console.log('[loadStudents] UUID query found', students.length, 'students for class_id:', state.assignedClassId);
             } else {
-                if (error2) lastError = error2;
-                
-                // Attempt 3: Case-insensitive match on 'class'
-                const { data: data3, error: error3 } = await state.supabaseClient
+                if (errorUuid) lastError = errorUuid;
+                console.log('[loadStudents] UUID query returned 0 results, falling back to string matching');
+            }
+        }
+
+        // ── Fallback path: string-based matching for legacy records ───────────
+        if (!students && state.assignedClass) {
+            const classValue = state.assignedClass.trim();
+
+            // Attempt 1: Exact match on 'class'
+            const { data: data1, error: error1 } = await state.supabaseClient
+                .from('students')
+                .select('id, name, class, grade, class_id, student_id, gender, date_of_birth')
+                .eq('class', classValue)
+                .order('name', { ascending: true });
+
+            if (!error1 && data1 && data1.length > 0) {
+                students = data1;
+                console.log('[loadStudents] String fallback (class) found', students.length, 'students');
+            } else {
+                if (error1) lastError = error1;
+
+                // Attempt 2: Match on 'grade'
+                const { data: data2, error: error2 } = await state.supabaseClient
                     .from('students')
-                    .select('id, name, class, grade, student_id, gender, date_of_birth')
-                    .ilike('class', classValue)
+                    .select('id, name, class, grade, class_id, student_id, gender, date_of_birth')
+                    .eq('grade', classValue)
                     .order('name', { ascending: true });
-                
-                if (!error3 && data3 && data3.length > 0) {
-                    students = data3;
+
+                if (!error2 && data2 && data2.length > 0) {
+                    students = data2;
+                    console.log('[loadStudents] String fallback (grade) found', students.length, 'students');
                 } else {
-                    if (error3) lastError = error3;
+                    if (error2) lastError = error2;
+
+                    // Attempt 3: Case-insensitive match on 'class'
+                    const { data: data3, error: error3 } = await state.supabaseClient
+                        .from('students')
+                        .select('id, name, class, grade, class_id, student_id, gender, date_of_birth')
+                        .ilike('class', classValue)
+                        .order('name', { ascending: true });
+
+                    if (!error3 && data3 && data3.length > 0) {
+                        students = data3;
+                        console.log('[loadStudents] String fallback (ilike) found', students.length, 'students');
+                    } else {
+                        if (error3) lastError = error3;
+                    }
                 }
             }
         }
@@ -662,6 +688,25 @@ async function loadStudents() {
         if (lastError && !students) throw lastError;
         
         state.students = students || [];
+
+        // ── Migration safety: backfill class_id on legacy records loaded via string ──
+        if (state.assignedClassId) {
+            const needsBackfill = state.students.filter(s => !s.class_id);
+            if (needsBackfill.length > 0) {
+                console.log('[loadStudents] Backfilling class_id for', needsBackfill.length, 'legacy students');
+                for (const student of needsBackfill) {
+                    try {
+                        await state.supabaseClient
+                            .from('students')
+                            .update({ class_id: state.assignedClassId })
+                            .eq('id', student.id);
+                        student.class_id = state.assignedClassId; // update in-memory too
+                    } catch (e) {
+                        console.warn('[loadStudents] Could not backfill class_id for student', student.id, e);
+                    }
+                }
+            }
+        }
         
         // Validate student data
         state.students.forEach((student, index) => {
@@ -673,6 +718,8 @@ async function loadStudents() {
                 student.name = 'Unknown Student';
             }
         });
+
+        console.log('[loadStudents] Final student count:', state.students.length);
         
     } catch (err) {
         throw new AppError(`Failed to load students: ${err.message}`, 'error', true);
@@ -759,42 +806,89 @@ async function loadAttendanceData() {
 }
 
 async function loadSavedReports() {
-    if (!state.assignedClass) {
+    if (!state.assignedClass && !state.assignedClassId) {
         state.reportsData = {};
         return;
     }
     
     try {
-        const { data, error } = await state.supabaseClient
+        // Build the query — use class_id when available for UUID accuracy,
+        // fall back to class string for legacy reports that predate the migration.
+        let query = state.supabaseClient
             .from('reports')
             .select('*')
-            .eq('class', state.assignedClass)
             .eq('term', state.term)
             .eq('academic_year', state.academicYear);
-        
-        if (error) throw error;
 
-        state.reportsData = {};
-        (data || []).forEach(report => {
-            // Always parse data column — Supabase JSONB may return string or object
-            let parsedData = report.data;
-            if (typeof parsedData === 'string') {
-                try { parsedData = JSON.parse(parsedData); } catch(e) { parsedData = {}; }
-            }
-            if (!parsedData || typeof parsedData !== 'object' || Array.isArray(parsedData)) {
-                parsedData = {};
-            }
-            state.reportsData[report.student_id] = {
-                studentId:   report.student_id,
-                studentName: report.student_name || (state.students.find(s => s.id === report.student_id) || {}).name || '',
-                completed:   report.completed   || false,
-                submitted:   report.submitted   || false,
-                submittedAt: report.submitted_at || null,
-                lastModified:report.last_modified || null,
-                fileUrl:     report.file_url     || null,
-                data:        parsedData
-            };
-        });
+        if (state.assignedClassId) {
+            // Try UUID column first (reports saved after migration)
+            const { data: uuidData, error: uuidError } = await state.supabaseClient
+                .from('reports')
+                .select('*')
+                .eq('class_id', state.assignedClassId)
+                .eq('term', state.term)
+                .eq('academic_year', state.academicYear);
+
+            // Also fetch reports stored with class string (pre-migration)
+            const { data: strData, error: strError } = await state.supabaseClient
+                .from('reports')
+                .select('*')
+                .eq('class', state.assignedClass)
+                .eq('term', state.term)
+                .eq('academic_year', state.academicYear);
+
+            // Merge both result sets; UUID records take precedence over string records
+            const merged = new Map();
+            (strData || []).forEach(r => merged.set(r.student_id, r));
+            (uuidData || []).forEach(r => merged.set(r.student_id, r)); // overwrites if duplicate
+            const data = Array.from(merged.values());
+
+            state.reportsData = {};
+            data.forEach(report => {
+                let parsedData = report.data;
+                if (typeof parsedData === 'string') {
+                    try { parsedData = JSON.parse(parsedData); } catch(e) { parsedData = {}; }
+                }
+                if (!parsedData || typeof parsedData !== 'object' || Array.isArray(parsedData)) {
+                    parsedData = {};
+                }
+                state.reportsData[report.student_id] = {
+                    studentId:   report.student_id,
+                    studentName: report.student_name || (state.students.find(s => s.id === report.student_id) || {}).name || '',
+                    completed:   report.completed   || false,
+                    submitted:   report.submitted   || false,
+                    submittedAt: report.submitted_at || null,
+                    lastModified:report.last_modified || null,
+                    fileUrl:     report.file_url     || null,
+                    data:        parsedData
+                };
+            });
+        } else {
+            // Legacy path: string-only query
+            const { data, error } = await query.eq('class', state.assignedClass);
+            if (error) throw error;
+
+            state.reportsData = {};
+            (data || []).forEach(report => {
+                let parsedData = report.data;
+                if (typeof parsedData === 'string') {
+                    try { parsedData = JSON.parse(parsedData); } catch(e) { parsedData = {}; }
+                }
+                if (!parsedData || typeof parsedData !== 'object' || Array.isArray(parsedData)) {
+                    parsedData = {};
+                }
+                state.reportsData[report.student_id] = {
+                    studentId:   report.student_id,
+                    studentName: report.student_name || (state.students.find(s => s.id === report.student_id) || {}).name || '',
+                    completed:   report.completed   || false,
+                    submitted:   report.submitted   || false,
+                    submittedAt: report.submitted_at || null,
+                    lastModified:report.last_modified || null,
+                    fileUrl:     report.file_url     || null,
+                    data:        parsedData
+                };
+            });
+        }
 
         console.log('[loadSavedReports] Loaded', Object.keys(state.reportsData).length,
             'reports. Student IDs:', Object.keys(state.reportsData));
@@ -1393,13 +1487,21 @@ async function patchLiveFieldsInSavedReports() {
         const batch = patches.slice(i, i + BATCH);
         await Promise.all(batch.map(async ({ studentId, newData }) => {
             try {
-                const { error } = await state.supabaseClient
+                // Build the update query — match on class_id if available, else class string
+                let updateQuery = state.supabaseClient
                     .from('reports')
                     .update({ data: newData, last_modified: new Date().toISOString() })
                     .eq('student_id', studentId)
-                    .eq('class', state.assignedClass)
                     .eq('term', state.term)
                     .eq('academic_year', state.academicYear);
+
+                if (state.assignedClassId) {
+                    updateQuery = updateQuery.eq('class_id', state.assignedClassId);
+                } else {
+                    updateQuery = updateQuery.eq('class', state.assignedClass);
+                }
+
+                const { error } = await updateQuery;
                 if (error) {
                     console.warn('[patchLiveFields] Error patching', studentId, error);
                 } else {
@@ -1647,18 +1749,33 @@ async function ensureStudentReportLoaded(studentId) {
     // Not in state — fetch from Supabase
     console.log('[ensureStudentReportLoaded] Not in state, fetching from DB for:', studentId);
     try {
-        const { data: rows, error } = await state.supabaseClient
-            .from('reports')
-            .select('*')
-            .eq('student_id', studentId)
-            .eq('class', state.assignedClass)
-            .eq('term', state.term)
-            .eq('academic_year', state.academicYear)
-            .limit(1);
-
-        if (error) { console.error('[ensureStudentReportLoaded] DB error:', error); return; }
-
-        const row = rows && rows.length > 0 ? rows[0] : null;
+        // Build query — try UUID column first, fall back to class string
+        let row = null;
+        if (state.assignedClassId) {
+            // Try class_id column (post-migration reports)
+            const { data: uuidRows } = await state.supabaseClient
+                .from('reports')
+                .select('*')
+                .eq('student_id', studentId)
+                .eq('class_id', state.assignedClassId)
+                .eq('term', state.term)
+                .eq('academic_year', state.academicYear)
+                .limit(1);
+            if (uuidRows && uuidRows.length > 0) row = uuidRows[0];
+        }
+        if (!row) {
+            // Fallback to class string (legacy reports or reports without class_id column)
+            const { data: rows, error } = await state.supabaseClient
+                .from('reports')
+                .select('*')
+                .eq('student_id', studentId)
+                .eq('class', state.assignedClass)
+                .eq('term', state.term)
+                .eq('academic_year', state.academicYear)
+                .limit(1);
+            if (error) { console.error('[ensureStudentReportLoaded] DB error:', error); }
+            else if (rows && rows.length > 0) row = rows[0];
+        }
         console.log('[ensureStudentReportLoaded] DB result:', row ? 'found' : 'not found');
 
         if (!row) {
@@ -2481,6 +2598,7 @@ async function saveToSupabase(studentId, isAutoSave) {
             student_name: student.name,
             teacher_id: state.teacherId,
             class: state.assignedClass,
+            class_id: state.assignedClassId || null,
             term: state.term,
             academic_year: state.academicYear,
             data: report.data,
@@ -2491,29 +2609,40 @@ async function saveToSupabase(studentId, isAutoSave) {
         };
         
         // FIX: Use select-then-insert/update pattern instead of upsert with ON CONFLICT
-        // Check if record exists
-        const { data: existing, error: checkError } = await state.supabaseClient
-            .from('reports')
-            .select('id')
-            .eq('student_id', studentId)
-            .eq('class', state.assignedClass)
-            .eq('term', state.term)
-            .eq('academic_year', state.academicYear)
-            .maybeSingle();
-        
-        if (checkError) throw checkError;
+        // Check if record exists — use class_id when available for accuracy
+        let existing = null;
+        if (state.assignedClassId) {
+            const { data: existUuid } = await state.supabaseClient
+                .from('reports')
+                .select('id')
+                .eq('student_id', studentId)
+                .eq('class_id', state.assignedClassId)
+                .eq('term', state.term)
+                .eq('academic_year', state.academicYear)
+                .maybeSingle();
+            if (existUuid) existing = existUuid;
+        }
+        if (!existing) {
+            const { data: existStr, error: checkError } = await state.supabaseClient
+                .from('reports')
+                .select('id')
+                .eq('student_id', studentId)
+                .eq('class', state.assignedClass)
+                .eq('term', state.term)
+                .eq('academic_year', state.academicYear)
+                .maybeSingle();
+            if (checkError) throw checkError;
+            existing = existStr;
+        }
         
         let error = null;
         
         if (existing) {
-            // Update existing record
+            // Update existing record — match by id for precision
             const { error: updateError } = await state.supabaseClient
                 .from('reports')
                 .update(saveData)
-                .eq('student_id', studentId)
-                .eq('class', state.assignedClass)
-                .eq('term', state.term)
-                .eq('academic_year', state.academicYear);
+                .eq('id', existing.id);
             error = updateError;
         } else {
             // Insert new record
@@ -3430,6 +3559,7 @@ async function executeSubmission() {
             student_name: upload.student_name,
             teacher_id: state.teacherId,
             class: state.assignedClass,
+            class_id: state.assignedClassId || null,
             term: state.term,
             academic_year: state.academicYear,
             data: state.reportsData[upload.student_id].data,
@@ -3443,28 +3573,38 @@ async function executeSubmission() {
         
         // Process each report individually
         for (const updateData of updates) {
-            // Check if record exists
-            const { data: existing, error: checkError } = await state.supabaseClient
-                .from('reports')
-                .select('id')
-                .eq('student_id', updateData.student_id)
-                .eq('class', updateData.class)
-                .eq('term', updateData.term)
-                .eq('academic_year', updateData.academic_year)
-                .maybeSingle();
-            
-            if (checkError) throw checkError;
-            
-            if (existing) {
-                // Update existing record
-                const { error: updateError } = await state.supabaseClient
+            // Check if record exists — prefer class_id lookup
+            let existing = null;
+            if (state.assignedClassId) {
+                const { data: existUuid } = await state.supabaseClient
                     .from('reports')
-                    .update(updateData)
+                    .select('id')
+                    .eq('student_id', updateData.student_id)
+                    .eq('class_id', state.assignedClassId)
+                    .eq('term', updateData.term)
+                    .eq('academic_year', updateData.academic_year)
+                    .maybeSingle();
+                if (existUuid) existing = existUuid;
+            }
+            if (!existing) {
+                const { data: existStr, error: checkError } = await state.supabaseClient
+                    .from('reports')
+                    .select('id')
                     .eq('student_id', updateData.student_id)
                     .eq('class', updateData.class)
                     .eq('term', updateData.term)
-                    .eq('academic_year', updateData.academic_year);
-                
+                    .eq('academic_year', updateData.academic_year)
+                    .maybeSingle();
+                if (checkError) throw checkError;
+                existing = existStr;
+            }
+            
+            if (existing) {
+                // Update existing record — match by id for precision
+                const { error: updateError } = await state.supabaseClient
+                    .from('reports')
+                    .update(updateData)
+                    .eq('id', existing.id);
                 if (updateError) throw updateError;
             } else {
                 // Insert new record
@@ -3522,7 +3662,7 @@ async function executeSubmission() {
         if (receivedError) throw receivedError;
         
         // Update reports with bundle ID
-        await state.supabaseClient
+        const bulkUpdateQuery = state.supabaseClient
             .from('reports')
             .update({ 
                 status: 'submitted_to_admin',
@@ -3530,9 +3670,14 @@ async function executeSubmission() {
                 submission_bundle_id: receivedEntry.id
             })
             .eq('teacher_id', state.teacherId)
-            .eq('class', state.assignedClass)
             .eq('term', state.term)
             .eq('academic_year', state.academicYear);
+
+        if (state.assignedClassId) {
+            await bulkUpdateQuery.eq('class_id', state.assignedClassId);
+        } else {
+            await bulkUpdateQuery.eq('class', state.assignedClass);
+        }
         
         // Store bundle in state so teacher can download on demand via the Download button
         state.pendingBundle = { blob: zipBlob, name: bundleName };
