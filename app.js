@@ -4216,11 +4216,13 @@ const views = {
         const teacherName = state.currentUser?.full_name || 'Teacher';
         const year        = state.currentAY?.year || new Date().getFullYear();
         const term        = state.currentTerm?.name || 'Term 1';
+        const classId     = assignedClass?.id || '';
 
         // Persist to localStorage (fallback for report.js)
         localStorage.setItem('rv_report_teacher_id',   teacherId);
         localStorage.setItem('rv_report_teacher_name', teacherName);
         localStorage.setItem('rv_report_class',        classString);
+        localStorage.setItem('rv_report_class_id',     classId);
         localStorage.setItem('rv_report_year',         year);
         localStorage.setItem('rv_report_term',         term);
 
@@ -4230,6 +4232,7 @@ const views = {
             teacherId,
             teacherName,
             class: classString,
+            classId,
             year,
             term
         });
@@ -6359,7 +6362,7 @@ const actions = {
     },
 
     // Download Bulk Reports — opens report.html pre-filtered for the given class
-    downloadBulkReports(className, term) {
+    downloadBulkReports(className, term, classId) {
         try {
             if (!className) {
                 modal.alert('Error', 'No class specified for bulk report download.', 'error');
@@ -6371,10 +6374,18 @@ const actions = {
             const teacherName = state.currentUser?.full_name || 'Teacher';
             const year        = state.currentAY?.year || new Date().getFullYear();
             const useTerm     = term || state.currentTerm?.name || 'Term 1';
+            const useClassId  = classId || (() => {
+                // Try to resolve classId from className if not provided
+                const matched = state.classes?.find(c =>
+                    `${c.level} - ${c.grade}` === className || c.id === className
+                );
+                return matched?.id || '';
+            })();
 
             localStorage.setItem('rv_report_teacher_id',   teacherId);
             localStorage.setItem('rv_report_teacher_name', teacherName);
             localStorage.setItem('rv_report_class',        className);
+            localStorage.setItem('rv_report_class_id',     useClassId);
             localStorage.setItem('rv_report_year',         year);
             localStorage.setItem('rv_report_term',         useTerm);
 
@@ -6382,6 +6393,7 @@ const actions = {
                 teacherId,
                 teacherName,
                 class: className,
+                classId: useClassId,
                 year,
                 term: useTerm
             });
