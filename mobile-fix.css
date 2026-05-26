@@ -1,0 +1,459 @@
+/*
+ * ============================================================
+ * Ridgevalley SMS — Mobile Responsiveness Fix
+ * Fixes sidebar/hamburger, touch interactions, layouts
+ * Does NOT change desktop layout (min-width: 769px unchanged)
+ * ============================================================
+ */
+
+/* ── 1. Base viewport & overflow guards ───────────────────── */
+html, body {
+    max-width: 100vw;
+    overflow-x: hidden;
+}
+
+/* Prevent body scroll when sidebar is open on mobile */
+body.sidebar-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+}
+
+/* ── 2. Sidebar core — mobile-first z-index fix ───────────── */
+/*
+ * The injected design-system CSS sets z-index:50 on mobile,
+ * which puts the sidebar BEHIND the overlay (z-80) and nav (z-90).
+ * We must raise the sidebar above everything except modals.
+ */
+#admin-sidebar {
+    /* Ensure touch scrolling works on the sidebar itself */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+/* ── 3. Sidebar overlay — ensure it never blocks sidebar ─── */
+#sidebar-overlay {
+    /* Start fully non-interactive */
+    pointer-events: none;
+    touch-action: none;
+}
+
+#sidebar-overlay:not(.hidden):not(.opacity-0) {
+    pointer-events: auto;
+    touch-action: auto;
+}
+
+/* ── 4. Hamburger button — always visible on mobile ──────── */
+@media (max-width: 768px) {
+    #drawer-btn {
+        display: flex !important;
+    }
+}
+
+/* ── 5. Nav bar — prevent overflow on small screens ─────── */
+@media (max-width: 640px) {
+    #main-nav .max-w-7xl {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+        gap: 6px !important;
+    }
+
+    /* Period badge — truncate text, don't overflow */
+    #period-badge {
+        max-width: 110px;
+        overflow: hidden;
+    }
+    #active-period-display {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 80px;
+    }
+
+    /* Week badge — hide on very small screens */
+    #week-badge {
+        display: none !important;
+    }
+
+    /* Logout button — icon only */
+    #main-nav .fa-sign-out-alt {
+        margin-right: 0;
+    }
+}
+
+/* ── 6. Mobile sidebar — override injected z-index:50 ────── */
+@media (max-width: 768px) {
+    #admin-sidebar {
+        position: fixed !important;
+        top: 0 !important;             /* Cover full height incl. nav bar */
+        bottom: 0 !important;
+        left: 0 !important;
+        height: 100dvh !important;    /* Dynamic viewport height (Safari fix) */
+        height: 100vh !important;     /* Fallback */
+        z-index: 9500 !important;     /* Above overlay (9000) and nav (90) */
+        transform: translateX(-100%) !important;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-y: contain !important;
+        /* Ensure nothing inside blocks touch */
+        pointer-events: auto !important;
+        will-change: transform;
+        /* Prevent backdrop-filter from creating a stacking context issue */
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        background: var(--rv-navy, #0f2044) !important;
+    }
+
+    #admin-sidebar.mobile-open {
+        transform: translateX(0) !important;
+    }
+
+    /* Overlay — must sit between content and sidebar */
+    #sidebar-overlay {
+        z-index: 9400 !important;    /* Below sidebar, above everything else */
+        background: rgba(0, 0, 0, 0.6) !important;
+        backdrop-filter: none !important; /* Avoid stacking context conflict */
+        -webkit-backdrop-filter: none !important;
+    }
+
+    /* Nav bar stays on top */
+    #main-nav {
+        z-index: 9600 !important;
+    }
+
+    /* All sidebar nav items — ensure full touch target */
+    #admin-sidebar .sidebar-item,
+    #admin-sidebar button,
+    #admin-sidebar a {
+        pointer-events: auto !important;
+        touch-action: manipulation !important;
+        -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
+        cursor: pointer !important;
+        position: relative !important;
+        z-index: 1 !important;
+        min-height: 44px !important;    /* iOS minimum touch target */
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    /* Sidebar nav scroll container */
+    #sidebar-nav {
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior: contain !important;
+        flex: 1 !important;
+        padding-bottom: 80px !important; /* Space for logout button */
+    }
+
+    /* Section labels — not interactive, make them smaller */
+    #admin-sidebar .rv-nav-section {
+        pointer-events: none !important;
+        font-size: 9px !important;
+        padding: 12px 16px 4px !important;
+        letter-spacing: 1.5px !important;
+    }
+
+    /* Logout button */
+    #admin-sidebar .rv-logout {
+        position: sticky !important;
+        bottom: 0 !important;
+        z-index: 2 !important;
+        min-height: 44px !important;
+        touch-action: manipulation !important;
+        pointer-events: auto !important;
+    }
+
+    /* Prevent background content from receiving touch when sidebar open */
+    body.sidebar-open #dashboard,
+    body.sidebar-open #auth-container,
+    body.sidebar-open #landing-page {
+        pointer-events: none !important;
+        touch-action: none !important;
+    }
+
+    /* Main content — full width, no sidebar offset */
+    #dashboard {
+        margin-left: 0 !important;
+        width: 100% !important;
+        min-height: 100vh !important;
+    }
+}
+
+/* ── 7. Global layout — prevent horizontal overflow ─────── */
+@media (max-width: 768px) {
+    /* All containers respect viewport */
+    .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl {
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+
+    #view-content {
+        padding: 12px !important;
+        overflow-x: hidden !important;
+    }
+
+    /* Main dashboard padding */
+    #dashboard > div {
+        padding: 8px !important;
+    }
+
+    /* ── Tables: always horizontally scrollable ── */
+    table {
+        min-width: 500px;
+    }
+
+    .overflow-x-auto {
+        -webkit-overflow-scrolling: touch !important;
+        overflow-x: auto !important;
+    }
+
+    /* Wrap any bare table in a scrollable container */
+    div:has(> table):not(.overflow-x-auto) {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* ── Grid layouts → responsive ── */
+    [class*="grid-cols-4"],
+    .grid.grid-cols-4 {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    [class*="grid-cols-3"],
+    .grid.grid-cols-3 {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    [class*="grid-cols-2"],
+    .grid.grid-cols-2 {
+        grid-template-columns: repeat(1, 1fr) !important;
+    }
+
+    /* ── Stat/summary cards ── */
+    .rv-stat-value {
+        font-size: 22px !important;
+    }
+
+    .rv-card, .glass-panel {
+        padding: 12px !important;
+        margin-bottom: 10px !important;
+    }
+
+    /* ── Flex rows → wrap on mobile ── */
+    .flex.gap-4:not(.items-center):not([class*="justify-"]) {
+        flex-wrap: wrap !important;
+    }
+
+    /* ── Buttons ── */
+    button, .btn-primary, .btn-danger {
+        touch-action: manipulation !important;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Ensure no button hover transform interferes with taps */
+    @media (hover: none) {
+        .btn-primary:hover, .btn-danger:hover,
+        .card-hover:hover {
+            transform: none !important;
+            box-shadow: none !important;
+        }
+    }
+}
+
+/* ── 8. Small phones (≤480px) ─────────────────────────────── */
+@media (max-width: 480px) {
+    #main-nav {
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+    }
+
+    #view-content {
+        padding: 8px !important;
+    }
+
+    [class*="grid-cols-4"],
+    [class*="grid-cols-3"],
+    .grid.grid-cols-4,
+    .grid.grid-cols-3 {
+        grid-template-columns: repeat(1, 1fr) !important;
+    }
+
+    .rv-stat-value {
+        font-size: 18px !important;
+    }
+
+    /* Prevent heading text overflow */
+    h1, h2, h3 {
+        overflow-wrap: break-word;
+        word-break: break-word;
+    }
+
+    /* Forms — full width */
+    input, select, textarea {
+        width: 100% !important;
+        max-width: 100% !important;
+        font-size: 16px !important; /* Prevent iOS auto-zoom on focus */
+    }
+
+    /* Hide secondary badge text */
+    #period-badge {
+        display: none !important;
+    }
+
+    /* Sidebar wider on very small screens */
+    #admin-sidebar {
+        width: 85vw !important;
+        max-width: 300px !important;
+    }
+}
+
+/* ── 9. Modals — fit viewport, scroll internally ─────────── */
+@media (max-width: 768px) {
+    /* Global modal */
+    #global-modal > div,
+    #global-modal #modal-content {
+        max-height: 90dvh !important;
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        margin: 0 !important;
+        border-radius: 16px !important;
+        padding: 16px !important;
+    }
+
+    /* Forgot password modal */
+    #forgot-password-modal > div {
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+    }
+
+    /* Custom modals (dynamic ones created by modal.createModal) */
+    [id^="custom-modal-"] > div,
+    [id^="prompt-modal-"] > div {
+        max-height: 90vh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        width: calc(100vw - 32px) !important;
+        max-width: 420px !important;
+    }
+
+    /* Modal footer buttons — stack on mobile */
+    #modal-footer {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+
+    #modal-footer button {
+        width: 100% !important;
+    }
+}
+
+/* ── 10. Forms — touch-friendly ─────────────────────────── */
+@media (max-width: 768px) {
+    /* Prevent iOS auto-zoom by ensuring font-size >= 16px */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="date"],
+    input[type="search"],
+    select,
+    textarea {
+        font-size: 16px !important;
+        -webkit-appearance: none;
+    }
+
+    /* Form rows that have side-by-side inputs — stack them */
+    .form-row, .flex.gap-4 > input, .grid.gap-4 > input {
+        width: 100% !important;
+    }
+
+    /* Ensure select dropdowns are accessible */
+    select {
+        background-position: right 12px center !important;
+        padding-right: 40px !important;
+    }
+}
+
+/* ── 11. Attendance / report / promotion pages ────────────── */
+@media (max-width: 768px) {
+    /* Attendance table — force scroll */
+    .attendance-table-wrapper,
+    .report-table-wrapper {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* Promotion/graduation card stacks */
+    .promotion-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Student cards in lists */
+    [class*="student-card"],
+    [class*="rv-student-row"] {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+
+    /* Report cards */
+    [class*="report-card"],
+    [class*="rv-report"] {
+        padding: 12px !important;
+    }
+
+    /* Fee/finance summary bars */
+    [class*="fee-bar"],
+    [class*="finance-summary"] {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+}
+
+/* ── 12. Tailwind override helpers for mobile ────────────── */
+@media (max-width: 768px) {
+    /* Override any fixed min-width that can cause overflow */
+    [style*="min-width: 800"],
+    [style*="min-width: 900"],
+    [style*="min-width: 1000"],
+    [style*="min-width:800"],
+    [style*="min-width:900"],
+    [style*="min-width:1000"] {
+        min-width: unset !important;
+        width: 100% !important;
+    }
+
+    /* Fix flex items that refuse to shrink */
+    .flex-none {
+        flex-shrink: 1 !important;
+    }
+
+    /* Scrollable data containers */
+    [class*="overflow-x-auto"] {
+        max-width: 100vw !important;
+        overflow-x: auto !important;
+    }
+}
+
+/* ── 13. Loading overlay — stays on top of everything ───── */
+#loading-overlay {
+    z-index: 10000 !important;
+}
+
+/* ── 14. Dashboard stat cards — 2-col on tablet ─────────── */
+@media (min-width: 481px) and (max-width: 768px) {
+    [class*="grid-cols-4"],
+    .grid.grid-cols-4 {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+/* ── 15. Smooth, hardware-accelerated sidebar animation ──── */
+#admin-sidebar {
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
