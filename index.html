@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ridgevalley Hybrid SMS | Secure Cloud Portal</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Toastify -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- SheetJS for Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- JSZip + FileSaver — required by Academic Report Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <script src="financial-report.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'] 
+                    },
+                    colors: {
+                        ridge: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            800: '#065f46',
+                            900: '#064e3b',
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+        }
+
+        .dark {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.5);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(51, 65, 85, 0.5);
+        }
+
+        .sidebar-item {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 0;
+            background: #10b981;
+            transition: height 0.3s ease;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .sidebar-item:hover::before, .sidebar-item.active::before {
+            height: 60%;
+        }
+
+        .sidebar-item.active {
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.1) 0%, transparent 100%);
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .input-field {
+            background: rgba(248, 250, 252, 0.9);
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .dark .input-field {
+            background: rgba(30, 41, 59, 0.9);
+            border-color: #475569;
+            color: white;
+        }
+
+        .input-field:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+            outline: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(239, 68, 68, 0.4);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-approved { background: #d1fae5; color: #065f46; }
+        .status-rejected { background: #fee2e2; color: #991b1b; }
+
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #10b981;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+
+        #receipt-content {
+            display: none;
+            padding: 30px;
+            width: 400px;
+            min-height: 600px;
+            background: white;
+            font-family: 'Inter', sans-serif;
+            color: #000;
+        }
+
+        .logo-container {
+            filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.1));
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- System Inactive Modal -->
+    <div id="system-inactive-modal" class="fixed inset-0 z-[9999] bg-slate-900 flex items-center justify-center hidden">
+        <div class="text-center text-white p-8 max-w-md">
+            <div class="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-lock text-4xl text-red-500"></i>
+            </div>
+            <h1 class="text-3xl font-bold mb-4">System Inactive</h1>
+            <p class="text-slate-300 mb-6">The system requires initial setup. Please contact the super administrator to activate this instance.</p>
+            <div class="text-sm text-slate-500 font-mono bg-slate-800 p-4 rounded-lg">
+                Status: ADMIN_NOT_FOUND<br>
+                Contact: support@ridgevalley.edu.gh
+            </div>
+        </div>
+    </div>
+
+    <!-- Landing Page -->
+    <section id="landing-page" class="fixed inset-0 z-[100] bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex flex-col overflow-y-auto transition-opacity duration-500">
+        <div class="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+        
+        <div class="flex-grow flex flex-col items-center justify-center text-center p-6 relative z-10">
+            <!-- School Logo -->
+            <div class="mb-8 logo-container">
+                <img src="1.png" alt="Ridgevalley School Logo" class="w-48 h-48 md:w-64 md:h-64 object-contain drop-shadow-2xl" 
+                     onerror="this.src='https://via.placeholder.com/300?text=RV&bg=10B981&color=fff'">
+            </div>
+            
+            <h1 class="text-5xl md:text-7xl font-black tracking-tight text-slate-900 dark:text-white mb-2 uppercase animate-slide-up">
+                RIDGEVALLEY<br>
+                <span class="gradient-text">HYBRID SCHOOL</span>
+            </h1>
+            
+            <h2 class="text-2xl md:text-4xl font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-12 animate-fade-in">
+                Management System
+            </h2>
+            
+            <div class="flex flex-col gap-4 items-center">
+                <button onclick="app.enterPortal()" class="group relative px-12 py-6 bg-slate-900 dark:bg-ridge-600 text-white text-xl font-bold uppercase tracking-widest rounded-full overflow-hidden shadow-2xl hover:scale-105 transition-all duration-300 animate-slide-up">
+                    <span class="relative z-10 flex items-center gap-3">
+                        Enter Portal <i class="fas fa-arrow-right group-hover:translate-x-2 transition-transform"></i>
+                    </span>
+                    <div class="absolute inset-0 bg-gradient-to-r from-ridge-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </button>
+                
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-4 flex items-center gap-2">
+                    <i class="fas fa-shield-alt text-ridge-500"></i>
+                    Secure Cloud Environment v2.0
+                </p>
+            </div>
+        </div>
+        
+        <footer class="relative bg-slate-900 text-white py-8 px-6 mt-auto border-t border-slate-800">
+            <div class="text-center text-xs font-bold uppercase text-slate-600 tracking-[0.2em]">
+                <i class="fas fa-cloud mr-2"></i>2026 RIDGEVALLEY HYBRID SCHOOL • CLOUD EDITION
+            </div>
+        </footer>
+    </section>
+
+    <!-- Auth Container -->
+    <main id="auth-container" class="hidden min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <div class="w-full max-w-md space-y-8 animate-slide-up">
+            <div class="text-center">
+                <div class="w-16 h-16 bg-ridge-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <i class="fas fa-user-shield text-2xl text-white"></i>
+                </div>
+                <h2 class="text-3xl font-black tracking-tight" id="auth-title">Secure Login</h2>
+                <p class="text-sm mt-2 text-slate-500 font-medium">Ridgevalley Unified Security Gateway</p>
+            </div>
+            
+            <div class="glass-panel p-8 rounded-3xl shadow-2xl">
+                <!-- Role Selection -->
+                <div class="flex gap-2 mb-8 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl">
+                    <button onclick="app.setRole('teacher')" id="btn-teacher" class="role-btn flex-1 py-3 rounded-xl text-xs font-bold uppercase transition-all flex items-center justify-center gap-2">
+                        <i class="fas fa-chalkboard-teacher"></i> Teacher
+                    </button>
+                    <button onclick="app.setRole('parent')" id="btn-parent" class="role-btn flex-1 py-3 rounded-xl text-xs font-bold uppercase transition-all flex items-center justify-center gap-2">
+                        <i class="fas fa-users"></i> Parent
+                    </button>
+                    <button onclick="app.setRole('admin')" id="btn-admin" class="role-btn flex-1 py-3 rounded-xl text-xs font-bold uppercase transition-all flex items-center justify-center gap-2">
+                        <i class="fas fa-user-shield"></i> Admin
+                    </button>
+                </div>
+
+                <!-- Auth Forms -->
+                <div class="space-y-4">
+                    <!-- Registration Fields (Hidden by default) -->
+                    <div id="reg-fields" class="hidden space-y-4 animate-fade-in">
+                        <div class="relative">
+                            <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" id="auth-name" class="input-field w-full rounded-2xl px-12 py-4 text-sm" placeholder="Full Legal Name">
+                        </div>
+                    </div>
+                    
+                    <!-- Email -->
+                    <div class="relative">
+                        <i class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="email" id="auth-email" class="input-field w-full rounded-2xl px-12 py-4 text-sm" placeholder="Email Address">
+                    </div>
+                    
+                    <!-- Password -->
+                    <div class="relative">
+                        <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="password" id="auth-password" class="input-field w-full rounded-2xl px-12 py-4 text-sm" placeholder="Password">
+                        <button onclick="app.togglePassword('auth-password')" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+
+                    <!-- Forgot Password Link (For Parent/Teacher only) -->
+                    <div id="forgot-password-section" class="hidden text-right">
+                        <button onclick="app.showForgotPassword()" class="text-xs font-semibold text-ridge-600 hover:text-ridge-700 transition-colors">
+                            Forgot Password?
+                        </button>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button id="auth-submit-btn" onclick="auth.handleAction()" class="w-full py-4 bg-ridge-500 text-white rounded-2xl font-bold uppercase tracking-wider text-sm shadow-lg hover:shadow-xl transition-all btn-primary flex items-center justify-center gap-2">
+                        <i class="fas fa-sign-in-alt"></i> <span id="auth-submit-text">Authorize Access</span>
+                    </button>
+
+                    <!-- Toggle Auth Mode -->
+                    <div class="text-center pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <p class="text-xs text-slate-500 mb-2" id="auth-mode-text">New to Ridgevalley?</p>
+                        <button onclick="app.toggleAuthMode()" id="toggle-auth-btn" class="text-xs font-bold uppercase text-ridge-600 tracking-wider hover:tracking-widest transition-all">
+                            Create Account
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Admin Registration Note -->
+                <div id="admin-reg-note" class="hidden mt-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-info-circle text-amber-500 mt-0.5"></i>
+                        <div>
+                            <p class="text-xs font-bold text-amber-800 dark:text-amber-200 mb-1">Admin Registration</p>
+                            <p class="text-xs text-amber-700 dark:text-amber-300">New admin accounts require approval from the super administrator before activation.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Forgot Password Modal -->
+    <div id="forgot-password-modal" class="fixed inset-0 z-[200] modal-overlay hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl transform scale-95 opacity-0 transition-all" id="forgot-password-content">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-ridge-100 dark:bg-ridge-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-key text-2xl text-ridge-600"></i>
+                </div>
+                <h3 class="text-xl font-bold mb-2">Reset Password</h3>
+                <p class="text-sm text-slate-500">Enter your email to receive a password reset link</p>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="relative">
+                    <i class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="email" id="reset-email" class="input-field w-full rounded-2xl px-12 py-4 text-sm" placeholder="Enter your email">
+                </div>
+                
+                <button onclick="auth.sendResetLink()" class="w-full py-4 bg-ridge-500 text-white rounded-2xl font-bold uppercase text-sm shadow-lg hover:shadow-xl transition-all btn-primary">
+                    Send Reset Link
+                </button>
+                
+                <button onclick="app.closeForgotPassword()" class="w-full py-3 text-slate-500 font-semibold text-sm hover:text-slate-700 transition-colors">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Navigation -->
+    <nav id="main-nav" class="hidden fixed top-0 left-0 right-0 z-[90] glass-panel border-b border-slate-200 dark:border-slate-700 h-16">
+        <div class="max-w-7xl mx-auto px-4 h-full flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <button id="drawer-btn" onclick="ui.toggleSidebar()" class="hidden w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors">
+                    <i class="fas fa-bars"></i>
+                </button>
+                
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-gradient-to-br from-ridge-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
+                        <i class="fas fa-graduation-cap text-white text-sm"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-black tracking-tight bg-gradient-to-r from-ridge-600 to-blue-600 bg-clip-text text-transparent">Ridgevalley</h1>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div id="period-badge" class="flex items-center gap-1.5 px-3 py-1.5 bg-ridge-100 dark:bg-ridge-900/30 rounded-full border border-ridge-200 dark:border-ridge-800">
+                    <i class="fas fa-calendar-alt text-ridge-600 text-xs"></i>
+                    <span id="active-period-display" class="text-xs font-bold text-ridge-700 dark:text-ridge-300">Loading...</span>
+                </div>
+                <!-- Week pill — shown when an active week is set -->
+                <div id="week-badge" style="display:none" class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-full border border-blue-200 dark:border-blue-800">
+                    <i class="fas fa-calendar-week text-blue-600 text-xs"></i>
+                    <span id="active-week-display" class="text-xs font-bold text-blue-700 dark:text-blue-300"></span>
+                </div>
+                
+                <button onclick="app.toggleDarkMode()" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:scale-110 transition-transform">
+                    <i id="theme-icon" class="fas fa-moon"></i>
+                </button>
+                
+                <button onclick="auth.logout()" class="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl text-xs font-bold uppercase hover:bg-red-100 transition-colors flex items-center gap-2">
+                    <i class="fas fa-sign-out-alt"></i> <span class="hidden sm:inline">Logout</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sidebar Overlay -->
+    <div id="sidebar-overlay" onclick="ui.toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-[80] hidden opacity-0 transition-opacity duration-300"></div>
+
+    <!-- Sidebar -->
+    <aside id="admin-sidebar" class="fixed left-0 top-16 h-[calc(100vh-4rem)] w-72 glass-panel border-r border-slate-200 dark:border-slate-700 transform -translate-x-full transition-transform duration-300 z-[85] overflow-y-auto">
+        <div class="p-6 border-b border-slate-200 dark:border-slate-700">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-ridge-500 to-blue-600 flex items-center justify-center text-white font-bold" id="user-avatar">
+                    A
+                </div>
+                <div>
+                    <p id="sidebar-role" class="text-[10px] font-bold text-ridge-600 uppercase tracking-wider">Administrator</p>
+                    <h2 id="sidebar-name" class="text-sm font-bold truncate">Admin Name</h2>
+                </div>
+            </div>
+        </div>
+        
+        <nav id="sidebar-nav" class="p-4 space-y-1">
+            <!-- Dynamic content -->
+        </nav>
+        
+        <div class="p-4 border-t border-slate-200 dark:border-slate-700 mt-auto">
+            <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4">
+                <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">System Status</p>
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span class="text-xs font-semibold text-emerald-600">Online</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Dashboard -->
+    <main id="dashboard" class="hidden min-h-screen pt-16 bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+        <div class="p-4 md:p-8 max-w-7xl mx-auto">
+            <div id="view-content" class="space-y-6 animate-fade-in">
+                <!-- Dynamic Content -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Global Modal -->
+    <div id="global-modal" class="fixed inset-0 z-[200] modal-overlay hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl transform scale-95 opacity-0 transition-all" id="modal-content">
+            <div class="flex items-center justify-between mb-6">
+                <h3 id="modal-title" class="text-xl font-bold flex items-center gap-2">
+                    <i class="fas fa-info-circle text-ridge-500"></i>
+                    <span>Modal Title</span>
+                </h3>
+                <button onclick="ui.closeModal()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                    <i class="fas fa-times text-slate-400"></i>
+                </button>
+            </div>
+            <div id="modal-body" class="space-y-4">
+                <!-- Dynamic content -->
+            </div>
+            <div id="modal-footer" class="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+                <!-- Dynamic buttons -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt Container (Hidden) -->
+    <div id="receipt-content">
+        <div class="text-center mb-6">
+            <div class="w-24 h-24 bg-gradient-to-br from-ridge-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-graduation-cap text-4xl text-white"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-ridge-800">Ridgevalley Hybrid School</h2>
+            <p class="text-sm text-slate-600 mt-1">Official Payment Receipt</p>
+            <div class="w-full h-1 bg-gradient-to-r from-ridge-500 to-blue-500 mt-4 mb-2 rounded-full"></div>
+        </div>
+        <div id="receipt-details"></div>
+        <div class="mt-8 text-center text-xs text-slate-500 border-t pt-4 border-slate-200">
+            <p class="mb-1"><i class="fas fa-shield-alt text-ridge-500 mr-1"></i>Verified Transaction</p>
+            <p>For inquiries: accounts@ridgevalley.edu.gh</p>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 z-[300] bg-slate-900/80 backdrop-blur-sm hidden items-center justify-center flex-col">
+        <div class="loading-spinner mb-4"></div>
+        <p class="text-white font-semibold">Processing...</p>
+        <p id="loading-text" class="text-slate-400 text-sm mt-2">Please wait</p>
+    </div>
+
+    <!-- Academic Report Generator module — must load before app.js delegates to it -->
+    <script src="academic-report-generator.js"></script>
+    <script src="app.js"></script>
+    <!-- New Features Module: Weeks, Billing, OTP Security, Financial Analytics -->
+    <script src="features.js"></script>
+      <!--promotion-graduation module-->
+      <script src="promotion-graduation.js"></script>
+    <!-- Optimistic UI: skeleton screens, instant mutations, stale-while-revalidate -->
+    <script src="optimistic-ui.js"></script>
+</body>
+</html>
