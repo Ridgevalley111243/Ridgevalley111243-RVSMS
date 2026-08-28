@@ -1,4 +1,3 @@
-console.log("NEW VERSION LOADED");
 // ==================== SUPABASE CONFIGURATION ====================
 const SUPABASE_URL = 'https://dcdqmxsdazwattnrbjyb.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjZHFteHNkYXp3YXR0bnJianliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxMDAwNTYsImV4cCI6MjA4NDY3NjA1Nn0.bKLAfK2RefFNCMUe4LHeggQisuEOb3o4DR8zjZVfamw';
