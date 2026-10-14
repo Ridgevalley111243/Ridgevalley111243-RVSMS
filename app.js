@@ -314,14 +314,14 @@ const modal = {
         const html = `
             <div id="${modalId}" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 opacity-0 transition-opacity duration-300">
                 <div class="bg-white dark:bg-slate-800 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border border-slate-200 dark:border-slate-700 transform scale-95 transition-transform duration-300">
-                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                         <i class="fas fa-pen text-white text-xl"></i>
                     </div>
                     <h3 class="text-xl font-bold mb-4 text-slate-800 dark:text-white text-center">${escapeHtml(title)}</h3>
                     <input type="text" id="${modalId}-input" class="w-full rounded-xl px-4 py-3 border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 mb-6 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-800 dark:text-white" value="${defaultValue}" placeholder="Enter value...">
                     <div class="flex gap-3">
                         <button id="${modalId}-cancel" class="flex-1 py-3 px-4 border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">Cancel</button>
-                        <button id="${modalId}-confirm" class="flex-1 py-3 px-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-bold hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg">OK</button>
+                        <button id="${modalId}-confirm" class="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg">OK</button>
                     </div>
                 </div>
             </div>
@@ -374,7 +374,7 @@ const modal = {
             <div id="${modalId}" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 opacity-0 transition-opacity duration-300">
                 <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-lg w-full mx-4 shadow-2xl border border-slate-200 dark:border-slate-700 transform scale-95 transition-transform duration-300 max-h-[80vh] flex flex-col">
                     <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
-                        <div class="w-10 h-10 bg-gradient-to-br from-ridge-500 to-blue-500 rounded-xl flex items-center justify-center">
+                        <div class="w-10 h-10 bg-ridge-600 rounded-xl flex items-center justify-center">
                             <i class="fas fa-user-graduate text-white"></i>
                         </div>
                         <h3 class="text-xl font-bold text-slate-800 dark:text-white">${escapeHtml(title)}</h3>
@@ -387,7 +387,7 @@ const modal = {
                         ${students.length === 0 ? '<p class="text-center text-slate-500 py-4">No students available</p>' : students.map(s => `
                             <div class="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-600 transition-all border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-800 student-result ${s.disabled ? 'opacity-50 cursor-not-allowed' : ''}" data-id="${s.id}" data-name="${escapeHtml(s.name)}">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-ridge-500 to-blue-500 flex items-center justify-center text-white font-bold">
+                                    <div class="w-10 h-10 rounded-full bg-ridge-600 flex items-center justify-center text-white font-bold">
                                         ${s.name.charAt(0)}
                                     </div>
                                     <div class="flex-1">
@@ -459,7 +459,7 @@ const modal = {
             <div id="${modalId}" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 opacity-0 transition-opacity duration-300">
                 <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border border-slate-200 dark:border-slate-700 transform scale-95 transition-transform duration-300">
                     <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
-                        <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+                        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
                             <i class="fas fa-calendar-alt text-white"></i>
                         </div>
                         <h3 class="text-xl font-bold text-slate-800 dark:text-white">${escapeHtml(title)}</h3>
@@ -523,7 +523,7 @@ const modal = {
                 <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-4xl w-full mx-4 shadow-2xl border border-slate-200 dark:border-slate-700 transform scale-95 transition-transform duration-300 max-h-[90vh] flex flex-col">
                     <div class="flex justify-between items-center mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
                                 <i class="fas fa-file-pdf text-white"></i>
                             </div>
                             <h3 class="text-xl font-bold text-slate-800 dark:text-white">${escapeHtml(title)}</h3>
@@ -536,10 +536,10 @@ const modal = {
                         <iframe src="${fileUrl}" class="w-full h-full min-h-[400px] rounded-lg" frameborder="0"></iframe>
                     </div>
                     <div class="flex gap-3">
-                        <button id="${modalId}-notify" class="flex-1 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl font-bold hover:from-amber-600 hover:to-amber-700 transition-all shadow-lg">
+                        <button id="${modalId}-notify" class="flex-1 py-3 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-700 transition-all shadow-lg">
                             <i class="fas fa-exclamation-triangle mr-2"></i> Notify Admin (Issue)
                         </button>
-                        <button id="${modalId}-publish" class="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg">
+                        <button id="${modalId}-publish" class="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg">
                             <i class="fas fa-check mr-2"></i> Publish to Parents
                         </button>
                     </div>
@@ -673,14 +673,14 @@ function showNetworkErrorUI() {
     const landing = document.getElementById('landing-page');
     if (landing) {
         landing.innerHTML = `
-            <div class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+            <div class="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-900">
                 <div class="text-center max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-2xl border border-slate-200 dark:border-slate-700">
                     <div class="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
                         <i class="fas fa-wifi text-3xl text-red-500"></i>
                     </div>
                     <h2 class="text-2xl font-bold mb-2 text-slate-800 dark:text-white">Connection Error</h2>
                     <p class="text-slate-500 mb-6">Unable to connect to server. Please check your internet connection.</p>
-                    <button onclick="location.reload()" class="w-full py-3 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                    <button onclick="location.reload()" class="w-full py-3 bg-ridge-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                         <i class="fas fa-sync mr-2"></i> Retry Connection
                     </button>
                     <button onclick="app.forceShowLogin()" class="w-full mt-3 py-3 border-2 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
@@ -731,16 +731,14 @@ const app = {
             const landing = document.getElementById('landing-page');
             if (landing) {
                 landing.innerHTML = `
-                    <div class="min-h-screen flex flex-col items-center justify-center p-4 text-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-                        <div class="mb-8 animate-fade-in">
-                            <div class="w-24 h-24 bg-gradient-to-br from-ridge-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl transform hover:scale-105 transition-transform">
-                                <i class="fas fa-school text-4xl text-white"></i>
-                            </div>
-                            <h1 class="text-5xl font-black text-slate-800 dark:text-white mb-3 bg-clip-text text-transparent bg-gradient-to-r from-ridge-600 to-blue-600">Ridgevalley SMS</h1>
-                            <p class="text-slate-500 text-lg">School Management System</p>
+                    <div class="rv-welcome min-h-[100dvh] flex flex-col items-center justify-center px-6 py-12 text-center">
+                        <div class="mb-10 animate-fade-in">
+                            <img src="1.png" alt="Ridge Valley Hybrid School crest" width="132" height="132" class="w-28 h-28 md:w-32 md:h-32 object-contain mx-auto mb-8 drop-shadow-sm" onerror="this.style.display='none'">
+                            <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight text-[#0f2044] dark:text-white mb-3">Ridgevalley SMS</h1>
+                            <p class="text-slate-500 dark:text-slate-400 text-base md:text-lg">School Management System</p>
                         </div>
-                        <button onclick="app.enterPortal()" class="px-8 py-4 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-2xl font-bold text-lg hover:shadow-xl transition-all hover:scale-105 shadow-lg">
-                            Enter Portal <i class="fas fa-arrow-right ml-2"></i>
+                        <button onclick="app.enterPortal()" class="inline-flex items-center gap-3 px-7 py-3.5 bg-ridge-600 hover:bg-ridge-700 text-white rounded-xl font-semibold text-base shadow-sm">
+                            Enter Portal <i class="fas fa-arrow-right text-sm"></i>
                         </button>
                     </div>
                 `;
@@ -772,13 +770,13 @@ const app = {
             modalEl.className = 'fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50';
             modalEl.innerHTML = `
                 <div class="bg-white dark:bg-slate-800 rounded-3xl p-8 max-w-md w-full mx-4 text-center shadow-2xl border border-slate-200 dark:border-slate-700 transform scale-100 transition-transform">
-                    <div class="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <div class="w-20 h-20 bg-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                         <i class="fas fa-cog text-3xl text-white animate-spin-slow"></i>
                     </div>
                     <h2 class="text-2xl font-bold mb-2 text-slate-800 dark:text-white">System Setup Required</h2>
                     <p class="text-slate-500 mb-6">No administrator found. Create the first admin account to get started.</p>
                     <button onclick="document.getElementById('system-inactive-modal').classList.add('hidden'); app.enterPortal();" 
-                            class="w-full py-3 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                            class="w-full py-3 bg-ridge-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                         Create Admin Account
                     </button>
                 </div>
@@ -1106,11 +1104,11 @@ const app = {
         if (!panel) {
             panel = document.createElement('div');
             panel.id = 'password-reset-panel';
-            panel.className = 'min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800';
+            panel.className = 'min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-900';
             panel.innerHTML = `
                 <div class="w-full max-w-md bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 p-8">
                     <div class="text-center mb-8">
-                        <div class="w-16 h-16 bg-gradient-to-br from-ridge-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                        <div class="w-16 h-16 bg-ridge-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                             <i class="fas fa-lock-open text-2xl text-white"></i>
                         </div>
                         <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Set New Password</h2>
@@ -1153,7 +1151,7 @@ const app = {
                             <p id="reset-match-msg" class="text-xs mt-1 hidden"></p>
                         </div>
                         <button id="reset-submit-btn" onclick="app.submitPasswordReset()"
-                            class="w-full py-3 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="w-full py-3 bg-ridge-600 text-white rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled>
                             <i class="fas fa-check-circle mr-2"></i> Update Password
                         </button>
@@ -2217,40 +2215,89 @@ const ui = {
             const style = document.createElement('style');
             style.id = 'rv-design-system';
             style.textContent = `
-                @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap');
-
+                /* Ridgevalley design system — one font, one primary (school green),
+                   navy chrome from the crest ribbon, blue kept for information only. */
                 :root {
-                    --rv-navy:      #0f2044;
-                    --rv-blue:      #1a56db;
-                    --rv-blue-light:#3b82f6;
-                    --rv-gold:      #f59e0b;
-                    --rv-emerald:   #059669;
-                    --rv-red:       #dc2626;
-                    --rv-surface:   #ffffff;
-                    --rv-bg:        #f1f5fb;
-                    --rv-border:    #e2e8f0;
-                    --rv-text:      #0f172a;
-                    --rv-muted:     #64748b;
-                    --rv-sidebar-w: 260px;
-                    --rv-radius:    14px;
-                    --rv-shadow:    0 2px 16px rgba(15,32,68,0.08);
-                    --rv-shadow-md: 0 4px 32px rgba(15,32,68,0.12);
+                    --rv-navy:       #0f2044;
+                    --rv-navy-2:     #16295a;
+                    --rv-blue:       #1d4ed8;
+                    --rv-blue-light: #3b82f6;
+                    --rv-green:      #047857;
+                    --rv-green-500:  #059669;
+                    --rv-green-soft: #ecfdf5;
+                    --rv-gold:       #d97706;
+                    --rv-emerald:    #059669;
+                    --rv-red:        #dc2626;
+                    --rv-surface:    #ffffff;
+                    --rv-bg:         #f4f6fa;
+                    --rv-border:     #e3e8ef;
+                    --rv-text:       #0f172a;
+                    --rv-muted:      #5b6577;
+                    --rv-sidebar-w:  264px;
+                    --rv-nav-h:      60px;
+                    --rv-radius:     14px;
+                    --rv-radius-sm:  10px;
+                    --rv-shadow:     0 1px 2px rgba(15,32,68,0.05), 0 2px 10px rgba(15,32,68,0.05);
+                    --rv-shadow-md:  0 2px 4px rgba(15,32,68,0.06), 0 10px 28px rgba(15,32,68,0.10);
+                    --rv-ease-out:   cubic-bezier(0.23, 1, 0.32, 1);
+                    --rv-ease-drawer:cubic-bezier(0.32, 0.72, 0, 1);
+                    --rv-focus:      0 0 0 3px rgba(5,150,105,0.35);
                 }
 
                 .dark {
-                    --rv-surface: #1e293b;
-                    --rv-bg:      #0f172a;
-                    --rv-border:  #334155;
-                    --rv-text:    #f1f5f9;
-                    --rv-muted:   #94a3b8;
+                    --rv-surface: #172033;
+                    --rv-bg:      #0d1424;
+                    --rv-border:  #2a3650;
+                    --rv-text:    #eef2f8;
+                    --rv-muted:   #9aa6bb;
+                    --rv-green-soft: rgba(5,150,105,0.14);
+                    --rv-shadow:  0 1px 2px rgba(0,0,0,0.3), 0 2px 10px rgba(0,0,0,0.25);
+                    --rv-shadow-md: 0 2px 4px rgba(0,0,0,0.35), 0 10px 28px rgba(0,0,0,0.35);
                 }
 
                 *, *::before, *::after { box-sizing: border-box; }
 
+                html {
+                    -webkit-tap-highlight-color: transparent;
+                    -webkit-text-size-adjust: 100%;
+                }
+
                 body {
-                    font-family: 'Plus Jakarta Sans', sans-serif;
+                    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
                     background: var(--rv-bg);
                     color: var(--rv-text);
+                    font-feature-settings: 'cv11', 'ss01';
+                }
+
+                ::selection { background: rgba(5,150,105,0.22); color: inherit; }
+                input, textarea, select { caret-color: var(--rv-green-500); }
+
+                /* Numbers line up in tables, money and stat values */
+                table, .rv-stat-value, .rv-money-val, [class*="text-2xl"], [class*="text-3xl"] {
+                    font-variant-numeric: tabular-nums;
+                }
+
+                h1, h2, h3 { text-wrap: balance; }
+                p { text-wrap: pretty; }
+
+                /* Keyboard focus is always visible */
+                :focus-visible {
+                    outline: 2px solid var(--rv-green-500) !important;
+                    outline-offset: 2px !important;
+                }
+                .input-field:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+                    outline: none !important;
+                }
+
+                /* Pressable things answer the press */
+                button, a, [role="button"], .sidebar-item { touch-action: manipulation; }
+                button:not(:disabled), .rv-btn { transition: transform 140ms var(--rv-ease-out), background-color 160ms ease, box-shadow 160ms ease, color 160ms ease, border-color 160ms ease; }
+                button:not(:disabled):active, .rv-btn:active { transform: scale(0.97); }
+                button:disabled { cursor: not-allowed; opacity: 0.55; }
+
+                /* Hover lifts only where a real pointer exists */
+                @media (hover: none) {
+                    .card-hover:hover, [class*="hover:scale-"]:hover, [class*="hover:-translate-y"]:hover { transform: none !important; }
                 }
 
                 /* ── Sidebar ── */
@@ -2258,7 +2305,25 @@ const ui = {
                     background: var(--rv-navy) !important;
                     border-right: none !important;
                     width: var(--rv-sidebar-w) !important;
+                    display: flex;
+                    flex-direction: column;
+                    box-shadow: none !important;
+                    backdrop-filter: none !important;
+                    -webkit-backdrop-filter: none !important;
                 }
+                #admin-sidebar { border-radius: 0 !important; }
+                #admin-sidebar > * { flex-shrink: 0; }
+                #admin-sidebar #sidebar-nav { flex: 1 0 auto; display: flex; flex-direction: column; }
+                #admin-sidebar [class*="border-"] { border-color: rgba(255,255,255,0.08) !important; }
+                #admin-sidebar #sidebar-name { color: #ffffff !important; }
+                #admin-sidebar #sidebar-role { color: #6ee7b7 !important; }
+                #admin-sidebar #user-avatar {
+                    background: rgba(255,255,255,0.10) !important;
+                    border-radius: 10px !important;
+                    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+                }
+                #admin-sidebar .border-t { border-color: rgba(255,255,255,0.08) !important; }
+                #admin-sidebar .bg-slate-50 { background: rgba(255,255,255,0.05) !important; }
 
                 .rv-sidebar-logo {
                     display: flex;
@@ -2268,19 +2333,19 @@ const ui = {
                     border-bottom: 1px solid rgba(255,255,255,0.08);
                     margin-bottom: 8px;
                 }
-
                 .rv-sidebar-logo img {
-                    width: 36px;
-                    height: 36px;
+                    width: 38px;
+                    height: 38px;
                     object-fit: contain;
-                    border-radius: 8px;
+                    border-radius: 50%;
+                    background: #fff;
+                    padding: 2px;
                 }
-
                 .rv-sidebar-logo-fallback {
-                    width: 36px;
-                    height: 36px;
-                    background: var(--rv-blue);
-                    border-radius: 8px;
+                    width: 38px;
+                    height: 38px;
+                    background: var(--rv-green-500);
+                    border-radius: 10px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -2288,59 +2353,58 @@ const ui = {
                     font-weight: 800;
                     font-size: 16px;
                 }
-
-                .rv-sidebar-school { font-weight: 700; font-size: 14px; color: white; line-height: 1.2; }
-                .rv-sidebar-tagline { font-size: 9px; color: rgba(255,255,255,0.45); letter-spacing: 1px; text-transform: uppercase; }
+                .rv-sidebar-school { font-weight: 700; font-size: 14px; color: white; line-height: 1.25; }
+                .rv-sidebar-tagline { font-size: 10px; color: rgba(255,255,255,0.5); letter-spacing: 0.08em; text-transform: uppercase; }
 
                 .sidebar-item {
-                    font-family: 'Plus Jakarta Sans', sans-serif !important;
-                    font-size: 13px !important;
+                    font-family: inherit !important;
+                    font-size: 13.5px !important;
                     font-weight: 500 !important;
-                    color: rgba(255,255,255,0.6) !important;
-                    padding: 10px 16px !important;
+                    line-height: 1.3 !important;
+                    color: rgba(255,255,255,0.68) !important;
+                    padding: 10px 14px !important;
+                    min-height: 42px;
                     border-radius: 10px !important;
-                    margin: 1px 8px !important;
-                    width: calc(100% - 16px) !important;
+                    margin: 1px 10px !important;
+                    width: calc(100% - 20px) !important;
                     border-left: none !important;
-                    transition: all 0.18s ease !important;
+                    transition: background-color 160ms ease, color 160ms ease !important;
                     display: flex !important;
                     align-items: center !important;
-                    gap: 10px !important;
+                    justify-content: flex-start !important;
+                    text-align: left !important;
+                    gap: 12px !important;
                     background: transparent !important;
                 }
-
+                .sidebar-item::before { display: none !important; }
                 .sidebar-item:hover {
-                    background: rgba(255,255,255,0.08) !important;
+                    background: rgba(255,255,255,0.07) !important;
                     color: white !important;
                 }
-
                 .sidebar-item.active {
-                    background: var(--rv-blue) !important;
+                    background: rgba(255,255,255,0.11) !important;
                     color: white !important;
                     font-weight: 700 !important;
-                    box-shadow: 0 4px 12px rgba(26,86,219,0.35) !important;
+                    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06) !important;
                 }
+                .sidebar-item i { width: 18px; flex: none; text-align: center; font-size: 14px; opacity: 0.8; }
+                .sidebar-item.active i { opacity: 1; color: #6ee7b7; }
 
-                .sidebar-item i { width: 18px; text-align: center; font-size: 13px; opacity: 0.85; }
-                .sidebar-item.active i { opacity: 1; }
-
-                /* Sidebar user card */
                 .rv-user-card {
-                    margin: 8px;
+                    margin: 8px 10px;
                     padding: 12px 14px;
-                    background: rgba(255,255,255,0.06);
+                    background: rgba(255,255,255,0.05);
                     border-radius: 12px;
                     border: 1px solid rgba(255,255,255,0.08);
                     display: flex;
                     align-items: center;
                     gap: 10px;
                 }
-
                 .rv-avatar {
                     width: 36px;
                     height: 36px;
                     border-radius: 10px;
-                    background: var(--rv-blue);
+                    background: var(--rv-green-500);
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -2350,18 +2414,85 @@ const ui = {
                     flex-shrink: 0;
                 }
 
-                /* ── Top nav bar ── */
-                #main-nav {
-                    background: var(--rv-surface) !important;
-                    border-bottom: 1px solid var(--rv-border) !important;
-                    box-shadow: 0 1px 8px rgba(15,32,68,0.06) !important;
-                    height: 60px;
+                .rv-nav-section {
+                    font-size: 10.5px;
+                    font-weight: 700;
+                    letter-spacing: 0.1em;
+                    text-transform: uppercase;
+                    color: rgba(255,255,255,0.38);
+                    padding: 16px 24px 6px;
+                }
+
+                .rv-logout {
+                    margin: 8px 10px;
+                    padding: 10px 14px;
+                    border-radius: 10px;
+                    background: rgba(220,38,38,0.12);
+                    color: #fca5a5 !important;
+                    font-size: 13.5px;
+                    font-weight: 600;
                     display: flex;
                     align-items: center;
-                    padding: 0 20px;
-                    position: sticky;
-                    top: 0;
-                    z-index: 40;
+                    gap: 12px;
+                    width: calc(100% - 20px);
+                    border: none;
+                    cursor: pointer;
+                    text-align: left;
+                }
+                .rv-logout:hover { background: rgba(220,38,38,0.22) !important; }
+                /* When pinned to the bottom of the scrolling menu it must be opaque */
+                #admin-sidebar .rv-logout {
+                    background: linear-gradient(rgba(220,38,38,0.14), rgba(220,38,38,0.14)), var(--rv-navy) !important;
+                    box-shadow: 0 -12px 16px -4px var(--rv-navy);
+                    z-index: 2;
+                }
+                #admin-sidebar .rv-logout:hover {
+                    background: linear-gradient(rgba(220,38,38,0.24), rgba(220,38,38,0.24)), var(--rv-navy) !important;
+                }
+
+                /* ── Top nav bar ── */
+                #main-nav {
+                    position: fixed !important;
+                    top: 0; left: 0; right: 0;
+                    height: var(--rv-nav-h) !important;
+                    background: var(--rv-surface) !important;
+                    border-bottom: 1px solid var(--rv-border) !important;
+                    box-shadow: none !important;
+                    backdrop-filter: none !important;
+                    -webkit-backdrop-filter: none !important;
+                    border-radius: 0 !important;
+                    display: flex;
+                    align-items: center;
+                    padding: 0 16px;
+                    padding-left: max(16px, env(safe-area-inset-left));
+                    padding-right: max(16px, env(safe-area-inset-right));
+                }
+                #main-nav > div:first-child {
+                    max-width: none !important;
+                    width: 100%;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    gap: 12px;
+                }
+                #main-nav h1 {
+                    white-space: nowrap;
+                    background: none !important;
+                    -webkit-text-fill-color: currentColor !important;
+                    color: var(--rv-navy) !important;
+                    letter-spacing: -0.01em;
+                }
+                .dark #main-nav h1 { color: #fff !important; }
+
+                #dashboard { padding-top: var(--rv-nav-h) !important; background: var(--rv-bg) !important; }
+
+                .rv-period-pill {
+                    background: var(--rv-green-soft);
+                    color: var(--rv-green);
+                    border: 1px solid rgba(5,150,105,0.22);
+                    border-radius: 999px;
+                    padding: 4px 12px;
+                    font-size: 12px;
+                    font-weight: 600;
                 }
 
                 /* ── Cards / panels ── */
@@ -2370,95 +2501,116 @@ const ui = {
                     border: 1px solid var(--rv-border) !important;
                     box-shadow: var(--rv-shadow) !important;
                     border-radius: var(--rv-radius) !important;
-                    transition: box-shadow 0.2s, transform 0.2s;
+                    backdrop-filter: none !important;
+                    -webkit-backdrop-filter: none !important;
+                    transition: box-shadow 200ms ease, transform 200ms var(--rv-ease-out);
                 }
-
-                .card-hover:hover {
-                    box-shadow: var(--rv-shadow-md) !important;
-                    transform: translateY(-2px);
+                @media (hover: hover) and (pointer: fine) {
+                    .card-hover:hover {
+                        box-shadow: var(--rv-shadow-md) !important;
+                        transform: translateY(-2px);
+                    }
                 }
 
                 /* ── Stat cards ── */
-                .rv-stat {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 4px;
-                }
-
+                .rv-stat { display: flex; flex-direction: column; gap: 4px; }
                 .rv-stat-icon {
-                    width: 48px;
-                    height: 48px;
+                    width: 44px;
+                    height: 44px;
                     border-radius: 12px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 20px;
+                    font-size: 18px;
                     margin-bottom: 12px;
                 }
-
                 .rv-stat-value {
-                    font-family: 'Outfit', sans-serif;
-                    font-size: 32px;
-                    font-weight: 700;
+                    font-family: inherit;
+                    font-size: 30px;
+                    font-weight: 800;
+                    letter-spacing: -0.02em;
                     color: var(--rv-text);
-                    line-height: 1;
+                    line-height: 1.05;
                 }
-
                 .rv-stat-label {
                     font-size: 12px;
                     font-weight: 600;
                     color: var(--rv-muted);
-                    text-transform: uppercase;
-                    letter-spacing: 0.8px;
+                    letter-spacing: 0.02em;
                 }
 
                 /* ── Inputs ── */
                 .input-field {
-                    font-family: 'Plus Jakarta Sans', sans-serif !important;
-                    font-size: 13.5px !important;
+                    font-family: inherit !important;
+                    font-size: 14px !important;
                     border: 1.5px solid var(--rv-border) !important;
-                    border-radius: 10px !important;
+                    border-radius: var(--rv-radius-sm) !important;
                     padding: 10px 14px !important;
                     background: var(--rv-surface) !important;
                     color: var(--rv-text) !important;
-                    transition: border-color 0.15s, box-shadow 0.15s !important;
+                    transition: border-color 150ms ease, box-shadow 150ms ease !important;
                     outline: none !important;
                 }
-
                 .input-field:focus {
-                    border-color: var(--rv-blue) !important;
-                    box-shadow: 0 0 0 3px rgba(26,86,219,0.12) !important;
+                    border-color: var(--rv-green-500) !important;
+                    box-shadow: var(--rv-focus) !important;
                 }
+                .input-field::placeholder { color: #8a94a6; }
 
                 /* ── Buttons ── */
                 button[onclick], .rv-btn {
-                    font-family: 'Plus Jakarta Sans', sans-serif !important;
+                    font-family: inherit !important;
                     font-weight: 600 !important;
-                    letter-spacing: 0.2px;
+                    letter-spacing: 0.01em;
                 }
 
                 /* ── Tables ── */
                 table { border-collapse: collapse; }
                 thead th {
                     font-size: 11px !important;
-                    letter-spacing: 0.8px !important;
+                    letter-spacing: 0.06em !important;
                     text-transform: uppercase !important;
                     font-weight: 700 !important;
                     color: var(--rv-muted) !important;
                     background: var(--rv-bg) !important;
                 }
+                tbody tr { transition: background-color 120ms ease; }
 
-                /* ── Section headings ── */
+                /* ── Page headings ── */
                 h2.rv-page-title, h2[class*="text-2xl font-bold"] {
-                    font-family: 'Outfit', sans-serif !important;
-                    font-weight: 700 !important;
+                    font-family: inherit !important;
+                    font-weight: 800 !important;
+                    letter-spacing: -0.02em;
                     color: var(--rv-navy) !important;
-                    font-size: 22px !important;
+                    font-size: 24px !important;
                 }
+                .dark h2.rv-page-title, .dark h2[class*="text-2xl font-bold"] { color: white !important; }
+                .dark [style*="color:var(--rv-navy"], .dark [style*="color: var(--rv-navy"] { color: #ffffff !important; }
+                .dark [style*="color:var(--rv-text"] { color: var(--rv-text) !important; }
 
-                .dark h2.rv-page-title, .dark h2[class*="text-2xl font-bold"] {
-                    color: white !important;
-                }
+                /* Light tint panels that were written without a dark variant */
+                .dark .bg-amber-50:not([class*="dark:bg-"])   { background-color: rgba(217,119,6,0.12) !important; }
+                .dark .bg-yellow-50:not([class*="dark:bg-"])  { background-color: rgba(202,138,4,0.12) !important; }
+                .dark .bg-emerald-50:not([class*="dark:bg-"]),
+                .dark .bg-green-50:not([class*="dark:bg-"]),
+                .dark .bg-ridge-50:not([class*="dark:bg-"])   { background-color: rgba(5,150,105,0.12) !important; }
+                .dark .bg-red-50:not([class*="dark:bg-"])     { background-color: rgba(220,38,38,0.12) !important; }
+                .dark .bg-blue-50:not([class*="dark:bg-"])    { background-color: rgba(37,99,235,0.12) !important; }
+                .dark .bg-slate-50:not([class*="dark:bg-"])   { background-color: rgba(148,163,184,0.08) !important; }
+                .dark .bg-white:not([class*="dark:bg-"])      { background-color: var(--rv-surface) !important; }
+                .dark .border-amber-200:not([class*="dark:border-"]) { border-color: rgba(217,119,6,0.35) !important; }
+                .dark .text-amber-800:not([class*="dark:text-"]), .dark .text-amber-900:not([class*="dark:text-"]) { color: #fcd34d !important; }
+                .dark .text-amber-700:not([class*="dark:text-"]) { color: #fbbf24 !important; }
+
+                .dark [style*="background:#fffbeb"], .dark [style*="background:#fef9c3"] { background: rgba(217,119,6,0.12) !important; border-color: rgba(217,119,6,0.35) !important; }
+                .dark [style*="background:#fef2f2"] { background: rgba(220,38,38,0.12) !important; border-color: rgba(220,38,38,0.35) !important; }
+                .dark [style*="background:#f0fdf4"] { background: rgba(5,150,105,0.12) !important; border-color: rgba(5,150,105,0.35) !important; }
+                .dark [style*="background:#f3e8ff"] { background: rgba(124,58,237,0.14) !important; }
+                .dark [style*="color:#92400e"], .dark [style*="color:#b45309"] { color: #fcd34d !important; }
+                .dark [style*="color:#991b1b"] { color: #fca5a5 !important; }
+
+                /* The top bar already carries the school name on wide screens */
+                @media (min-width: 1024px) { #admin-sidebar .rv-sidebar-logo { display: none; } }
 
                 /* ── Badges ── */
                 .rv-badge {
@@ -2466,160 +2618,135 @@ const ui = {
                     align-items: center;
                     gap: 4px;
                     padding: 3px 10px;
-                    border-radius: 20px;
+                    border-radius: 999px;
                     font-size: 11px;
                     font-weight: 700;
-                    letter-spacing: 0.3px;
+                    letter-spacing: 0.02em;
                 }
 
-                /* ── Loading spinner ── */
-                #loading-overlay {
-                    backdrop-filter: blur(4px) !important;
-                }
+                /* ── Messages ── */
+                .rv-msg-card { transition: background-color 150ms ease; }
 
-                /* ── Dashboard content area ── */
-                #view-content {
-                    padding: 24px !important;
-                    max-width: 1200px;
+                /* ── Toasts sit below the nav and read as one family ── */
+                .toastify.rv-toast {
+                    margin-top: calc(var(--rv-nav-h) - 4px);
+                    background: #0f172a !important;
+                    color: #f8fafc !important;
+                    font-family: inherit;
+                    font-size: 13.5px;
+                    font-weight: 500;
+                    padding: 12px 16px 12px 36px;
+                    border-radius: 12px;
+                    box-shadow: 0 10px 30px rgba(15,23,42,0.25);
+                    max-width: min(380px, calc(100vw - 32px));
+                    position: fixed;
                 }
-
-                /* ── Sidebar section labels ── */
-                .rv-nav-section {
-                    font-size: 9px;
-                    font-weight: 800;
-                    letter-spacing: 1.5px;
-                    text-transform: uppercase;
-                    color: rgba(255,255,255,0.3);
-                    padding: 12px 24px 4px;
-                    margin-top: 4px;
+                .toastify.rv-toast::before {
+                    content: '';
+                    position: absolute;
+                    left: 16px;
+                    top: 50%;
+                    width: 8px;
+                    height: 8px;
+                    margin-top: -4px;
+                    border-radius: 50%;
+                    background: var(--rv-toast-dot, #3b82f6);
                 }
+                .rv-toast-success { --rv-toast-dot: #34d399; }
+                .rv-toast-error   { --rv-toast-dot: #f87171; }
+                .rv-toast-warning { --rv-toast-dot: #fbbf24; }
+                .rv-toast-info    { --rv-toast-dot: #60a5fa; }
 
-                /* ── Logout button at sidebar bottom ── */
-                .rv-logout {
-                    margin: 8px;
-                    padding: 10px 16px;
-                    border-radius: 10px;
-                    background: rgba(220,38,38,0.12);
-                    color: #fca5a5 !important;
-                    font-size: 13px;
-                    font-weight: 600;
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    width: calc(100% - 16px);
-                    border: none;
-                    cursor: pointer;
-                    transition: background 0.18s;
-                    text-align: left;
-                }
-                .rv-logout:hover { background: rgba(220,38,38,0.22) !important; }
+                #loading-overlay { backdrop-filter: blur(4px) !important; }
 
-                /* ── Period pill in top nav ── */
-                .rv-period-pill {
-                    background: rgba(26,86,219,0.08);
-                    color: var(--rv-blue);
-                    border: 1px solid rgba(26,86,219,0.2);
-                    border-radius: 20px;
-                    padding: 4px 12px;
-                    font-size: 12px;
-                    font-weight: 600;
-                }
+                /* Content area: the wrapper already pads, so no double gutter */
+                #view-content { padding: 0 !important; max-width: 1240px; margin: 0 auto; }
 
-                /* ── Announcement inbox cards ── */
-                .rv-msg-card {
-                    border-left: 3px solid var(--rv-blue);
-                    transition: transform 0.15s;
-                }
-                .rv-msg-card:hover { transform: translateX(3px); }
-
-                /* Smooth fade-in for view content */
+                /* Views arrive with a short settle, not a slide */
                 @keyframes rv-fade {
-                    from { opacity: 0; transform: translateY(8px); }
-                    to   { opacity: 1; transform: translateY(0); }
+                    from { opacity: 0; transform: translateY(6px); }
+                    to   { opacity: 1; transform: none; }
                 }
-                #view-content > * { animation: rv-fade 0.22s ease; }
+                #view-content > * { animation: rv-fade 220ms var(--rv-ease-out) both; }
 
-                /* ── Mobile Responsive ── */
+                /* Themed scrollbars */
+                * { scrollbar-color: #c3cad6 transparent; }
+                .dark * { scrollbar-color: #3a4763 transparent; }
+                #admin-sidebar { scrollbar-color: rgba(255,255,255,0.18) transparent; }
+
+                /* ── Desktop: the sidebar stays open beside the content ── */
+                @media (min-width: 1024px) {
+                    body:has(#dashboard:not(.hidden)) #admin-sidebar {
+                        transform: none !important;
+                        top: var(--rv-nav-h) !important;
+                        height: calc(100dvh - var(--rv-nav-h)) !important;
+                        z-index: 85 !important;
+                    }
+                    body:has(#dashboard:not(.hidden)) #dashboard { padding-left: var(--rv-sidebar-w) !important; }
+                    body:has(#dashboard:not(.hidden)) #drawer-btn,
+                    body:has(#dashboard:not(.hidden)) #sidebar-overlay { display: none !important; }
+                }
+
+                /* ── Mobile ── */
                 @media (max-width: 768px) {
-                    /* Sidebar: z-index is handled by mobile-fix.css.
-                     * Only set transform/transition here; do NOT set z-index
-                     * as it would override mobile-fix.css (z-index: 9500). */
                     #admin-sidebar {
                         position: fixed !important;
                         left: 0 !important;
                         top: 0 !important;
                         bottom: 0 !important;
-                        /* z-index intentionally omitted — see mobile-fix.css */
+                        padding-top: var(--rv-nav-h) !important;
                         transform: translateX(-100%) !important;
-                        transition: transform 0.3s ease !important;
-                        width: 260px !important;
+                        transition: transform 320ms var(--rv-ease-drawer) !important;
+                        width: min(300px, 86vw) !important;
                     }
-                    #admin-sidebar.mobile-open {
-                        transform: translateX(0) !important;
-                    }
+                    #admin-sidebar.mobile-open { transform: translateX(0) !important; }
 
-                    /* Always show hamburger on mobile */
                     #drawer-btn { display: flex !important; }
+                    #main-content { margin-left: 0 !important; width: 100% !important; }
+                    #main-nav { gap: 8px !important; }
 
-                    /* Main content takes full width on mobile */
-                    #main-content {
-                        margin-left: 0 !important;
-                        width: 100% !important;
-                    }
+                    /* 16px stops iOS zooming into the field */
+                    input, select, textarea, .input-field { font-size: 16px !important; }
 
-                    /* Top nav adjustments */
-                    #main-nav {
-                        padding: 0 12px !important;
-                        gap: 8px !important;
-                    }
-
-                    /* View content padding reduced */
-                    #view-content {
-                        padding: 14px !important;
-                    }
-
-                    /* Tables scroll horizontally */
                     .overflow-x-auto, table {
                         display: block;
                         overflow-x: auto;
                         -webkit-overflow-scrolling: touch;
                     }
 
-                    /* Stat cards: 2-col grid on mobile */
-                    .grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
-                    .grid-cols-3 { grid-template-columns: repeat(2, 1fr) !important; }
-                    .grid-cols-2 { grid-template-columns: repeat(1, 1fr) !important; }
+                    .grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+                    .grid-cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+                    .grid-cols-2 { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
+                    #view-content [style*="minmax(180px"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px !important; }
 
-                    /* Column mapping: stack on mobile */
-                    .bulk-map-grid {
-                        grid-template-columns: 1fr !important;
-                    }
-
-                    /* Reduce font sizes on very small screens */
+                    .bulk-map-grid { grid-template-columns: 1fr !important; }
                     .rv-stat-value { font-size: 24px !important; }
+                    .modal-btn-row { flex-direction: column !important; }
+                    .rv-card, .glass-panel { padding: 16px !important; }
+                    .rv-period-pill { display: none !important; }
+                }
 
-                    /* Full-width buttons in modals */
-                    .modal-btn-row {
-                        flex-direction: column !important;
-                    }
+                @media (max-width: 420px) {
+                    #main-nav h1 { display: none; }
+                }
 
-                    /* Cards: reduce padding */
-                    .rv-card, .glass-panel {
-                        padding: 14px !important;
-                    }
-
-                    /* Period pill: hide on very small */
-                    .rv-period-pill {
-                        display: none !important;
-                    }
+                @media (min-width: 1024px) {
+                    #view-content [style*="minmax(180px"] { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important; }
                 }
 
                 @media (max-width: 480px) {
-                    #main-nav { padding: 0 10px !important; }
-                    #view-content { padding: 10px !important; }
-                    .grid-cols-4, .grid-cols-3 { grid-template-columns: repeat(1, 1fr) !important; }
-                    .rv-stat-value { font-size: 20px !important; }
-                    .sidebar-item { font-size: 14px !important; padding: 12px 16px !important; }
+                    .grid-cols-4, .grid-cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+                    .rv-stat-value { font-size: 22px !important; }
+                    .sidebar-item { font-size: 15px !important; min-height: 46px; }
+                }
+
+                /* Reduced motion: keep fades that explain change, drop movement */
+                @media (prefers-reduced-motion: reduce) {
+                    #view-content > * { animation: rv-fade-only 160ms ease both; }
+                    @keyframes rv-fade-only { from { opacity: 0; } to { opacity: 1; } }
+                    .card-hover:hover, button:not(:disabled):active { transform: none !important; }
+                    #admin-sidebar { transition: none !important; }
+                    .animate-bounce, .animate-pulse, .logo-container { animation: none !important; }
                 }
             `;
             document.head.appendChild(style);
@@ -2847,7 +2974,7 @@ const ui = {
                 gravity: "top",
                 position: "right",
                 backgroundColor: colors[type] || colors.info,
-                className: "rounded-lg shadow-lg font-medium",
+                className: `rv-toast rv-toast-${colors[type] ? type : 'info'}`,
                 stopOnFocus: true
             }).showToast();
         } else {
@@ -2884,7 +3011,7 @@ const views = {
             <!-- Page header -->
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
                 <div>
-                    <h2 style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:700;color:var(--rv-navy,#0f2044);margin:0;">Dashboard Overview</h2>
+                    <h2 style="font-family:inherit;font-size:22px;font-weight:700;color:var(--rv-navy,#0f2044);margin:0;">Dashboard Overview</h2>
                     <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:2px 0 0;">${state.currentAY?.year || ''} ${escapeHtml(state.currentTerm ? '· ' + state.currentTerm.name : '')}</p>
                 </div>
                 <button onclick="actions.refreshData()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--rv-surface);border:1.5px solid var(--rv-border);border-radius:10px;font-size:13px;font-weight:600;color:var(--rv-muted);cursor:pointer;">
@@ -2911,7 +3038,7 @@ const views = {
                         <div style="width:44px;height:44px;border-radius:12px;background:${s.bg};display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
                             <i class="fas ${s.icon}" style="color:${s.color};font-size:18px;"></i>
                         </div>
-                        <div style="font-family:'Outfit',sans-serif;font-size:28px;font-weight:700;color:${_vc};line-height:1;">${_valHtml}</div>
+                        <div style="font-family:inherit;font-size:28px;font-weight:700;color:${_vc};line-height:1;">${_valHtml}</div>
                         <div style="font-size:11px;font-weight:700;color:var(--rv-muted);text-transform:uppercase;letter-spacing:0.8px;margin-top:4px;">${s.label}</div>
                     </div>
                 `;}).join('')}
@@ -3140,7 +3267,7 @@ const views = {
                         <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Academic Year (e.g., 2024/2025)</label>
                         <div class="flex gap-2">
                             <input type="text" id="year-input" class="input-field flex-1 rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="2024/2025">
-                            <button onclick="actions.addAcademicYear()" class="px-6 py-3 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                            <button onclick="actions.addAcademicYear()" class="px-6 py-3 bg-ridge-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
@@ -3158,7 +3285,7 @@ const views = {
                                 <span class="text-xs font-bold text-ridge-600 bg-ridge-100 dark:bg-ridge-900/30 px-3 py-1 rounded-full mt-2 inline-block">Active</span>
                             </div>
                             <div class="flex gap-2">
-                                <button onclick="actions.addTermPrompt('${activeYear.id}')" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg text-sm font-bold hover:shadow-lg transition-all">
+                                <button onclick="actions.addTermPrompt('${activeYear.id}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:shadow-lg transition-all">
                                     <i class="fas fa-plus"></i> Add Term
                                 </button>
                             </div>
@@ -3197,7 +3324,7 @@ const views = {
                                             <span class="text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-full mt-2 inline-block">Inactive</span>
                                             ${year.terms ? `<p class="text-sm text-slate-400 mt-1">${year.terms.length} terms defined</p>` : ''}
                                         </div>
-                                        <button onclick="actions.activateYear('${year.id}')" class="px-4 py-2 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-lg text-sm font-bold hover:shadow-lg transition-all">
+                                        <button onclick="actions.activateYear('${year.id}')" class="px-4 py-2 bg-ridge-600 text-white rounded-lg text-sm font-bold hover:shadow-lg transition-all">
                                             Set as Active
                                         </button>
                                     </div>
@@ -3221,7 +3348,7 @@ const views = {
                         </div>
                     </div>
                     <button onclick="ui.route('weeks')"
-                        class="px-5 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all">
+                        class="px-5 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all">
                         <i class="fas fa-arrow-right mr-2"></i>Manage Weeks
                     </button>
                 </div>
@@ -3245,7 +3372,7 @@ const views = {
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <input type="text" id="class-level" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Level (e.g., Primary)">
                     <input type="text" id="class-grade" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Grade (e.g., Grade 4)">
-                    <button onclick="actions.addClass()" class="px-6 py-3 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                    <button onclick="actions.addClass()" class="px-6 py-3 bg-ridge-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                         <i class="fas fa-plus mr-2"></i> Create Class
                     </button>
                 </div>
@@ -3341,7 +3468,7 @@ const views = {
                     <button onclick="actions.refreshData()" class="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg text-sm font-bold transition-colors">
                         <i class="fas fa-sync mr-2"></i> Refresh
                     </button>
-                    <button onclick="actions.openBulkUploadWizard()" class="px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg font-bold text-sm hover:shadow-lg transition-all">
+                    <button onclick="actions.openBulkUploadWizard()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:shadow-lg transition-all">
                         <i class="fas fa-file-excel mr-2"></i> Bulk Upload
                     </button>
                 </div>
@@ -3365,7 +3492,7 @@ const views = {
                         ${state.classes.map(c => `<option value="${c.id}">${c.level} - ${c.grade}</option>`).join('')}
                     </select>
                     <input type="tel" id="student-parent-phone" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Parent Phone Number">
-                    <button onclick="actions.addStudent()" class="md:col-span-3 px-6 py-3 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                    <button onclick="actions.addStudent()" class="md:col-span-3 px-6 py-3 bg-ridge-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                         <i class="fas fa-plus mr-2"></i> Register Student
                     </button>
                 </div>
@@ -3379,7 +3506,7 @@ const views = {
                     </div>
                 ` : sortedClasses.map(cls => `
                     <div class="glass-panel rounded-2xl overflow-hidden bg-white dark:bg-slate-800 shadow-lg">
-                        <div style="padding:14px 24px;background:linear-gradient(135deg,#1a56db,#7c3aed);display:flex;align-items:center;justify-content:space-between;">
+                        <div style="padding:14px 24px;background:#16295a;display:flex;align-items:center;justify-content:space-between;">
                             <div style="display:flex;align-items:center;gap:10px;">
                                 <i class="fas fa-school" style="color:#fff;font-size:16px;"></i>
                                 <span style="color:#fff;font-weight:700;font-size:15px;">${keyToLabel[cls]}</span>
@@ -3565,13 +3692,13 @@ const views = {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                 <div class="glass-panel rounded-2xl p-6 bg-white dark:bg-slate-800 shadow-lg">
                     <h3 class="text-lg font-bold mb-4 text-slate-800 dark:text-white">Set Fee Structure</h3>
-                    <select id="fee-scope" class="input-field w-full rounded-xl px-4 py-3 mb-3 border border-slate-300 dark:border-slate-600 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
+                    <select id="fee-scope" class="input-field w-full rounded-xl px-4 py-3 mb-3 border border-slate-300 dark:border-slate-600 bg-blue-50 dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
                         <option value="global">Global (All Students)</option>
                         ${[...new Set(state.classes.map(c => c.level))].map(l => `<option value="${l}">Level: ${l}</option>`).join('')}
                     </select>
                     <input type="number" id="fee-amount" class="input-field w-full rounded-xl px-4 py-3 mb-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Amount (₵)">
                     <input type="text" id="fee-desc" class="input-field w-full rounded-xl px-4 py-3 mb-4 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Description">
-                    <button onclick="actions.addFee()" class="w-full py-3 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                    <button onclick="actions.addFee()" class="w-full py-3 bg-ridge-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                         Publish Fee
                     </button>
                 </div>
@@ -3732,7 +3859,7 @@ const views = {
                                 <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                                     <div class="flex-1">
                                         <div class="flex items-center gap-3 mb-2">
-                                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-ridge-500 to-blue-500 flex items-center justify-center text-white font-bold">
+                                            <div class="w-10 h-10 rounded-full bg-ridge-600 flex items-center justify-center text-white font-bold">
                                                 ${report.teacher_name ? report.teacher_name.charAt(0) : 'T'}
                                             </div>
                                             <div>
@@ -3762,17 +3889,17 @@ const views = {
                                     </div>
                                     
                                     <div class="flex flex-col gap-2 min-w-[200px]">
-                                        <button onclick="actions.viewReceivedReportDetail('${report.id}')" class="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                                        <button onclick="actions.viewReceivedReportDetail('${report.id}')" class="w-full px-4 py-3 bg-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2">
                                             <i class="fas fa-eye"></i> View Details
                                         </button>
-                                        <button onclick="actions.downloadReportBundle('${report.id}')" class="w-full px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                                        <button onclick="actions.downloadReportBundle('${report.id}')" class="w-full px-4 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2">
                                             <i class="fas fa-download"></i> Download All
                                         </button>
                                         <div class="flex gap-2">
-                                            <button onclick="actions.approveReportBundle('${report.id}')" class="flex-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg text-sm font-bold hover:shadow-md transition-all">
+                                            <button onclick="actions.approveReportBundle('${report.id}')" class="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:shadow-md transition-all">
                                                 <i class="fas fa-check"></i> Approve
                                             </button>
-                                            <button onclick="actions.rejectReportBundle('${report.id}')" class="flex-1 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg text-sm font-bold hover:shadow-md transition-all">
+                                            <button onclick="actions.rejectReportBundle('${report.id}')" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:shadow-md transition-all">
                                                 <i class="fas fa-times"></i> Reject
                                             </button>
                                         </div>
@@ -3898,7 +4025,7 @@ const views = {
                                             ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
                                             : 'bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600'}">
                                         <div class="flex items-center gap-3">
-                                            <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow ${existing ? 'bg-emerald-500' : 'bg-gradient-to-br from-ridge-500 to-blue-600'}">
+                                            <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow ${existing ? 'bg-emerald-500' : 'bg-ridge-600'}">
                                                 ${existing ? '<i class="fas fa-check text-xs"></i>' : escapeHtml(student.name.charAt(0).toUpperCase())}
                                             </div>
                                             <div>
@@ -3920,7 +4047,7 @@ const views = {
                                                     <i class="fas fa-undo"></i> Undo
                                                 </button>
                                             ` : `
-                                                <label class="cursor-pointer flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl text-sm font-bold hover:shadow-lg transition-all">
+                                                <label class="cursor-pointer flex items-center gap-2 px-4 py-2 bg-ridge-600 text-white rounded-xl text-sm font-bold hover:shadow-lg transition-all">
                                                     <i class="fas fa-cloud-upload-alt"></i>
                                                     Upload Report
                                                     <input type="file" accept=".pdf,.doc,.docx" class="hidden"
@@ -4085,10 +4212,10 @@ const views = {
                             <span class="inline-block mt-2 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">Teacher · Pending Approval</span>
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="actions.approveTeacher('${t.profile_id}')" class="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                            <button onclick="actions.approveTeacher('${t.profile_id}')" class="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                                 <i class="fas fa-check mr-2"></i> Approve
                             </button>
-                            <button onclick="actions.rejectTeacher('${t.profile_id}')" class="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                            <button onclick="actions.rejectTeacher('${t.profile_id}')" class="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                                 <i class="fas fa-times mr-2"></i> Reject
                             </button>
                         </div>
@@ -4102,10 +4229,10 @@ const views = {
                             <span class="inline-block mt-2 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">Child Link Request</span>
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="actions.reviewChildLink('${l.parent.id}', '${l.studentId}', true)" class="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                            <button onclick="actions.reviewChildLink('${l.parent.id}', '${l.studentId}', true)" class="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                                 <i class="fas fa-check mr-2"></i> Approve
                             </button>
-                            <button onclick="actions.reviewChildLink('${l.parent.id}', '${l.studentId}', false)" class="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                            <button onclick="actions.reviewChildLink('${l.parent.id}', '${l.studentId}', false)" class="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                                 <i class="fas fa-times mr-2"></i> Reject
                             </button>
                         </div>
@@ -4119,10 +4246,10 @@ const views = {
                             <span class="inline-block mt-2 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">Pending Approval</span>
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="actions.approveAdmin('${admin.profile_id}')" class="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                            <button onclick="actions.approveAdmin('${admin.profile_id}')" class="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                                 <i class="fas fa-check mr-2"></i> Approve
                             </button>
-                            <button onclick="actions.rejectAdmin('${admin.profile_id}')" class="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                            <button onclick="actions.rejectAdmin('${admin.profile_id}')" class="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                                 <i class="fas fa-times mr-2"></i> Reject
                             </button>
                         </div>
@@ -4174,7 +4301,7 @@ const views = {
                             </label>
                         </div>
                         <button onclick="actions.sendAnnouncement()"
-                            class="px-6 py-3 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                            class="px-6 py-3 bg-ridge-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                             <i class="fas fa-paper-plane mr-2"></i> Send Announcement
                         </button>
                     </div>
@@ -4236,9 +4363,9 @@ const views = {
                         </div>`
                     : `<div class="space-y-4">
                             ${inbox.map(n => `
-                                <div class="p-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-gradient-to-r from-slate-50 to-white dark:from-slate-700/50 dark:to-slate-800 hover:shadow-md transition-shadow">
+                                <div class="p-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 dark:to-slate-800 hover:shadow-md transition-shadow">
                                     <div class="flex items-start gap-4">
-                                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-ridge-500 to-blue-600 flex items-center justify-center shrink-0 shadow">
+                                        <div class="w-10 h-10 rounded-full bg-ridge-600 flex items-center justify-center shrink-0 shadow">
                                             <i class="fas fa-bullhorn text-white text-sm"></i>
                                         </div>
                                         <div class="flex-1 min-w-0">
@@ -4312,27 +4439,27 @@ const views = {
 
         const html = `
             <div class="mb-6">
-                <h2 style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:700;color:var(--rv-navy,#0f2044);margin:0 0 4px;">My Dashboard</h2>
+                <h2 style="font-family:inherit;font-size:22px;font-weight:700;color:var(--rv-navy,#0f2044);margin:0 0 4px;">My Dashboard</h2>
                 <p style="font-size:13px;color:var(--rv-muted,#64748b);">Welcome, ${escapeHtml(state.currentUser?.full_name || 'Teacher')}</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div class="glass-panel p-6 rounded-2xl border-l-4 border-ridge-500 bg-white dark:bg-slate-800 shadow-lg">
-                    <div class="w-12 h-12 bg-gradient-to-br from-ridge-500 to-ridge-600 rounded-xl flex items-center justify-center text-white shadow-lg mb-4">
+                    <div class="w-12 h-12 bg-ridge-600 rounded-xl flex items-center justify-center text-white shadow-lg mb-4">
                         <i class="fas fa-users text-xl"></i>
                     </div>
                     <h3 class="text-3xl font-black text-slate-800 dark:text-white">${myStudents.length}</h3>
                     <p class="text-sm text-slate-500">My Students</p>
                 </div>
                 <div class="glass-panel p-6 rounded-2xl border-l-4 border-blue-500 bg-white dark:bg-slate-800 shadow-lg">
-                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg mb-4">
+                    <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg mb-4">
                         <i class="fas fa-file-alt text-xl"></i>
                     </div>
                     <h3 class="text-3xl font-black text-slate-800 dark:text-white">${state.reports.filter(r => r.teacher_id === state.currentUser?.id && r.status === 'published').length}</h3>
                     <p class="text-sm text-slate-500">Reports Published</p>
                 </div>
                 <div class="glass-panel p-6 rounded-2xl border-l-4 border-emerald-500 bg-white dark:bg-slate-800 shadow-lg">
-                    <div class="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg mb-4">
+                    <div class="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg mb-4">
                         <i class="fas fa-users text-xl"></i>
                     </div>
                     <h3 class="text-3xl font-black text-slate-800 dark:text-white">${myStudents.length}</h3>
@@ -4343,7 +4470,7 @@ const views = {
             <!-- Report Status Section -->
             <div class="glass-panel rounded-2xl p-6 bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
                 <div class="flex items-center gap-3 mb-5">
-                    <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow">
+                    <div class="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center shadow">
                         <i class="fas fa-paper-plane text-white text-sm"></i>
                     </div>
                     <div>
@@ -4389,7 +4516,7 @@ const views = {
                             return `
                                 <div class="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                                     <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-ridge-500 to-blue-500 flex items-center justify-center text-white font-bold text-xs shadow">
+                                        <div class="w-10 h-10 rounded-full bg-ridge-600 flex items-center justify-center text-white font-bold text-xs shadow">
                                             ${(bundle.class || 'R').charAt(0)}
                                         </div>
                                         <div>
@@ -4521,7 +4648,7 @@ const views = {
         // Show confirmation UI
         const html = `
             <div class="glass-panel rounded-2xl p-8 bg-white dark:bg-slate-800 shadow-lg text-center">
-                <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <div class="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
                     <i class="fas fa-external-link-alt text-3xl text-white"></i>
                 </div>
                 <h2 class="text-2xl font-bold mb-4 text-slate-800 dark:text-white">Report Generator Opened</h2>
@@ -4534,7 +4661,7 @@ const views = {
                     <p><strong>Year:</strong> ${year}</p>
                     <p><strong>Term:</strong> ${term}</p>
                 </div>
-                <button onclick="window.open('${reportUrl}', '_blank')" class="w-full px-6 py-3 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                <button onclick="window.open('${reportUrl}', '_blank')" class="w-full px-6 py-3 bg-ridge-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                     <i class="fas fa-redo mr-2"></i> Open Again
                 </button>
             </div>
@@ -4556,16 +4683,24 @@ const views = {
         const myChildren = state.students.filter(s => parent?.children_ids?.includes(s.id));
 
         const html = `
+            <div class="mb-6">
+                <h2 style="font-family:inherit;font-size:24px;font-weight:800;letter-spacing:-0.02em;color:var(--rv-navy,#0f2044);margin:0 0 4px;">Dashboard</h2>
+                <p style="font-size:13px;color:var(--rv-muted,#64748b);">Welcome, ${escapeHtml(state.currentUser?.full_name || 'Parent')}</p>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 ${myChildren.length === 0 ? '<p class="col-span-full text-center py-8 text-slate-500 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">No children linked to your account</p>' : myChildren.map(child => {
                     const arrears = dataManager.calculateStudentArrears(child.id);
                     return `
                         <div class="glass-panel p-6 rounded-2xl card-hover bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
-                            <div class="w-16 h-16 bg-gradient-to-br from-ridge-500 to-blue-500 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-4 shadow-lg">
-                                ${child.name.charAt(0)}
+                            <div class="flex items-center gap-4 mb-5">
+                                <div class="w-12 h-12 flex-none bg-ridge-600 rounded-xl flex items-center justify-center text-white text-lg font-bold">
+                                    ${escapeHtml(child.name.charAt(0))}
+                                </div>
+                                <div class="min-w-0">
+                                    <h3 class="font-bold text-lg leading-snug text-slate-800 dark:text-white break-words">${escapeHtml(child.name)}</h3>
+                                    <p class="text-sm text-slate-500">${escapeHtml(child.class)}</p>
+                                </div>
                             </div>
-                            <h3 class="font-bold text-xl mb-1 text-slate-800 dark:text-white">${escapeHtml(child.name)}</h3>
-                            <p class="text-sm text-slate-500 mb-4">${child.class}</p>
                             
                             <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-xl">
                                 <span class="text-sm font-medium text-slate-600 dark:text-slate-400">Outstanding:</span>
@@ -4592,7 +4727,7 @@ const views = {
         const html = `
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-slate-800 dark:text-white">My Children</h2>
-                <button onclick="actions.searchAndLinkChild()" class="px-4 py-2 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                <button onclick="actions.searchAndLinkChild()" class="px-4 py-2 bg-ridge-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                     <i class="fas fa-plus mr-2"></i> Link Child
                 </button>
             </div>
@@ -4605,7 +4740,7 @@ const views = {
                 ${myChildren.length === 0 ? '<p class="text-center py-8 text-slate-500 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">No children linked yet. Click "Link Child" to search for your child and request a link.</p>' : myChildren.map(child => `
                     <div class="glass-panel rounded-2xl p-6 bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
                         <div class="flex items-center gap-4 mb-4">
-                            <div class="w-16 h-16 bg-gradient-to-br from-ridge-500 to-blue-500 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                            <div class="w-16 h-16 bg-ridge-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg">
                                 ${child.name.charAt(0)}
                             </div>
                             <div class="flex-1">
@@ -4712,11 +4847,11 @@ const views = {
                     ${myChildren.length === 0
                         ? '<p class="text-slate-500 text-center py-4">No children linked to your account yet.</p>'
                         : `<div class="space-y-4">
-                            <select id="payment-child" class="input-field w-full rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
+                            <select id="payment-child" class="input-field w-full rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-blue-50 dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
                                 ${myChildren.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}
                             </select>
                             <input type="number" id="payment-amount" class="input-field w-full rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Amount (₵)">
-                            <select id="payment-method" onchange="actions.toggleProofUpload()" class="input-field w-full rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-slate-700 dark:to-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
+                            <select id="payment-method" onchange="actions.toggleProofUpload()" class="input-field w-full rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
                                 <option value="cash">Cash (Pay at School)</option>
                                 <option value="momo">Mobile Money</option>
                             </select>
@@ -4724,7 +4859,7 @@ const views = {
                                 <label class="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">Upload Payment Proof (Screenshot)</label>
                                 <input type="file" id="payment-proof" class="input-field w-full rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" accept="image/*">
                             </div>
-                            <button onclick="actions.makePayment()" class="w-full py-4 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                            <button onclick="actions.makePayment()" class="w-full py-4 bg-ridge-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                                 <i class="fas fa-credit-card mr-2"></i> Submit Payment
                             </button>
                         </div>`
@@ -4758,7 +4893,7 @@ const views = {
                                             </span>
                                         </div>
                                         ${t.status === 'confirmed' ? `
-                                            <button onclick="actions.downloadReceipt('${t.id}')" class="w-full mt-2 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg text-sm font-bold hover:shadow-md transition-all flex items-center justify-center gap-2">
+                                            <button onclick="actions.downloadReceipt('${t.id}')" class="w-full mt-2 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:shadow-md transition-all flex items-center justify-center gap-2">
                                                 <i class="fas fa-download"></i> Download Receipt
                                             </button>
                                         ` : ''}
@@ -4813,7 +4948,7 @@ const views = {
                                 </div>
                             </div>
                             
-                            <a href="${report.file_url}" target="_blank" class="w-full block text-center px-4 py-3 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                            <a href="${report.file_url}" target="_blank" class="w-full block text-center px-4 py-3 bg-ridge-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                                 <i class="fas fa-eye mr-2"></i> View Report
                             </a>
                         </div>
@@ -5182,7 +5317,7 @@ const actions = {
         const html = `
             <div id="${modalId}" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:16px;overflow-y:auto;">
                 <div style="width:100%;max-width:480px;background:#1e293b;border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.08);margin:auto;flex-shrink:0;">
-                    <div style="background:linear-gradient(135deg,#1a56db,#7c3aed);padding:20px 24px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:1;">
+                    <div style="background:#16295a;padding:20px 24px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:1;">
                         <div style="width:40px;height:40px;background:rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;">
                             <i class="fas fa-user-edit" style="color:#fff;font-size:18px;"></i>
                         </div>
@@ -5227,7 +5362,7 @@ const actions = {
                         </div>
                         <div style="display:flex;gap:10px;margin-top:6px;">
                             <button id="${modalId}-cancel" style="flex:1;padding:11px 20px;border-radius:10px;border:1.5px solid #475569;background:transparent;color:#94a3b8;font-weight:600;font-size:14px;cursor:pointer;">Cancel</button>
-                            <button id="${modalId}-save" style="flex:2;padding:11px 20px;border-radius:10px;background:linear-gradient(135deg,#1a56db,#7c3aed);color:#fff;font-weight:700;font-size:14px;cursor:pointer;border:none;"><i class="fas fa-save" style="margin-right:8px;"></i>Save Changes</button>
+                            <button id="${modalId}-save" style="flex:2;padding:11px 20px;border-radius:10px;background:#16295a;color:#fff;font-weight:700;font-size:14px;cursor:pointer;border:none;"><i class="fas fa-save" style="margin-right:8px;"></i>Save Changes</button>
                         </div>
                     </div>
                 </div>
@@ -6304,7 +6439,7 @@ const actions = {
 
                     /* ── Amount block ── */
                     .amount-block {
-                        background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+                        background: #16295a;
                         border-radius: 12px;
                         padding: 20px;
                         text-align: center;
@@ -6394,7 +6529,7 @@ const actions = {
 
                     .print-btn {
                         padding: 12px 32px;
-                        background: linear-gradient(135deg, #1e3a5f, #2563eb);
+                        background: #16295a;
                         color: white;
                         border: none;
                         border-radius: 8px;
@@ -6420,7 +6555,7 @@ const actions = {
                     <div class="header">
                         <img src="1.png" alt="School Logo" class="logo-img"
                              onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-                        <div style="display:none;width:64px;height:64px;background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:8px;align-items:center;justify-content:center;color:white;font-size:28px;font-weight:bold;flex-shrink:0;">R</div>
+                        <div style="display:none;width:64px;height:64px;background:#16295a;border-radius:8px;align-items:center;justify-content:center;color:white;font-size:28px;font-weight:bold;flex-shrink:0;">R</div>
                         <div class="school-info">
                             <div class="school-name">Ridgevalley School</div>
                             <div class="school-tagline">Building Future Today</div>
@@ -6699,7 +6834,7 @@ const actions = {
             <div id="${modalId}" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:16px;overflow-y:auto;">
                 <div style="width:100%;max-width:560px;background:#1e293b;border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);margin:auto;flex-shrink:0;">
                     <!-- Header -->
-                    <div style="background:linear-gradient(135deg,#1a56db,#7c3aed);padding:20px 24px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:1;">
+                    <div style="background:#16295a;padding:20px 24px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:1;">
                         <div style="width:40px;height:40px;background:rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;">
                             <i class="fas fa-file-excel" style="color:#fff;font-size:18px;"></i>
                         </div>
@@ -6756,7 +6891,7 @@ const actions = {
                         </div>
                         <div style="padding:14px 24px;border-top:1px solid #334155;display:flex;justify-content:space-between;background:#1e293b;flex-shrink:0;">
                             <button onclick="actions._bulkWizardGoStep2('${modalId}')" style="padding:10px 20px;border-radius:8px;border:1.5px solid #475569;background:transparent;color:#94a3b8;font-weight:600;cursor:pointer;"><i class="fas fa-arrow-left mr-1"></i> Back</button>
-                            <button onclick="actions._bulkWizardFinish('${modalId}')" style="padding:10px 20px;border-radius:8px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-weight:700;cursor:pointer;border:none;"><i class="fas fa-upload mr-2"></i>Upload Students</button>
+                            <button onclick="actions._bulkWizardFinish('${modalId}')" style="padding:10px 20px;border-radius:8px;background:#059669;color:#fff;font-weight:700;cursor:pointer;border:none;"><i class="fas fa-upload mr-2"></i>Upload Students</button>
                         </div>
                     </div>
                 </div>
@@ -7228,7 +7363,7 @@ const notificationManager = {
         banner.innerHTML = `
             <style>@keyframes slideInRight{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}</style>
             <div style="display:flex;align-items:start;gap:12px;">
-                <div style="width:36px;height:36px;background:linear-gradient(135deg,#f59e0b,#ef4444);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <div style="width:36px;height:36px;background:#d97706;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="fas fa-bell" style="color:#fff;font-size:14px;"></i>
                 </div>
                 <div style="flex:1;min-width:0;">
@@ -7314,7 +7449,7 @@ const notificationManager = {
         const html = `
             <div id="${modalId}" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:10000;padding:16px;">
                 <div style="width:100%;max-width:400px;background:#1e293b;border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.08);">
-                    <div style="background:linear-gradient(135deg,#f59e0b,#ef4444);padding:20px 24px;text-align:center;">
+                    <div style="background:#d97706;padding:20px 24px;text-align:center;">
                         <div style="width:56px;height:56px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
                             <i class="fas fa-bell" style="color:#fff;font-size:24px;"></i>
                         </div>
@@ -7333,7 +7468,7 @@ const notificationManager = {
                         <p style="color:#64748b;font-size:11px;margin-bottom:20px;">You can change this anytime in your browser settings.</p>
                         <div style="display:flex;gap:10px;">
                             <button id="${modalId}-deny" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #475569;background:transparent;color:#94a3b8;font-weight:600;font-size:14px;cursor:pointer;">Not Now</button>
-                            <button id="${modalId}-allow" style="flex:1;padding:12px;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;font-weight:700;font-size:14px;cursor:pointer;border:none;">
+                            <button id="${modalId}-allow" style="flex:1;padding:12px;border-radius:10px;background:#d97706;color:#fff;font-weight:700;font-size:14px;cursor:pointer;border:none;">
                                 <i class="fas fa-bell mr-2"></i>Allow Notifications
                             </button>
                         </div>

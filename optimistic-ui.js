@@ -104,7 +104,9 @@
             position: fixed;
             bottom: 20px;
             left: 50%;
-            transform: translateX(-50%) translateY(80px);
+            transform: translateX(-50%) translateY(calc(100% + 40px));
+            opacity: 0;
+            visibility: hidden;
             background: #1e293b;
             color: #fbbf24;
             padding: 8px 18px;
@@ -115,10 +117,10 @@
             align-items: center;
             gap: 8px;
             z-index: 9999;
-            transition: transform 0.3s ease;
+            transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.2s ease, visibility 0s linear 0.3s;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
-        #rv-offline-badge.visible { transform: translateX(-50%) translateY(0); }
+        #rv-offline-badge.visible { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; transition-delay: 0s; }
 
         /* Loading bar at the very top */
         #rv-progress-bar {
@@ -126,7 +128,7 @@
             top: 0;
             left: 0;
             height: 3px;
-            background: linear-gradient(90deg, #1a56db, #10b981);
+            background: #059669;
             z-index: 9998;
             transition: width 0.25s ease, opacity 0.4s ease;
             opacity: 0;

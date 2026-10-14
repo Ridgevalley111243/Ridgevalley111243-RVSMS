@@ -1874,7 +1874,7 @@ function renderStudentsGrid() {
             <div onclick="openBulkEditor(${index})" class="student-card glass-panel rounded-2xl p-5 cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700 ${hasReport ? 'ring-1 ring-emerald-500/20' : ''}">
                 <div class="flex items-start justify-between mb-4">
                     <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                        <div class="w-12 h-12 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
                             ${student.name.charAt(0).toUpperCase()}
                         </div>
                         <div class="min-w-0">
@@ -2959,7 +2959,7 @@ function renderSummary(fields, savedData, studentId) {
     const total = calculateStudentTotal(studentId);
     const displayTotal = savedData.total_score || total || '';
     
-    return `<div class="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl p-6 border-2 border-emerald-200 dark:border-emerald-800">
+    return `<div class="bg-emerald-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl p-6 border-2 border-emerald-200 dark:border-emerald-800">
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm font-semibold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider mb-1">Grand Total</p>

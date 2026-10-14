@@ -17,7 +17,7 @@ function renderDataAnalysis() {
 
             <!-- Page header -->
             <div style="margin-bottom:28px;">
-                <h2 style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:700;
+                <h2 style="font-family:inherit;font-size:22px;font-weight:700;
                             color:var(--rv-navy,#0f2044);margin:0 0 4px;">
                     Data Analysis
                 </h2>

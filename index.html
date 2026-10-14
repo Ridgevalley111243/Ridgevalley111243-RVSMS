@@ -2,7 +2,14 @@
 <html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d1424">
+    <meta name="description" content="Ridgevalley Hybrid School management portal for administrators, teachers and parents.">
+    <link rel="icon" type="image/png" href="1.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
     <!-- Mobile Responsiveness Fix -->
     <link rel="stylesheet" href="mobile-fix.css">
     <title>Ridgevalley Hybrid SMS | Secure Cloud Portal</title>
@@ -44,22 +51,26 @@
             theme: {
                 extend: {
                     fontFamily: { 
-                        sans: ['Inter', 'sans-serif'] 
+                        sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'] 
                     },
                     colors: {
                         ridge: {
-                            50: '#f0fdf4',
-                            100: '#dcfce7',
-                            500: '#10b981',
-                            600: '#059669',
-                            700: '#047857',
-                            800: '#065f46',
-                            900: '#064e3b',
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            200: '#a7f3d0',
+                            300: '#6ee7b7',
+                            400: '#10b981',
+                            500: '#059669',
+                            600: '#047857',
+                            700: '#065f46',
+                            800: '#064e3b',
+                            900: '#053d2e',
+                            950: '#022c22',
                         }
                     },
                     animation: {
-                        'fade-in': 'fadeIn 0.5s ease-out',
-                        'slide-up': 'slideUp 0.5s ease-out',
+                        'fade-in': 'fadeIn 0.35s cubic-bezier(0.23, 1, 0.32, 1)',
+                        'slide-up': 'slideUp 0.4s cubic-bezier(0.23, 1, 0.32, 1)',
                         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                     },
                     keyframes: {
@@ -68,7 +79,7 @@
                             '100%': { opacity: '1' },
                         },
                         slideUp: {
-                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '0%': { transform: 'translateY(8px)', opacity: '0' },
                             '100%': { transform: 'translateY(0)', opacity: '1' },
                         }
                     }
@@ -78,8 +89,6 @@
     </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-        
         :root {
             --bg-primary: #ffffff;
             --bg-secondary: #f8fafc;
@@ -97,7 +106,7 @@
         }
 
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
             background-color: var(--bg-primary);
             color: var(--text-primary);
             transition: background-color 0.3s ease, color 0.3s ease;
@@ -162,24 +171,21 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.4);
+            background: #047857;
+            transition: background-color 160ms ease, transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
         }
 
         .btn-danger {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            transition: all 0.3s ease;
+            background: #dc2626;
+            transition: background-color 160ms ease, transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
         }
 
-        .btn-danger:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px -5px rgba(239, 68, 68, 0.4);
+        @media (hover: hover) and (pointer: fine) {
+            .btn-primary:hover { background: #065f46; }
+            .btn-danger:hover { background: #b91c1c; }
         }
+
+        .btn-primary:active, .btn-danger:active { transform: scale(0.98); }
 
         .status-badge {
             display: inline-flex;
@@ -216,19 +222,18 @@
         }
 
         .gradient-text {
-            background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #059669;
         }
 
         .card-hover {
-            transition: all 0.3s ease;
+            transition: box-shadow 200ms ease, transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
         }
 
-        .card-hover:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        @media (hover: hover) and (pointer: fine) {
+            .card-hover:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 2px 4px rgba(15, 32, 68, 0.06), 0 10px 28px rgba(15, 32, 68, 0.10);
+            }
         }
 
         ::-webkit-scrollbar {
@@ -264,13 +269,46 @@
         }
 
         .logo-container {
-            filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.1));
-            animation: float 6s ease-in-out infinite;
+            filter: drop-shadow(0 6px 12px rgba(15, 32, 68, 0.10));
         }
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
+        html {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        ::selection { background: rgba(5, 150, 105, 0.22); }
+
+        :focus-visible {
+            outline: 2px solid #059669;
+            outline-offset: 2px;
+        }
+
+        .input-field:focus-visible { outline: none; }
+
+        #auth-container .input-field { font-size: 16px; }
+
+        /* Role picker reads as a segmented control */
+        .role-btn {
+            color: #475569;
+            text-transform: none;
+            font-size: 13px;
+            letter-spacing: 0;
+            transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+        }
+        .dark .role-btn { color: #cbd5e1; }
+        .role-btn.ring-2 {
+            --tw-ring-offset-width: 0px;
+            --tw-ring-shadow: 0 0 #0000;
+            background: #ffffff !important;
+            color: #047857 !important;
+            box-shadow: 0 1px 2px rgba(15, 32, 68, 0.08), 0 1px 6px rgba(15, 32, 68, 0.06) !important;
+        }
+        .dark .role-btn.ring-2 { background: #1e293b !important; color: #6ee7b7 !important; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .animate-slide-up, .animate-fade-in { animation: fadeIn 160ms ease both !important; }
+            .logo-container, .animate-pulse { animation: none !important; }
         }
     </style>
 </head>
@@ -292,8 +330,7 @@
     </div>
 
     <!-- Landing Page -->
-    <section id="landing-page" class="fixed inset-0 z-[100] bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex flex-col overflow-y-auto transition-opacity duration-500">
-        <div class="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+    <section id="landing-page" class="fixed inset-0 z-[100] bg-[#f4f6fa] dark:bg-[#0d1424] flex flex-col overflow-y-auto transition-opacity duration-500">
         
         <div class="flex-grow flex flex-col items-center justify-center text-center p-6 relative z-10">
             <!-- School Logo -->
@@ -312,11 +349,8 @@
             </h2>
             
             <div class="flex flex-col gap-4 items-center">
-                <button onclick="app.enterPortal()" class="group relative px-12 py-6 bg-slate-900 dark:bg-ridge-600 text-white text-xl font-bold uppercase tracking-widest rounded-full overflow-hidden shadow-2xl hover:scale-105 transition-all duration-300 animate-slide-up">
-                    <span class="relative z-10 flex items-center gap-3">
-                        Enter Portal <i class="fas fa-arrow-right group-hover:translate-x-2 transition-transform"></i>
-                    </span>
-                    <div class="absolute inset-0 bg-gradient-to-r from-ridge-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <button onclick="app.enterPortal()" class="inline-flex items-center gap-3 px-8 py-4 bg-ridge-600 hover:bg-ridge-700 text-white text-base font-semibold rounded-xl shadow-sm animate-slide-up">
+                    Enter Portal <i class="fas fa-arrow-right text-sm"></i>
                 </button>
                 
                 <p class="text-sm text-slate-500 dark:text-slate-400 mt-4 flex items-center gap-2">
@@ -334,12 +368,10 @@
     </section>
 
     <!-- Auth Container -->
-    <main id="auth-container" class="hidden min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+    <main id="auth-container" class="hidden min-h-[100dvh] flex items-center justify-center p-4 bg-[#f4f6fa] dark:bg-[#0d1424]">
         <div class="w-full max-w-md space-y-8 animate-slide-up">
             <div class="text-center">
-                <div class="w-16 h-16 bg-ridge-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <i class="fas fa-user-shield text-2xl text-white"></i>
-                </div>
+                <img src="1.png" alt="Ridge Valley Hybrid School crest" width="72" height="72" class="w-[72px] h-[72px] object-contain mx-auto mb-5" onerror="this.style.display='none'">
                 <h2 class="text-3xl font-black tracking-tight" id="auth-title">Secure Login</h2>
                 <p class="text-sm mt-2 text-slate-500 font-medium">Ridgevalley Unified Security Gateway</p>
             </div>
@@ -347,13 +379,13 @@
             <div class="glass-panel p-8 rounded-3xl shadow-2xl">
                 <!-- Role Selection -->
                 <div class="flex gap-2 mb-8 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl">
-                    <button onclick="app.setRole('teacher')" id="btn-teacher" class="role-btn flex-1 py-3 rounded-xl text-xs font-bold uppercase transition-all flex items-center justify-center gap-2">
+                    <button onclick="app.setRole('teacher')" id="btn-teacher" class="role-btn flex-1 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2">
                         <i class="fas fa-chalkboard-teacher"></i> Teacher
                     </button>
-                    <button onclick="app.setRole('parent')" id="btn-parent" class="role-btn flex-1 py-3 rounded-xl text-xs font-bold uppercase transition-all flex items-center justify-center gap-2">
+                    <button onclick="app.setRole('parent')" id="btn-parent" class="role-btn flex-1 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2">
                         <i class="fas fa-users"></i> Parent
                     </button>
-                    <button onclick="app.setRole('admin')" id="btn-admin" class="role-btn flex-1 py-3 rounded-xl text-xs font-bold uppercase transition-all flex items-center justify-center gap-2">
+                    <button onclick="app.setRole('admin')" id="btn-admin" class="role-btn flex-1 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2">
                         <i class="fas fa-user-shield"></i> Admin
                     </button>
                 </div>
@@ -391,14 +423,14 @@
                     </div>
 
                     <!-- Submit Button -->
-                    <button id="auth-submit-btn" onclick="auth.handleAction()" class="w-full py-4 bg-ridge-500 text-white rounded-2xl font-bold uppercase tracking-wider text-sm shadow-lg hover:shadow-xl transition-all btn-primary flex items-center justify-center gap-2">
+                    <button id="auth-submit-btn" onclick="auth.handleAction()" class="w-full py-3.5 bg-ridge-600 text-white rounded-xl font-semibold text-[15px] shadow-sm btn-primary flex items-center justify-center gap-2">
                         <i class="fas fa-sign-in-alt"></i> <span id="auth-submit-text">Authorize Access</span>
                     </button>
 
                     <!-- Toggle Auth Mode -->
                     <div class="text-center pt-4 border-t border-slate-200 dark:border-slate-700">
                         <p class="text-xs text-slate-500 mb-2" id="auth-mode-text">New to Ridgevalley?</p>
-                        <button onclick="app.toggleAuthMode()" id="toggle-auth-btn" class="text-xs font-bold uppercase text-ridge-600 tracking-wider hover:tracking-widest transition-all">
+                        <button onclick="app.toggleAuthMode()" id="toggle-auth-btn" class="text-sm font-semibold text-ridge-700 dark:text-ridge-400 hover:text-ridge-800 underline-offset-4 hover:underline">
                             Create Account
                         </button>
                     </div>
@@ -435,7 +467,7 @@
                     <input type="email" id="reset-email" class="input-field w-full rounded-2xl px-12 py-4 text-sm" placeholder="Enter your email">
                 </div>
                 
-                <button onclick="auth.sendResetLink()" class="w-full py-4 bg-ridge-500 text-white rounded-2xl font-bold uppercase text-sm shadow-lg hover:shadow-xl transition-all btn-primary">
+                <button onclick="auth.sendResetLink()" class="w-full py-3.5 bg-ridge-600 text-white rounded-xl font-semibold text-[15px] shadow-sm btn-primary">
                     Send Reset Link
                 </button>
                 
@@ -455,11 +487,9 @@
                 </button>
                 
                 <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-gradient-to-br from-ridge-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
-                        <i class="fas fa-graduation-cap text-white text-sm"></i>
-                    </div>
+                    <img src="1.png" alt="" width="32" height="32" class="w-8 h-8 object-contain" onerror="this.style.display='none'">
                     <div>
-                        <h1 class="text-lg font-black tracking-tight bg-gradient-to-r from-ridge-600 to-blue-600 bg-clip-text text-transparent">Ridgevalley</h1>
+                        <h1 class="text-lg font-extrabold tracking-tight text-[#0f2044] dark:text-white">Ridgevalley</h1>
                     </div>
                 </div>
             </div>
@@ -493,7 +523,7 @@
     <aside id="admin-sidebar" class="fixed left-0 top-16 h-[calc(100vh-4rem)] w-72 glass-panel border-r border-slate-200 dark:border-slate-700 transform -translate-x-full transition-transform duration-300 z-[85] overflow-y-auto">
         <div class="p-6 border-b border-slate-200 dark:border-slate-700">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-ridge-500 to-blue-600 flex items-center justify-center text-white font-bold" id="user-avatar">
+                <div class="w-10 h-10 rounded-[10px] bg-ridge-600 flex items-center justify-center text-white font-bold" id="user-avatar">
                     A
                 </div>
                 <div>

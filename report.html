@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="1.png">
     <title>Ridgevalley Report System | Teacher Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
@@ -36,6 +38,15 @@
         }
     </script>
     <style>
+        html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+        ::selection { background: rgba(5, 150, 105, 0.22); }
+        :focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
+        table { font-variant-numeric: tabular-nums; }
+        button { touch-action: manipulation; }
+        button:not(:disabled):active { transform: scale(0.97); }
+        @media (max-width: 768px) { input, select, textarea { font-size: 16px !important; } }
+        @media (prefers-reduced-motion: reduce) { .animate-bounce, .animate-pulse { animation: none !important; } button:not(:disabled):active { transform: none; } }
+
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; }
         .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(226, 232, 240, 0.8); }
         .dark body { background: #0f172a; color: #f1f5f9; }

@@ -56,7 +56,7 @@ const financialReportGenerator = (() => {
             <!-- Section heading -->
             <div style="margin-bottom:28px;">
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
-                    <h2 style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:700;
+                    <h2 style="font-family:inherit;font-size:22px;font-weight:700;
                                 color:var(--rv-navy,#0f2044);margin:0;">
                         Financial Report Generator
                     </h2>
@@ -189,7 +189,7 @@ const financialReportGenerator = (() => {
                         <button id="frg-btn-docx" onclick="financialReportGenerator.generateDOCX()"
                                 style="display:inline-flex;align-items:center;gap:8px;
                                        padding:10px 22px;border-radius:10px;border:none;
-                                       background:linear-gradient(135deg,#1a56db,#0891b2);
+                                       background:#1d4ed8;
                                        color:#fff;font-size:13px;font-weight:700;
                                        cursor:pointer;box-shadow:0 4px 10px rgba(26,86,219,.3);">
                             <i class="fas fa-file-word"></i>

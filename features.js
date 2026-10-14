@@ -384,7 +384,7 @@ const financialSecurity = {
                     box-shadow:0 24px 64px rgba(0,0,0,0.4);
                     transform:translateY(20px);transition:transform .25s ease;background:#0f172a;">
                     <!-- Header -->
-                    <div style="background:linear-gradient(135deg,#1a56db,#0891b2);padding:24px;text-align:center;">
+                    <div style="background:#1d4ed8;padding:24px;text-align:center;">
                         <div style="width:56px;height:56px;background:rgba(255,255,255,0.15);border-radius:50%;
                                     display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
                             <i class="fas fa-envelope-open-text" style="color:#fff;font-size:24px;"></i>
@@ -412,7 +412,7 @@ const financialSecurity = {
                         </div>
                         <p id="${modalId}-error" style="color:#f87171;font-size:12px;text-align:center;min-height:18px;margin:0 0 16px;"></p>
                         <button id="${modalId}-verify" onclick="financialSecurity._verifyEmailCode('${modalId}')"
-                            style="width:100%;padding:12px;background:linear-gradient(135deg,#1a56db,#0891b2);
+                            style="width:100%;padding:12px;background:#1d4ed8;
                                    color:#fff;border:none;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;">
                             <i class="fas fa-unlock" style="margin-right:8px;"></i>Verify & Unlock
                         </button>
@@ -569,7 +569,7 @@ const featureViews = {
                     const term = (ay?.terms || []).find(t => t.id === termId);
                     weeksTableHtml += `
                         <div class="glass-panel rounded-2xl overflow-hidden bg-white dark:bg-slate-800 shadow-lg mb-4">
-                            <div class="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-700 border-b border-slate-200 dark:border-slate-600">
+                            <div class="px-6 py-4 bg-blue-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
                                 <h4 class="font-bold text-slate-800 dark:text-slate-100">
                                     <i class="fas fa-calendar-alt text-blue-500 mr-2"></i>
                                     ${ay?.year || ayId} — ${term?.name || 'General'}
@@ -682,7 +682,7 @@ const featureViews = {
                     </div>
                     <div class="flex items-end">
                         <button onclick="featureActions.saveWeek()"
-                            class="w-full py-3 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all btn-primary">
+                            class="w-full py-3 bg-ridge-600 text-white rounded-xl font-bold hover:shadow-lg transition-all btn-primary">
                             <i class="fas fa-plus mr-2"></i>Create Week
                         </button>
                     </div>
@@ -782,7 +782,7 @@ const featureViews = {
                     </div>
                 </div>
                 <button onclick="featureActions.saveBill()"
-                    class="px-8 py-3 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all btn-primary">
+                    class="px-8 py-3 bg-ridge-600 text-white rounded-xl font-bold hover:shadow-lg transition-all btn-primary">
                     <i class="fas fa-plus mr-2"></i>Publish Bill
                 </button>
             </div>
@@ -945,7 +945,7 @@ const featureViews = {
                         A verification code will be sent to the registered admin email to unlock.
                     </p>
                     <button onclick="financialSecurity.requestEmailVerification()"
-                        class="px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold text-base hover:shadow-lg transition-all w-full btn-primary">
+                        class="px-8 py-3 bg-amber-500 text-white rounded-xl font-bold text-base hover:shadow-lg transition-all w-full btn-primary">
                         <i class="fas fa-envelope mr-2"></i>Send Verification Email
                     </button>
                     <p class="text-xs text-slate-400 mt-3">A 6-digit code will be sent to the registered admin email • Expires in 10 minutes</p>
@@ -974,13 +974,13 @@ const featureViews = {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                 <div class="glass-panel rounded-2xl p-6 bg-white dark:bg-slate-800 shadow-lg">
                     <h3 class="text-lg font-bold mb-4 text-slate-800 dark:text-white">Set Fee Structure</h3>
-                    <select id="fee-scope" class="input-field w-full rounded-xl px-4 py-3 mb-3 border border-slate-300 dark:border-slate-600 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
+                    <select id="fee-scope" class="input-field w-full rounded-xl px-4 py-3 mb-3 border border-slate-300 dark:border-slate-600 bg-blue-50 dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
                         <option value="global">Global (All Students)</option>
                         ${[...new Set((state.classes || []).map(c => c.level))].map(l => `<option value="${l}">Level: ${l}</option>`).join('')}
                     </select>
                     <input type="number" id="fee-amount" class="input-field w-full rounded-xl px-4 py-3 mb-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Amount (₵)">
                     <input type="text" id="fee-desc" class="input-field w-full rounded-xl px-4 py-3 mb-4 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Description">
-                    <button onclick="actions.addFee()" class="w-full py-3 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                    <button onclick="actions.addFee()" class="w-full py-3 bg-ridge-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                         Publish Fee
                     </button>
                 </div>
@@ -1151,7 +1151,7 @@ const featureViews = {
                         <span class="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full font-bold">→ Appear on Report Cards</span>
                     </h3>
                     <button onclick="featureActions.navigateToRoute('billing')"
-                        class="px-4 py-2 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all">
+                        class="px-4 py-2 bg-ridge-600 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all">
                         <i class="fas fa-plus mr-2"></i>Manage Bills
                     </button>
                 </div>
@@ -1161,7 +1161,7 @@ const featureViews = {
                            <p class="font-semibold">No bills published yet.</p>
                            <p class="text-sm mt-1">Bills you create will automatically appear on students' report cards.</p>
                            <button onclick="featureActions.navigateToRoute('billing')"
-                               class="mt-4 px-6 py-2.5 bg-gradient-to-r from-ridge-500 to-blue-600 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all">
+                               class="mt-4 px-6 py-2.5 bg-ridge-600 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all">
                                Create First Bill
                            </button>
                        </div>`
@@ -1337,7 +1337,7 @@ const featureViews = {
                 </div>
                 ${isAuthorized && !isLocked ? `
                     <button onclick="financialSecurity.requireAccess(() => featureActions.exportFinancialReport())"
-                        class="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all">
+                        class="px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all">
                         <i class="fas fa-download mr-2"></i>Export Report
                     </button>
                 ` : ''}
@@ -1599,7 +1599,7 @@ const featureActions = {
                             <button onclick="document.getElementById('${modalId}').remove()"
                                 style="flex:1;padding:11px;background:transparent;border:1.5px solid #334155;border-radius:12px;color:#94a3b8;font-weight:700;cursor:pointer;font-size:14px;">Cancel</button>
                             <button onclick="featureActions._commitEditWeek('${modalId}','${w.id}')"
-                                style="flex:1;padding:11px;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:12px;color:#fff;font-weight:700;cursor:pointer;font-size:14px;">
+                                style="flex:1;padding:11px;background:#059669;border:none;border-radius:12px;color:#fff;font-weight:700;cursor:pointer;font-size:14px;">
                                 Save Changes
                             </button>
                         </div>
@@ -1734,7 +1734,7 @@ const featureActions = {
         document.body.insertAdjacentHTML('beforeend', `
             <div id="${modalId}" style="position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;opacity:0;transition:opacity .25s;">
                 <div style="background:#0f172a;border-radius:20px;max-width:620px;width:100%;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.5);transform:translateY(16px);transition:transform .25s;">
-                    <div style="background:linear-gradient(135deg,#1a56db,#0891b2);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;">
+                    <div style="background:#1d4ed8;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;">
                         <div>
                             <h3 style="color:#fff;font-size:17px;font-weight:700;margin:0;">${escapeHtml(bill.bill_name)}</h3>
                             <p style="color:rgba(255,255,255,0.7);font-size:12px;margin:2px 0 0;">${bill.bill_category} • ₵${parseFloat(bill.amount).toLocaleString('en-GH',{minimumFractionDigits:2})} • ${students.length} students</p>

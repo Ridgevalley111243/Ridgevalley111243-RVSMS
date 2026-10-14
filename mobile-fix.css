@@ -88,8 +88,8 @@ body.sidebar-open {
         top: 0 !important;             /* Cover full height incl. nav bar */
         bottom: 0 !important;
         left: 0 !important;
-        height: 100dvh !important;    /* Dynamic viewport height (Safari fix) */
         height: 100vh !important;     /* Fallback */
+        height: 100dvh !important;    /* Dynamic viewport height (Safari fix) */
         z-index: 9500 !important;     /* Above overlay (9000) and nav (90) */
         transform: translateX(-100%) !important;
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
@@ -144,15 +144,15 @@ body.sidebar-open {
         -webkit-overflow-scrolling: touch !important;
         overscroll-behavior: contain !important;
         flex: 1 !important;
-        padding-bottom: 80px !important; /* Space for logout button */
+        padding-bottom: 8px !important;  /* Logout is the last, pinned item */
     }
 
     /* Section labels — not interactive, make them smaller */
     #admin-sidebar .rv-nav-section {
         pointer-events: none !important;
-        font-size: 9px !important;
-        padding: 12px 16px 4px !important;
-        letter-spacing: 1.5px !important;
+        font-size: 10.5px !important;
+        padding: 14px 24px 6px !important;
+        letter-spacing: 0.1em !important;
     }
 
     /* Logout button */
