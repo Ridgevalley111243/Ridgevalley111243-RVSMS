@@ -121,8 +121,8 @@
         }
 
         .dark .glass-panel {
-            background: rgba(30, 41, 59, 0.7);
-            border: 1px solid rgba(51, 65, 85, 0.5);
+            background: rgba(15, 15, 15, 0.92);
+            border: 1px solid #262626;
         }
 
         .sidebar-item {
@@ -160,8 +160,8 @@
         }
 
         .dark .input-field {
-            background: rgba(30, 41, 59, 0.9);
-            border-color: #475569;
+            background: #141414;
+            border-color: #2e2e2e;
             color: white;
         }
 
@@ -289,6 +289,34 @@
 
         #auth-container .input-field { font-size: 16px; }
 
+        /* Faded classroom photo behind the welcome and login screens */
+        .rv-bg-photo {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .rv-bg-photo--fixed { position: fixed; }
+        .rv-bg-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: 50% 60%;
+            opacity: 0.2;
+        }
+        .dark .rv-bg-photo img { opacity: 0.22; }
+        /* Soft wash so headings and the form always read cleanly */
+        .rv-bg-photo::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at center, rgba(244, 246, 250, 0.55) 0%, rgba(244, 246, 250, 0) 70%);
+        }
+        .dark .rv-bg-photo::after {
+            background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 70%);
+        }
+
         /* Role picker reads as a segmented control */
         .role-btn {
             color: #475569;
@@ -369,11 +397,11 @@
     </section>
 
     <!-- Auth Container -->
-    <main id="auth-container" class="hidden min-h-[100dvh] flex items-center justify-center p-4 lg:pl-[calc(50%+1rem)] bg-[#f4f6fa] dark:bg-black">
-        <div class="hidden lg:block fixed inset-y-0 left-0 w-1/2 overflow-hidden bg-slate-200 dark:bg-neutral-900" aria-hidden="false">
-            <img src="assets/photos/login-1600.webp" srcset="assets/photos/login-800.webp 800w, assets/photos/login-1600.webp 1600w" sizes="50vw" alt="Pupils at their desks in a tidy, decorated classroom" width="1600" height="1060" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover" style="object-position:50% 55%;">
+    <main id="auth-container" class="hidden relative min-h-[100dvh] flex items-center justify-center p-4 bg-[#f4f6fa] dark:bg-black">
+        <div class="rv-bg-photo rv-bg-photo--fixed" aria-hidden="true">
+            <img src="assets/photos/login-1600.webp" srcset="assets/photos/login-800.webp 800w, assets/photos/login-1600.webp 1600w" sizes="100vw" alt="" width="1600" height="1060" decoding="async" loading="lazy">
         </div>
-        <div class="w-full max-w-md space-y-8 animate-slide-up">
+        <div class="relative z-10 w-full max-w-md space-y-8 animate-slide-up">
             <div class="text-center">
                 <img src="1.png" alt="Ridge Valley Hybrid School crest" width="72" height="72" class="w-[72px] h-[72px] object-contain mx-auto mb-5" onerror="this.style.display='none'">
                 <h2 class="text-3xl font-black tracking-tight" id="auth-title">Secure Login</h2>

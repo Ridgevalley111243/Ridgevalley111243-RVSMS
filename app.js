@@ -731,11 +731,11 @@ const app = {
             const landing = document.getElementById('landing-page');
             if (landing) {
                 landing.innerHTML = `
-                    <div class="rv-welcome min-h-[100dvh] grid lg:grid-cols-2">
-                        <div class="relative h-[36vh] min-h-[220px] lg:h-auto lg:order-2 overflow-hidden bg-slate-200 dark:bg-neutral-900">
-                            <img src="assets/photos/welcome-1600.webp" srcset="assets/photos/welcome-800.webp 800w, assets/photos/welcome-1600.webp 1600w" sizes="(min-width: 1024px) 50vw, 100vw" alt="Pupils working at their desks in a bright classroom" width="1600" height="1060" fetchpriority="high" decoding="async" class="absolute inset-0 w-full h-full object-cover" style="object-position:62% 88%;">
+                    <div class="rv-welcome relative min-h-[100dvh] flex">
+                        <div class="rv-bg-photo" aria-hidden="true">
+                            <img src="assets/photos/welcome-1600.webp" srcset="assets/photos/welcome-800.webp 800w, assets/photos/welcome-1600.webp 1600w" sizes="100vw" alt="" width="1600" height="1060" decoding="async" fetchpriority="high">
                         </div>
-                        <div class="flex flex-col items-center justify-center px-6 py-12 text-center lg:order-1">
+                        <div class="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
                         <div class="mb-10 animate-fade-in">
                             <img src="1.png" alt="Ridge Valley Hybrid School crest" width="132" height="132" class="w-28 h-28 md:w-32 md:h-32 object-contain mx-auto mb-8 drop-shadow-sm" onerror="this.style.display='none'">
                             <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight text-[#0f2044] dark:text-white mb-3">Ridgevalley SMS</h1>
