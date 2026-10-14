@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d1424">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
     <meta name="description" content="Ridgevalley Hybrid School management portal for administrators, teachers and parents.">
     <link rel="icon" type="image/png" href="1.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
     <!-- Mobile Responsiveness Fix -->
     <link rel="stylesheet" href="mobile-fix.css">
+    <link rel="stylesheet" href="dark-black.css">
     <title>Ridgevalley Hybrid SMS | Secure Cloud Portal</title>
     
     <!-- Sentry Monitoring -->   
@@ -98,11 +99,11 @@
         }
 
         .dark {
-            --bg-primary: #0f172a;
-            --bg-secondary: #1e293b;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --border-color: #334155;
+            --bg-primary: #000000;
+            --bg-secondary: #0f0f0f;
+            --text-primary: #f5f5f5;
+            --text-secondary: #a3a3a3;
+            --border-color: #262626;
         }
 
         body {
@@ -304,7 +305,7 @@
             color: #047857 !important;
             box-shadow: 0 1px 2px rgba(15, 32, 68, 0.08), 0 1px 6px rgba(15, 32, 68, 0.06) !important;
         }
-        .dark .role-btn.ring-2 { background: #1e293b !important; color: #6ee7b7 !important; }
+        .dark .role-btn.ring-2 { background: #1a1a1a !important; color: #6ee7b7 !important; }
 
         @media (prefers-reduced-motion: reduce) {
             .animate-slide-up, .animate-fade-in { animation: fadeIn 160ms ease both !important; }
@@ -330,7 +331,7 @@
     </div>
 
     <!-- Landing Page -->
-    <section id="landing-page" class="fixed inset-0 z-[100] bg-[#f4f6fa] dark:bg-[#0d1424] flex flex-col overflow-y-auto transition-opacity duration-500">
+    <section id="landing-page" class="fixed inset-0 z-[100] bg-[#f4f6fa] dark:bg-black flex flex-col overflow-y-auto transition-opacity duration-500">
         
         <div class="flex-grow flex flex-col items-center justify-center text-center p-6 relative z-10">
             <!-- School Logo -->
@@ -368,7 +369,10 @@
     </section>
 
     <!-- Auth Container -->
-    <main id="auth-container" class="hidden min-h-[100dvh] flex items-center justify-center p-4 bg-[#f4f6fa] dark:bg-[#0d1424]">
+    <main id="auth-container" class="hidden min-h-[100dvh] flex items-center justify-center p-4 lg:pl-[calc(50%+1rem)] bg-[#f4f6fa] dark:bg-black">
+        <div class="hidden lg:block fixed inset-y-0 left-0 w-1/2 overflow-hidden bg-slate-200 dark:bg-neutral-900" aria-hidden="false">
+            <img src="assets/photos/login-1600.webp" srcset="assets/photos/login-800.webp 800w, assets/photos/login-1600.webp 1600w" sizes="50vw" alt="Pupils at their desks in a tidy, decorated classroom" width="1600" height="1060" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover" style="object-position:50% 55%;">
+        </div>
         <div class="w-full max-w-md space-y-8 animate-slide-up">
             <div class="text-center">
                 <img src="1.png" alt="Ridge Valley Hybrid School crest" width="72" height="72" class="w-[72px] h-[72px] object-contain mx-auto mb-5" onerror="this.style.display='none'">

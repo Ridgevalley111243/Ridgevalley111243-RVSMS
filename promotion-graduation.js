@@ -1059,7 +1059,7 @@ const promotionViews = {
                                 <div id="class-group-${groupId}" style="display:none;">
                                     ${students.map(s => {
                                         const nextC = getNextClass(s);
-                                        const nextLbl = nextC ? `${nextC.level} - ${nextC.grade}` : '⚠️ Create target class first';
+                                        const nextLbl = nextC ? `${nextC.level} - ${nextC.grade}` : 'Create target class first';
                                         return `
                                             <div style="display:flex;align-items:center;padding:12px 18px;border-top:1px solid var(--rv-border);gap:12px;"
                                                 id="promo-row-${s.id}">
@@ -1804,7 +1804,7 @@ const promotionActions = {
         container.insertAdjacentHTML('beforeend', bannerHtml);
     };
 
-    console.log('[promotion-graduation.js] Integration patches applied ✓');
+    console.log('[promotion-graduation.js] Integration patches applied');
 })();
 
 // ── Expose globally for onclick handlers ──────────────────────────────────────────

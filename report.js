@@ -1613,7 +1613,7 @@ function updateClassPositionButton() {
     if (!btn) return;
 
     const isActive = state.calculateClassPosition;
-    btn.textContent = isActive ? '🏅 Deactivate Position' : '🏅 Activate Position';
+    btn.textContent = isActive ? 'Deactivate Position' : 'Activate Position';
     btn.className = btn.className
         .replace(/bg-\S+/g, '')
         .replace(/text-\S+/g, '')
@@ -2256,7 +2256,7 @@ async function renderEditorContent() {
                 onclick="toggleClassPosition()"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
                        ${isActive ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-500 hover:bg-slate-600 text-white'}">
-                🏅 ${isActive ? 'Deactivate' : 'Activate'} Class Position
+                <i class="fas fa-medal" aria-hidden="true"></i> ${isActive ? 'Deactivate' : 'Activate'} Class Position
             </button>
             ${state.isTerm3 ? '<span class="text-xs text-emerald-400 font-medium">(Auto — Term 3)</span>' : ''}
         `;
@@ -2642,8 +2642,8 @@ function renderSensesTable(fields, savedData) {
                     <span class="font-semibold text-slate-800 dark:text-slate-200">${field.label}</span>
                     <select class="input-field w-32 px-3 py-2 rounded-lg text-sm font-bold" data-field="${escHtml(field.name)}">
                         <option value="">Select</option>
-                        <option value="Yes" ${value === 'Yes' ? 'selected' : ''} class="text-emerald-600">Yes ✓</option>
-                        <option value="No" ${value === 'No' ? 'selected' : ''} class="text-red-600">No ✗</option>
+                        <option value="Yes" ${value === 'Yes' ? 'selected' : ''} class="text-emerald-600">Yes</option>
+                        <option value="No" ${value === 'No' ? 'selected' : ''} class="text-red-600">No</option>
                     </select>
                 </div>
             `;

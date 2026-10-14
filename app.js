@@ -731,7 +731,11 @@ const app = {
             const landing = document.getElementById('landing-page');
             if (landing) {
                 landing.innerHTML = `
-                    <div class="rv-welcome min-h-[100dvh] flex flex-col items-center justify-center px-6 py-12 text-center">
+                    <div class="rv-welcome min-h-[100dvh] grid lg:grid-cols-2">
+                        <div class="relative h-[36vh] min-h-[220px] lg:h-auto lg:order-2 overflow-hidden bg-slate-200 dark:bg-neutral-900">
+                            <img src="assets/photos/welcome-1600.webp" srcset="assets/photos/welcome-800.webp 800w, assets/photos/welcome-1600.webp 1600w" sizes="(min-width: 1024px) 50vw, 100vw" alt="Pupils working at their desks in a bright classroom" width="1600" height="1060" fetchpriority="high" decoding="async" class="absolute inset-0 w-full h-full object-cover" style="object-position:62% 88%;">
+                        </div>
+                        <div class="flex flex-col items-center justify-center px-6 py-12 text-center lg:order-1">
                         <div class="mb-10 animate-fade-in">
                             <img src="1.png" alt="Ridge Valley Hybrid School crest" width="132" height="132" class="w-28 h-28 md:w-32 md:h-32 object-contain mx-auto mb-8 drop-shadow-sm" onerror="this.style.display='none'">
                             <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight text-[#0f2044] dark:text-white mb-3">Ridgevalley SMS</h1>
@@ -740,6 +744,7 @@ const app = {
                         <button onclick="app.enterPortal()" class="inline-flex items-center gap-3 px-7 py-3.5 bg-ridge-600 hover:bg-ridge-700 text-white rounded-xl font-semibold text-base shadow-sm">
                             Enter Portal <i class="fas fa-arrow-right text-sm"></i>
                         </button>
+                        </div>
                     </div>
                 `;
                 landing.classList.remove('hidden');
@@ -1217,10 +1222,10 @@ const app = {
             if (cpw.length > 0) {
                 matchMsg.classList.remove('hidden');
                 if (pw === cpw) {
-                    matchMsg.textContent = '✓ Passwords match';
+                    matchMsg.textContent = 'Passwords match';
                     matchMsg.className   = 'text-xs mt-1 text-emerald-600 dark:text-emerald-400 font-semibold';
                 } else {
-                    matchMsg.textContent = '✗ Passwords do not match';
+                    matchMsg.textContent = 'Passwords do not match';
                     matchMsg.className   = 'text-xs mt-1 text-red-500 font-semibold';
                 }
             } else {
@@ -1376,7 +1381,7 @@ const ghanaPhone = {
             const err = document.createElement('p');
             err.className = 'gh-phone-err';
             err.style.cssText = 'color:#ef4444;font-size:11px;margin-top:4px;';
-            err.textContent = '⚠ ' + message;
+            err.textContent = message;
             inputEl.parentElement?.appendChild(err);
             inputEl.style.borderColor = '#ef4444';
         } else {
@@ -2245,11 +2250,12 @@ const ui = {
                 }
 
                 .dark {
-                    --rv-surface: #172033;
-                    --rv-bg:      #0d1424;
-                    --rv-border:  #2a3650;
-                    --rv-text:    #eef2f8;
-                    --rv-muted:   #9aa6bb;
+                    --rv-navy:    #000000;
+                    --rv-surface: #0f0f0f;
+                    --rv-bg:      #000000;
+                    --rv-border:  #262626;
+                    --rv-text:    #f5f5f5;
+                    --rv-muted:   #a3a3a3;
                     --rv-green-soft: rgba(5,150,105,0.14);
                     --rv-shadow:  0 1px 2px rgba(0,0,0,0.3), 0 2px 10px rgba(0,0,0,0.25);
                     --rv-shadow-md: 0 2px 4px rgba(0,0,0,0.35), 0 10px 28px rgba(0,0,0,0.35);
@@ -2630,8 +2636,8 @@ const ui = {
                 /* ── Toasts sit below the nav and read as one family ── */
                 .toastify.rv-toast {
                     margin-top: calc(var(--rv-nav-h) - 4px);
-                    background: #0f172a !important;
-                    color: #f8fafc !important;
+                    background: #111111 !important;
+                    color: #fafafa !important;
                     font-family: inherit;
                     font-size: 13.5px;
                     font-weight: 500;
@@ -2671,7 +2677,12 @@ const ui = {
 
                 /* Themed scrollbars */
                 * { scrollbar-color: #c3cad6 transparent; }
-                .dark * { scrollbar-color: #3a4763 transparent; }
+                .dark * { scrollbar-color: #333333 transparent; }
+                .dark #admin-sidebar { border-right: 1px solid #1f1f1f !important; }
+                .dark #admin-sidebar .sidebar-item.active { background: #1a1a1a !important; box-shadow: none !important; }
+                .dark #admin-sidebar .sidebar-item:hover { background: #141414 !important; }
+                .dark #admin-sidebar #user-avatar, .dark .rv-user-card { background: #1a1a1a !important; }
+                .dark #main-nav { background: #000000 !important; border-bottom-color: #1f1f1f !important; }
                 #admin-sidebar { scrollbar-color: rgba(255,255,255,0.18) transparent; }
 
                 /* ── Desktop: the sidebar stays open beside the content ── */
@@ -2999,12 +3010,12 @@ const views = {
         const pendingReports = state.receivedReports.filter(r => r.status === 'pending_review').length;
 
         const stats = [
-            { label: 'Students',       value: totalStudents,          icon: 'fa-user-graduate',      color: '#1a56db', bg: 'rgba(26,86,219,0.1)',  action: "views.showDetailModal('students')" },
-            { label: 'Teaching Staff', value: totalTeachers,          icon: 'fa-chalkboard-teacher', color: '#059669', bg: 'rgba(5,150,105,0.1)',   action: "views.showDetailModal('teachers')" },
-            { label: 'Classes',        value: totalClasses,           icon: 'fa-school',             color: '#7c3aed', bg: 'rgba(124,58,237,0.1)',  action: "views.showDetailModal('classes')" },
-            { label: 'Parents',        value: totalParents,           icon: 'fa-users',              color: '#0891b2', bg: 'rgba(8,145,178,0.1)',   action: '' },
-            { label: 'Revenue (₵)',    value: totalRevenue.toLocaleString(), icon: 'fa-wallet',      color: '#059669', bg: 'rgba(5,150,105,0.1)',   action: "views.showDetailModal('revenue')" },
-            { label: 'Arrears (₵)',    value: totalArrears.toLocaleString(), icon: 'fa-exclamation-triangle', color: '#dc2626', bg: 'rgba(220,38,38,0.1)', action: "views.showDetailModal('arrears')" },
+            { label: 'Students',       value: totalStudents,          icon: 'fa-user-graduate',      img: 'students', color: '#1a56db', bg: 'rgba(26,86,219,0.1)',  action: "views.showDetailModal('students')" },
+            { label: 'Teaching Staff', value: totalTeachers,          icon: 'fa-chalkboard-teacher', img: 'teachers', color: '#059669', bg: 'rgba(5,150,105,0.1)',   action: "views.showDetailModal('teachers')" },
+            { label: 'Classes',        value: totalClasses,           icon: 'fa-school',             img: 'classes', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)',  action: "views.showDetailModal('classes')" },
+            { label: 'Parents',        value: totalParents,           icon: 'fa-users',              img: 'parents', color: '#0891b2', bg: 'rgba(8,145,178,0.1)',   action: '' },
+            { label: 'Revenue (₵)',    value: totalRevenue.toLocaleString(), icon: 'fa-wallet',      img: 'revenue', color: '#059669', bg: 'rgba(5,150,105,0.1)',   action: "views.showDetailModal('revenue')" },
+            { label: 'Arrears (₵)',    value: totalArrears.toLocaleString(), icon: 'fa-exclamation-triangle', img: 'arrears', color: '#dc2626', bg: 'rgba(220,38,38,0.1)', action: "views.showDetailModal('arrears')" },
         ];
 
         const html = `
@@ -3035,9 +3046,7 @@ const views = {
                     return `
                     <div onclick="${s.action}" style="background:var(--rv-surface);border:1px solid var(--rv-border);border-radius:14px;padding:20px;box-shadow:var(--rv-shadow,0 2px 16px rgba(15,32,68,0.08));cursor:${s.action ? 'pointer' : 'default'};transition:all 0.18s;position:relative;" onmouseover="if('${s.action}')this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(15,32,68,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow='var(--rv-shadow)'">
                         ${_eye}
-                        <div style="width:44px;height:44px;border-radius:12px;background:${s.bg};display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-                            <i class="fas ${s.icon}" style="color:${s.color};font-size:18px;"></i>
-                        </div>
+                        <img src="assets/3d/${s.img}.png" alt="" width="52" height="52" loading="lazy" decoding="async" style="width:52px;height:52px;object-fit:contain;margin:-4px 0 12px -4px;display:block;">
                         <div style="font-family:inherit;font-size:28px;font-weight:700;color:${_vc};line-height:1;">${_valHtml}</div>
                         <div style="font-size:11px;font-weight:700;color:var(--rv-muted);text-transform:uppercase;letter-spacing:0.8px;margin-top:4px;">${s.label}</div>
                     </div>
@@ -3083,7 +3092,7 @@ const views = {
                         ${allArrears.length > 5 ? `<button onclick="ui.route('finance')" style="font-size:11px;font-weight:700;color:#1a56db;background:none;border:none;cursor:pointer;">View all →</button>` : ''}
                     </div>
                     ${allArrears.length === 0
-                        ? `<p style="text-align:center;color:var(--rv-muted);padding:24px 0;font-size:13px;">No outstanding arrears 🎉</p>`
+                        ? `<p style="text-align:center;color:var(--rv-muted);padding:24px 0;font-size:13px;">No outstanding arrears</p>`
                         : `<div style="overflow-x:auto;">
                             <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
                                 <thead>
@@ -3296,7 +3305,7 @@ const views = {
                             ${(activeYear.terms || []).map(term => `
                                 <button onclick="actions.activateTerm('${activeYear.id}', '${term.id}')" 
                                         class="px-4 py-2 rounded-lg text-sm font-bold border-2 transition-all ${term.active ? 'border-ridge-500 text-ridge-600 bg-ridge-50 dark:bg-ridge-900/20 shadow-md' : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:border-ridge-300 hover:bg-slate-50'}">
-                                    ${term.name} ${term.active ? '✓' : ''}
+                                    ${term.name} ${term.active ? '<i class="fas fa-check" aria-hidden="true"></i>' : ''}
                                 </button>
                             `).join('')}
                         </div>
@@ -3339,9 +3348,7 @@ const views = {
             <div class="mt-8">
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                            <i class="fas fa-calendar-week text-blue-600 dark:text-blue-400 text-sm"></i>
-                        </div>
+                        <img src="assets/3d/calendar.png" alt="" width="40" height="40" loading="lazy" decoding="async" style="width:40px;height:40px;object-fit:contain;flex:none;">
                         <div>
                             <h3 class="text-lg font-bold text-slate-800 dark:text-white">Academic Weeks</h3>
                             <p class="text-xs text-slate-500 dark:text-slate-400">Manage weekly periods for attendance, finance &amp; planning</p>
@@ -4030,7 +4037,7 @@ const views = {
                                             </div>
                                             <div>
                                                 <p class="font-bold ${existing ? 'text-slate-400 dark:text-slate-500 line-through' : 'text-slate-800 dark:text-slate-200'}">${escapeHtml(student.name)}</p>
-                                                <p class="text-xs ${existing ? 'text-emerald-500 dark:text-emerald-400 font-semibold' : 'text-slate-500 dark:text-slate-400'}">${existing ? 'Report uploaded ✓' : (student.student_id || student.id)}</p>
+                                                <p class="text-xs ${existing ? 'text-emerald-500 dark:text-emerald-400 font-semibold' : 'text-slate-500 dark:text-slate-400'}">${existing ? 'Report uploaded <i class="fas fa-check" aria-hidden="true"></i>' : (student.student_id || student.id)}</p>
                                             </div>
                                         </div>
                                         <div class="flex items-center gap-3">
@@ -4203,7 +4210,7 @@ const views = {
             <h2 class="text-2xl font-bold mb-6 text-slate-800 dark:text-white">Pending Approvals</h2>
             
             <div class="space-y-4">
-                ${nothingPending ? '<div class="text-center py-12 text-slate-500 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">No pending approvals</div>' : ''}
+                ${nothingPending ? '<div class="text-center py-12 text-slate-500 bg-white dark:bg-slate-800 rounded-2xl shadow-lg"><img src="assets/3d/all-clear.png" alt="" width="72" height="72" loading="lazy" style="width:72px;height:72px;margin:0 auto 12px;display:block;">No pending approvals</div>' : ''}
                 ${pendingTeachers.map(t => `
                     <div class="glass-panel rounded-2xl p-6 flex items-center justify-between bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
                         <div>
@@ -4444,24 +4451,18 @@ const views = {
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="glass-panel p-6 rounded-2xl border-l-4 border-ridge-500 bg-white dark:bg-slate-800 shadow-lg">
-                    <div class="w-12 h-12 bg-ridge-600 rounded-xl flex items-center justify-center text-white shadow-lg mb-4">
-                        <i class="fas fa-users text-xl"></i>
-                    </div>
+                <div class="glass-panel p-6 rounded-2xl bg-white dark:bg-slate-800 shadow-lg">
+                    <img src="assets/3d/student.png" alt="" width="56" height="56" loading="lazy" decoding="async" style="width:56px;height:56px;object-fit:contain;flex:none;display:block;margin:-4px 0 12px -4px;">
                     <h3 class="text-3xl font-black text-slate-800 dark:text-white">${myStudents.length}</h3>
                     <p class="text-sm text-slate-500">My Students</p>
                 </div>
-                <div class="glass-panel p-6 rounded-2xl border-l-4 border-blue-500 bg-white dark:bg-slate-800 shadow-lg">
-                    <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg mb-4">
-                        <i class="fas fa-file-alt text-xl"></i>
-                    </div>
+                <div class="glass-panel p-6 rounded-2xl bg-white dark:bg-slate-800 shadow-lg">
+                    <img src="assets/3d/reports.png" alt="" width="56" height="56" loading="lazy" decoding="async" style="width:56px;height:56px;object-fit:contain;flex:none;display:block;margin:-4px 0 12px -4px;">
                     <h3 class="text-3xl font-black text-slate-800 dark:text-white">${state.reports.filter(r => r.teacher_id === state.currentUser?.id && r.status === 'published').length}</h3>
                     <p class="text-sm text-slate-500">Reports Published</p>
                 </div>
-                <div class="glass-panel p-6 rounded-2xl border-l-4 border-emerald-500 bg-white dark:bg-slate-800 shadow-lg">
-                    <div class="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg mb-4">
-                        <i class="fas fa-users text-xl"></i>
-                    </div>
+                <div class="glass-panel p-6 rounded-2xl bg-white dark:bg-slate-800 shadow-lg">
+                    <img src="assets/3d/backpack.png" alt="" width="56" height="56" loading="lazy" decoding="async" style="width:56px;height:56px;object-fit:contain;flex:none;display:block;margin:-4px 0 12px -4px;">
                     <h3 class="text-3xl font-black text-slate-800 dark:text-white">${myStudents.length}</h3>
                     <p class="text-sm text-slate-500">Students in Class</p>
                 </div>
@@ -4470,9 +4471,7 @@ const views = {
             <!-- Report Status Section -->
             <div class="glass-panel rounded-2xl p-6 bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
                 <div class="flex items-center gap-3 mb-5">
-                    <div class="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center shadow">
-                        <i class="fas fa-paper-plane text-white text-sm"></i>
-                    </div>
+                    <img src="assets/3d/outbox.png" alt="" width="44" height="44" loading="lazy" decoding="async" style="width:44px;height:44px;object-fit:contain;flex:none;">
                     <div>
                         <h3 class="font-bold text-lg text-slate-800 dark:text-white">Report Submission Status</h3>
                         <p class="text-xs text-slate-500">Status of reports you have submitted to the admin</p>
@@ -4688,7 +4687,7 @@ const views = {
                 <p style="font-size:13px;color:var(--rv-muted,#64748b);">Welcome, ${escapeHtml(state.currentUser?.full_name || 'Parent')}</p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                ${myChildren.length === 0 ? '<p class="col-span-full text-center py-8 text-slate-500 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">No children linked to your account</p>' : myChildren.map(child => {
+                ${myChildren.length === 0 ? '<div class="col-span-full text-center py-10 text-slate-500 bg-white dark:bg-slate-800 rounded-2xl shadow-lg"><img src="assets/3d/child.png" alt="" width="72" height="72" loading="lazy" style="width:72px;height:72px;margin:0 auto 12px;display:block;">No children linked to your account</div>' : myChildren.map(child => {
                     const arrears = dataManager.calculateStudentArrears(child.id);
                     return `
                         <div class="glass-panel p-6 rounded-2xl card-hover bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
@@ -4737,7 +4736,7 @@ const views = {
                 </div>` : ''}
 
             <div class="grid gap-6">
-                ${myChildren.length === 0 ? '<p class="text-center py-8 text-slate-500 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">No children linked yet. Click "Link Child" to search for your child and request a link.</p>' : myChildren.map(child => `
+                ${myChildren.length === 0 ? '<div class="text-center py-10 px-6 text-slate-500 bg-white dark:bg-slate-800 rounded-2xl shadow-lg"><img src="assets/3d/child.png" alt="" width="72" height="72" loading="lazy" style="width:72px;height:72px;margin:0 auto 12px;display:block;">No children linked yet. Click "Link Child" to search for your child and request a link.</div>' : myChildren.map(child => `
                     <div class="glass-panel rounded-2xl p-6 bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
                         <div class="flex items-center gap-4 mb-4">
                             <div class="w-16 h-16 bg-ridge-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg">
@@ -5754,7 +5753,7 @@ const actions = {
             if (error) throw error;
             
             // Notify all parents about new fee
-            await notificationManager.notifyParents('New Fee Published 💰', `A new fee item has been published: ${desc} — ₵${amount}. Please review the payments section.`, 'fee_added');
+            await notificationManager.notifyParents('New Fee Published', `A new fee item has been published: ${desc} — ₵${amount}. Please review the payments section.`, 'fee_added');
             ui.showToast('Fee structure added', 'success');
             await dataManager.loadFees();
             ui.route('finance');
@@ -5797,7 +5796,7 @@ const actions = {
             const txn = state.transactions.find(t => t.id === id);
             if (txn?.student_id) {
                 const student = state.students.find(s => s.id === txn.student_id);
-                await notificationManager.notifyParentsOfStudent(txn.student_id, 'Payment Approved ✓', `Your payment of ₵${txn?.amount || ''} for ${student?.name || 'your child'} has been approved and confirmed.`, 'payment');
+                await notificationManager.notifyParentsOfStudent(txn.student_id, 'Payment Approved', `Your payment of ₵${txn?.amount || ''} for ${student?.name || 'your child'} has been approved and confirmed.`, 'payment');
             }
             ui.showToast('Payment approved', 'success');
             await dataManager.loadTransactions();
@@ -5911,7 +5910,7 @@ const actions = {
             // Notify parent that the report is now available
             await notificationManager.notifyParentsOfStudent(
                 studentId,
-                'Report Available 📄',
+                'Report Available',
                 `The ${state.currentTerm?.name || 'term'} report for ${studentName} has been uploaded and is now available for viewing.`,
                 'report_uploaded'
             );
@@ -6591,7 +6590,7 @@ const actions = {
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">Status</span>
-                            <span class="detail-value" style="color:#059669;">✓ Confirmed</span>
+                            <span class="detail-value" style="color:#059669;">Confirmed</span>
                         </div>
                     </div>
 
@@ -6610,7 +6609,7 @@ const actions = {
                 <!-- Print button -->
                 <div class="print-btn-wrap">
                     <button class="print-btn" onclick="window.print()">
-                        🖨 Print / Save as PDF
+                        Print / Save as PDF
                     </button>
                 </div>
             </body>
@@ -6717,7 +6716,7 @@ const actions = {
                     return normalizeClassName(s.class) === normalizeClassName(approvedBundle.class);
                 });
                 for (const st of classStudents) {
-                    await notificationManager.notifyParentsOfStudent(st.id, 'Report Approved ✓', `The ${approvedBundle.class} class report bundle submitted by the teacher has been approved by the administration.`, 'report_uploaded');
+                    await notificationManager.notifyParentsOfStudent(st.id, 'Report Approved', `The ${approvedBundle.class} class report bundle submitted by the teacher has been approved by the administration.`, 'report_uploaded');
                 }
             }
             ui.showToast('Report bundle approved successfully', 'success');
@@ -7355,7 +7354,7 @@ const notificationManager = {
         banner.id = 'notif-prompt-banner';
         banner.style.cssText = `
             position:fixed;top:72px;right:20px;z-index:9998;
-            background:#1e293b;border:1px solid #334155;border-radius:14px;
+            background:#111111;border:1px solid #262626;border-radius:14px;
             box-shadow:0 8px 32px rgba(0,0,0,0.4);padding:16px 20px;
             max-width:320px;cursor:pointer;
             animation:slideInRight 0.3s ease;
@@ -7461,8 +7460,8 @@ const notificationManager = {
                             Allow <strong style="color:#e2e8f0;">Ridgevalley SMS</strong> to send you browser notifications so you never miss important updates:
                         </p>
                         <div style="space-y:8px;margin:16px 0;">
-                            ${['📄 Report uploads & approvals', '💰 Payment confirmations', '📢 School announcements', '🔔 Urgent admin alerts'].map(item => `
-                                <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #334155;font-size:13px;color:#94a3b8;">${item}</div>
+                            ${[['fa-file-alt', 'Report uploads & approvals'], ['fa-wallet', 'Payment confirmations'], ['fa-bullhorn', 'School announcements'], ['fa-bell', 'Urgent admin alerts']].map(([icon, item]) => `
+                                <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #262626;font-size:13px;color:#a3a3a3;"><i class="fas ${icon}" aria-hidden="true" style="width:16px;text-align:center;color:#6ee7b7;"></i>${item}</div>
                             `).join('')}
                         </div>
                         <p style="color:#64748b;font-size:11px;margin-bottom:20px;">You can change this anytime in your browser settings.</p>
@@ -7485,7 +7484,7 @@ const notificationManager = {
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
                     // Send a welcome test notification
-                    this.sendPush('Notifications Enabled ✓', 'You will now receive Ridgevalley SMS alerts on this device.', 'success');
+                    this.sendPush('Notifications Enabled', 'You will now receive Ridgevalley SMS alerts on this device.', 'success');
                     ui.showToast('Browser notifications enabled!', 'success');
                 }
             } catch (e) {
@@ -7497,9 +7496,8 @@ const notificationManager = {
     // Send a native browser push notification
     sendPush(title, body, type) {
         if (!('Notification' in window) || Notification.permission !== 'granted') return;
-        const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
         try {
-            const notif = new Notification(`${icons[type] || '🔔'} ${title}`, {
+            const notif = new Notification(title, {
                 body,
                 icon: '1.png',  // School logo — make sure this file exists
                 badge: '1.png',

@@ -936,9 +936,7 @@ const featureViews = {
                     </div>
                 </div>
                 <div class="glass-panel rounded-2xl p-10 bg-white dark:bg-slate-800 shadow-lg text-center max-w-md mx-auto">
-                    <div class="w-20 h-20 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mx-auto mb-5">
-                        <i class="fas fa-lock text-amber-500 text-3xl"></i>
-                    </div>
+                    <img src="assets/3d/locked.png" alt="" width="88" height="88" loading="lazy" decoding="async" style="width:88px;height:88px;object-fit:contain;margin:0 auto 20px;display:block;">
                     <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">Financial Data Protected</h3>
                     <p class="text-sm text-slate-500 mb-6">
                         This section requires email verification.<br>
@@ -1118,7 +1116,7 @@ const featureViews = {
                 </h3>
                 <p class="text-xs text-slate-500 mb-4">Students who have unpaid bill amounts from assigned bills. These arrear amounts are visible on their report cards.</p>
                 ${arrearsStudents.length === 0
-                    ? '<p class="text-emerald-600 text-center py-4 font-semibold">🎉 No outstanding arrears!</p>'
+                    ? '<p class="text-emerald-600 text-center py-4 font-semibold">No outstanding arrears</p>'
                     : `<div class="overflow-x-auto">
                            <table class="w-full text-left min-w-[500px]">
                                <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
@@ -1575,7 +1573,7 @@ const featureActions = {
                 <div style="background:#1e293b;border-radius:20px;padding:28px;max-width:480px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.4);transform:translateY(16px);transition:transform .25s;">
                     <div style="display:flex;align-items:center;justify-content:between;margin-bottom:20px;">
                         <h3 style="font-size:17px;font-weight:700;color:#f8fafc;margin:0;flex:1;">Edit Week: ${w.week_name}</h3>
-                        <button onclick="document.getElementById('${modalId}').remove()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer;padding:4px;">✕</button>
+                        <button onclick="document.getElementById('${modalId}').remove()" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer;padding:4px;" aria-label="Close"><i class="fas fa-times" aria-hidden="true"></i></button>
                     </div>
                     <div style="display:grid;gap:12px;">
                         <div>
@@ -1739,7 +1737,7 @@ const featureActions = {
                             <h3 style="color:#fff;font-size:17px;font-weight:700;margin:0;">${escapeHtml(bill.bill_name)}</h3>
                             <p style="color:rgba(255,255,255,0.7);font-size:12px;margin:2px 0 0;">${bill.bill_category} • ₵${parseFloat(bill.amount).toLocaleString('en-GH',{minimumFractionDigits:2})} • ${students.length} students</p>
                         </div>
-                        <button onclick="document.getElementById('${modalId}').remove()" style="background:rgba(255,255,255,0.15);border:none;border-radius:8px;color:#fff;width:32px;height:32px;cursor:pointer;font-size:16px;">✕</button>
+                        <button onclick="document.getElementById('${modalId}').remove()" style="background:rgba(255,255,255,0.15);border:none;border-radius:8px;color:#fff;width:32px;height:32px;cursor:pointer;font-size:16px;" aria-label="Close"><i class="fas fa-times" aria-hidden="true"></i></button>
                     </div>
                     <div style="overflow-y:auto;flex:1;">
                         ${students.length === 0

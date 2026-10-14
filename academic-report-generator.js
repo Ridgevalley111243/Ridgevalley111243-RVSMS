@@ -407,7 +407,7 @@ async function argDownloadPdf() {
         </head><body>
             <div class="no-print" style="background:#1a56db;color:#fff;padding:12px 20px;
                  display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-                <span style="font-weight:700;">🖨 Use your browser's Print dialog → Save as PDF</span>
+                <span style="font-weight:700;">Use your browser's Print dialog → Save as PDF</span>
                 <button onclick="window.print()"
                     style="background:#fff;color:#1a56db;border:none;padding:8px 20px;
                            border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;">
@@ -963,7 +963,7 @@ function _termAcademicPerformanceHtml(a) {
         `<tr><td style="${_tdS}">${c.cls}</td>
          <td style="${_tdS}">${c.avg}%</td>
          <td style="${_tdS}">${c.passRate}%</td>
-         <td style="${_tdS}">${c.avg >= 75 ? '✓ Strong' : c.avg >= 60 ? 'Satisfactory' : '⚠ Below Target'}</td></tr>`
+         <td style="${_tdS}">${c.avg >= 75 ? 'Strong' : c.avg >= 60 ? 'Satisfactory' : 'Below Target'}</td></tr>`
     ).join('');
 
     return `
@@ -1029,7 +1029,7 @@ function _termAttendanceHtml(a) {
     const rows = a.classAttendanceRates.map(r =>
         `<tr><td style="${_tdS}">${r.class}</td>
          <td style="${_tdS}">${r.rate}%</td>
-         <td style="${_tdS}">${r.rate>=90?'✓ Excellent':r.rate>=80?'Acceptable':'⚠ Below Benchmark'}</td></tr>`
+         <td style="${_tdS}">${r.rate>=90?'Excellent':r.rate>=80?'Acceptable':'Below Benchmark'}</td></tr>`
     ).join('');
 
     return `
@@ -1209,9 +1209,9 @@ function _yearPromotionHtml(termDataArr) {
     }
 
     const rows = lastA.classScoreSummary.map(c => {
-        const status = c.passRate >= 80 ? '✓ Ready for Promotion'
+        const status = c.passRate >= 80 ? 'Ready for Promotion'
             : c.passRate >= 60 ? 'Review Required'
-            : '⚠ Intervention Needed';
+            : 'Intervention Needed';
         const repeating = c.passRate < 60
             ? `Est. ${Math.round(c.count * (1 - c.passRate/100))} student(s)`
             : '—';
@@ -1377,9 +1377,9 @@ function _kpiRow(items) {
 
 function _bundleStatusLabel(status) {
     const map = {
-        'reviewed':       '✓ Approved',
+        'reviewed':       'Approved',
         'pending_review': '⏳ Pending',
-        'rejected':       '✗ Rejected',
+        'rejected':       'Rejected',
         'not submitted':  '— Not Submitted'
     };
     return map[status] || status;
