@@ -415,7 +415,7 @@ async function loadPromotionLogs() {
         const { data, error } = await supabaseClient
             .from('promotion_logs')
             .select('*')
-            .order('performed_at', { ascending: false });
+            .order('created_at', { ascending: false });
         if (error) throw error;
         state.promotionLogs = data || [];
     } catch (err) {
@@ -430,11 +430,16 @@ const promotionEngine = {
     // Students already promoted during this academic year (from promotion_logs,
     // plus any promoted earlier in this browser session in case the log insert
     // failed). Prevents a second click from moving a child up two classes.
+    // The durable record is students.last_promoted_year, written in the same
+    // update that moves the student, so the guard holds across sessions and
+    // devices. The session list covers students promoted before a reload.
     getPromotedStudentIds(fromYear) {
         const ids = new Set(_promotedThisSession[fromYear] || []);
-        (state.promotionLogs || []).forEach(log => {
-            if (log.action === 'promoted' && log.from_year === fromYear) ids.add(String(log.student_id));
-        });
+        if (fromYear) {
+            (state.students || []).forEach(s => {
+                if (s.last_promoted_year === fromYear) ids.add(String(s.id));
+            });
+        }
         return ids;
     },
 
@@ -471,6 +476,13 @@ const promotionEngine = {
                 const studentIdText = String(student.id).trim();
                 if (!studentIdText) {
                     throw new Error(`student_id is empty for student: ${student.name}`);
+                }
+
+                // Never graduate the same student twice
+                if (student.status === 'graduated' ||
+                    (state.graduatedStudents || []).some(g => String(g.student_id) === studentIdText)) {
+                    console.warn('[graduation] Skipping already-graduated student:', student.name);
+                    continue;
                 }
 
                 // Resolve class using robust resolver (handles restored / soft-deleted classes)
@@ -578,31 +590,8 @@ const promotionEngine = {
 
                 console.log('[graduation] graduated_students insert OK:', insertData);
 
-                // ── Step 4: Insert into promotion_logs ────────────────────────────
-                try {
-                    const { error: logError } = await supabaseClient
-                        .from('promotion_logs')
-                        .insert([{
-                            student_id:   studentIdText,
-                            action:       'graduated',
-                            from_class:   finalClassName,
-                            to_class:     null,
-                            from_year:    fromAY.year,
-                            to_year:      graduationYear,
-                            performed_by: graduatedBy,
-                            performed_at: graduatedAt,
-                        }]);
-
-                    if (logError) {
-                        console.warn(
-                            '[graduation] promotion_logs insert failed (non-fatal) for', fullName,
-                            logError.code, logError.message
-                        );
-                        // Non-fatal: log the warning but continue so graduation still completes
-                    }
-                } catch (logErr) {
-                    console.warn('[graduation] promotion_logs exception (non-fatal):', logErr);
-                }
+                // (Per-student history lives in graduated_students; promotion_logs
+                //  holds one summary row per run, written by logPromotion.)
 
                 // ── Step 5: Update student status in students table ───────────────
                 const { error: statusError } = await supabaseClient
@@ -681,16 +670,40 @@ const promotionEngine = {
                 const fromClassLabel = student.class || '';
                 assertNotUUID(nextClassLabel, 'promoteStudents');
 
-                const { error } = await supabaseClient
+                const promotedTerm = state.currentTerm?.name || null;
+                // Only move students not yet promoted this year; the filter makes a
+                // second click (or a second admin) a no-op instead of a double jump.
+                const { data: moved, error } = await supabaseClient
                     .from('students')
                     .update({
-                        class_id: nextClass.id,
-                        class:    nextClassLabel,
-                        status:   'active'
+                        class_id:           nextClass.id,
+                        class:              nextClassLabel,
+                        status:             'active',
+                        last_promoted_year: fromAY.year,
+                        last_promoted_term: promotedTerm
                     })
-                    .eq('id', student.id);
+                    .eq('id', student.id)
+                    .or(`last_promoted_year.is.null,last_promoted_year.neq."${fromAY.year}"`)
+                    .select('id');
 
                 if (error) throw error;
+                if (!moved || moved.length === 0) {
+                    results.skipped.push({ student, reason: `Already promoted in ${fromAY.year}` });
+                    continue;
+                }
+
+                // History row so a promotion can be reviewed or reversed later
+                const { error: historyError } = await supabaseClient.from('student_promotions').insert([{
+                    student_id:          String(student.id),
+                    previous_class_id:   student.class_id || null,
+                    previous_class_name: fromClassLabel,
+                    promoted_class_id:   nextClass.id,
+                    promoted_class_name: nextClassLabel,
+                    academic_year:       fromAY.year,
+                    promoted_term:       promotedTerm,
+                    promoted_by:         state.currentUser?.id || null
+                }]);
+                if (historyError) console.warn('student_promotions insert failed (non-fatal):', historyError.message);
 
                 // Patch in-memory state immediately for optimistic UI
                 const idx = state.students.findIndex(s => s.id === student.id);
@@ -698,6 +711,8 @@ const promotionEngine = {
                     state.students[idx].class_id = nextClass.id;
                     state.students[idx].class    = nextClassLabel;
                     state.students[idx].status   = 'active';
+                    state.students[idx].last_promoted_year = fromAY.year;
+                    state.students[idx].last_promoted_term = promotedTerm;
                 }
 
                 results.success.push(student.id);
@@ -712,22 +727,19 @@ const promotionEngine = {
         return results;
     },
 
-    // Log one promotion_logs row per promoted student (same table and columns the
-    // graduation flow uses) so getPromotedStudentIds() can block repeat promotions.
+    // One summary row per promotion run (promotion_logs columns: academic_year,
+    // term, total_students, total_promoted, total_graduated, promoted_by, notes).
     async logPromotion(fromYear, toYear, promotedStudentIds, moves = {}) {
         try {
-            const performedAt = new Date().toISOString();
-            const rows = promotedStudentIds.map(id => ({
-                student_id:   String(id),
-                action:       'promoted',
-                from_class:   moves[id]?.from || null,
-                to_class:     moves[id]?.to || null,
-                from_year:    fromYear,
-                to_year:      toYear,
-                performed_by: state.currentUser?.id || null,
-                performed_at: performedAt,
-            }));
-            const { error } = await supabaseClient.from('promotion_logs').insert(rows);
+            const { error } = await supabaseClient.from('promotion_logs').insert([{
+                academic_year:   fromYear,
+                term:            state.currentTerm?.name || null,
+                total_students:  promotedStudentIds.length,
+                total_promoted:  promotedStudentIds.length,
+                total_graduated: 0,
+                promoted_by:     state.currentUser?.id || null,
+                notes:           `Promoted ${promotedStudentIds.length} student(s) from ${fromYear} to ${toYear}`
+            }]);
             if (error) console.warn('logPromotion insert failed (non-fatal):', error.code, error.message);
         } catch (err) {
             console.warn('logPromotion error (non-fatal):', err);
