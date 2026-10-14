@@ -401,7 +401,7 @@ const routeSkeletonMap = {
                             </div>
                             <div>
                                 <p style="font-weight:700;font-size:16px;color:var(--rv-navy,#0f2044);margin:0 0 6px;">Something went wrong</p>
-                                <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:0;">${err.message || 'An unexpected error occurred.'}</p>
+                                <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:0;">${escapeHtml(err.message || 'An unexpected error occurred.')}</p>
                             </div>
                             <button onclick="ui.route('${view}')" style="padding:10px 24px;background:#1a56db;color:#fff;border:none;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;">
                                 <i class="fas fa-redo" style="margin-right:6px;"></i>Retry
@@ -447,7 +447,7 @@ async function withOptimistic(fn) {
 // After a mutation that calls ui.route(), we quietly refresh the backing data
 // so the next navigation gets fresh data without blocking the current render.
 function silentRefresh(loaders) {
-    Promise.all(loaders.map(l => l().catch(() => {}))).then(() => {
+    Promise.all(loaders.map(l => Promise.resolve().then(l).catch(() => {}))).then(() => {
         // If we're still on the same view, patch it quietly (no skeleton flash)
         // by calling the render function directly without showing a skeleton.
         const view = state.currentView;
@@ -658,7 +658,6 @@ if (_origAddClass) {
                 silentRefresh([
                     () => dataManager.loadClasses(),
                     () => dataManager.loadTeachers(),
-                    () => dataManager.loadAttendance(),
                     () => dataManager.loadReports(),
                     () => dataManager.loadReceivedReports(),
                 ]);
@@ -819,11 +818,12 @@ if (_origAddFee) {
         const amount = document.getElementById('fee-amount')?.value;
         const desc   = document.getElementById('fee-desc')?.value;
         if (!amount || !desc) return modal.alert('Validation Error', 'Please fill all fields', 'warning');
+        if (parseMoneyAmount(amount) === null) return modal.alert('Validation Error', 'Please enter an amount greater than zero', 'warning');
 
         const tempId = 'temp_' + Date.now();
         const tempFee = {
             id: tempId, _optimistic: true,
-            scope, amount: parseFloat(amount), description: desc,
+            scope, amount: parseMoneyAmount(amount), description: desc,
             year_id: state.currentAY?.id, term_id: state.currentTerm?.id,
             created_at: new Date().toISOString()
         };
@@ -834,7 +834,7 @@ if (_origAddFee) {
         await withOptimistic(async () => {
             try {
                 const { data, error } = await supabaseClient.from('fees').insert([{
-                    scope, amount: parseFloat(amount), description: desc,
+                    scope, amount: parseMoneyAmount(amount), description: desc,
                     year_id: state.currentAY?.id, term_id: state.currentTerm?.id,
                     created_by: state.currentUser?.id, created_at: new Date().toISOString()
                 }]).select().single();
@@ -1016,7 +1016,6 @@ if (_origRefreshData) {
                 dataManager.loadReports(),
                 dataManager.loadReceivedReports(),
                 dataManager.loadNotifications(),
-                dataManager.loadAttendance(),
             ]);
             // Re-render current view with fresh data (no skeleton flash)
             const view = state.currentView;

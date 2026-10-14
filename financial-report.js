@@ -765,7 +765,7 @@ const financialReportGenerator = (() => {
                 <div style="font-size:22px;font-weight:900;color:#0f2044;margin-bottom:4px;">${SCHOOL_NAME}</div>
                 <div style="font-size:11px;color:#64748b;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">${SCHOOL_TAGLINE}</div>
                 <div style="font-size:16px;font-weight:700;color:#1a56db;margin-bottom:4px;">GENERAL FINANCIAL REPORT</div>
-                <div style="font-size:13px;color:#374151;">${d.term?.name} &nbsp;|&nbsp; Academic Year ${d.year?.year}</div>
+                <div style="font-size:13px;color:#374151;">${escapeHtml(d.term?.name)} &nbsp;|&nbsp; Academic Year ${d.year?.year}</div>
                 <div style="font-size:11px;color:#94a3b8;margin-top:6px;">Generated: ${new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' })}</div>
             </div>
 
@@ -894,7 +894,7 @@ const financialReportGenerator = (() => {
             ${yd.terms.map(t => `
                 <div style="margin-bottom:28px;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
                     <div style="background:#1a56db;padding:10px 16px;">
-                        <span style="color:#fff;font-weight:700;font-size:13px;">${t.term?.name || '—'}</span>
+                        <span style="color:#fff;font-weight:700;font-size:13px;">${escapeHtml(t.term?.name || '—')}</span>
                         <span style="color:rgba(255,255,255,0.7);font-size:11px;margin-left:12px;">Collection: ${t.collectionRate.toFixed(1)}%</span>
                     </div>
                     <div style="padding:16px;">
@@ -905,8 +905,8 @@ const financialReportGenerator = (() => {
 
             ${_previewSection('Year-End Financial Observations', `
                 <ul style="margin:0;padding-left:18px;">
-                    ${yd.bestTerm  ? `<li style="font-size:12.5px;color:#374151;margin-bottom:6px;">${yd.bestTerm.term?.name} recorded the best collection rate at ${yd.bestTerm.collectionRate.toFixed(1)}%.</li>` : ''}
-                    ${yd.worstTerm ? `<li style="font-size:12.5px;color:#374151;margin-bottom:6px;">${yd.worstTerm.term?.name} recorded the weakest collection rate at ${yd.worstTerm.collectionRate.toFixed(1)}%.</li>` : ''}
+                    ${yd.bestTerm  ? `<li style="font-size:12.5px;color:#374151;margin-bottom:6px;">${escapeHtml(yd.bestTerm.term?.name)} recorded the best collection rate at ${yd.bestTerm.collectionRate.toFixed(1)}%.</li>` : ''}
+                    ${yd.worstTerm ? `<li style="font-size:12.5px;color:#374151;margin-bottom:6px;">${escapeHtml(yd.worstTerm.term?.name)} recorded the weakest collection rate at ${yd.worstTerm.collectionRate.toFixed(1)}%.</li>` : ''}
                     <li style="font-size:12.5px;color:#374151;margin-bottom:6px;">Cumulative outstanding balance for the year: ${CURRENCY}${_fmt(yd.totalOutstanding)}.</li>
                 </ul>
             `)}
@@ -1560,7 +1560,7 @@ ${bodyHtml}
   <div class="school-name">${SCHOOL_NAME}</div>
   <div class="tagline">${SCHOOL_TAGLINE}</div>
   <div class="report-title">GENERAL FINANCIAL REPORT</div>
-  <div class="period">${d.term?.name} &nbsp;|&nbsp; Academic Year ${d.year?.year}</div>
+  <div class="period">${escapeHtml(d.term?.name)} &nbsp;|&nbsp; Academic Year ${d.year?.year}</div>
   <div class="gen-date">Generated: ${genDate}</div>
   <div class="confidential">&#x1F512; CONFIDENTIAL — FOR LEADERSHIP USE ONLY</div>
 </div>
@@ -1600,7 +1600,7 @@ ${bodyHtml}
 ${d.arrearsList.length === 0 ? '<p>No outstanding arrears recorded for this period.</p>' : `
 <table><thead><tr><th>Student</th><th>Class</th><th>Parent</th><th>Contact</th><th>Expected</th><th>Paid</th><th>Outstanding</th><th>Status</th></tr></thead>
 <tbody>${d.arrearsList.map(s => `<tr>
-  <td>${s.name}</td><td>${s.class}</td><td>${s.parentName}</td><td>${s.parentPhone}</td>
+  <td>${escapeHtml(s.name)}</td><td>${s.class}</td><td>${escapeHtml(s.parentName)}</td><td>${escapeHtml(s.parentPhone)}</td>
   <td>${CURRENCY}${_fmt(s.expected)}</td><td>${CURRENCY}${_fmt(s.paid)}</td><td><strong>${CURRENCY}${_fmt(s.outstanding)}</strong></td>
   <td>${_pdfStatusBadge(s.status)}</td>
 </tr>`).join('')}
@@ -1660,7 +1660,7 @@ ${d.monthlyTrend.length > 0 ? `
         const genDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
 
         const termRows = yd.terms.map(t => `<tr>
-            <td>${t.term?.name || '—'}</td>
+            <td>${escapeHtml(t.term?.name || '—')}</td>
             <td>${CURRENCY}${_fmt(t.totalExpected)}</td>
             <td>${CURRENCY}${_fmt(t.totalCollected)}</td>
             <td>${t.collectionRate.toFixed(1)}%</td>
@@ -1683,7 +1683,7 @@ ${d.monthlyTrend.length > 0 ? `
 <h3>Students with Arrears</h3>
 ${t.arrearsList.length === 0 ? '<p>No outstanding arrears.</p>' : `
 <table><thead><tr><th>Student</th><th>Class</th><th>Parent</th><th>Contact</th><th>Outstanding</th><th>Status</th></tr></thead>
-<tbody>${t.arrearsList.map(s => `<tr><td>${s.name}</td><td>${s.class}</td><td>${s.parentName}</td><td>${s.parentPhone}</td><td>${CURRENCY}${_fmt(s.outstanding)}</td><td>${_pdfStatusBadge(s.status)}</td></tr>`).join('')}
+<tbody>${t.arrearsList.map(s => `<tr><td>${escapeHtml(s.name)}</td><td>${s.class}</td><td>${escapeHtml(s.parentName)}</td><td>${escapeHtml(s.parentPhone)}</td><td>${CURRENCY}${_fmt(s.outstanding)}</td><td>${_pdfStatusBadge(s.status)}</td></tr>`).join('')}
 </tbody></table>`}
 <p>${_narrativeArrears(t)}</p>
 </div>`).join('');
@@ -1717,8 +1717,8 @@ ${termDetails}
 <div class="section page-break"><h2>Best &amp; Worst Periods</h2>
 <table><thead><tr><th>Metric</th><th>Detail</th></tr></thead>
 <tbody>
-${yd.bestTerm  ? `<tr><td>Best Collection Term</td><td>${yd.bestTerm.term?.name} (${yd.bestTerm.collectionRate.toFixed(1)}%)</td></tr>` : ''}
-${yd.worstTerm ? `<tr><td>Weakest Collection Term</td><td>${yd.worstTerm.term?.name} (${yd.worstTerm.collectionRate.toFixed(1)}%)</td></tr>` : ''}
+${yd.bestTerm  ? `<tr><td>Best Collection Term</td><td>${escapeHtml(yd.bestTerm.term?.name)} (${yd.bestTerm.collectionRate.toFixed(1)}%)</td></tr>` : ''}
+${yd.worstTerm ? `<tr><td>Weakest Collection Term</td><td>${escapeHtml(yd.worstTerm.term?.name)} (${yd.worstTerm.collectionRate.toFixed(1)}%)</td></tr>` : ''}
 </tbody></table>
 </div>
 

@@ -190,6 +190,13 @@ const featureDB = {
 
     async verifyEmailToken(token) {
         // Verify the 6-digit token the user received by email (Supabase email OTP)
+        // verifyOtp() signs the browser in as the verification-email account.
+        // Keep the current user's session so we can switch back afterwards —
+        // otherwise every later action would run as the verification account.
+        const { data: { session: original } } = await supabaseClient.auth.getSession();
+        if (!original) return { success: false, reason: 'Your session has expired. Please log in again.' };
+
+        let verified;
         try {
             const { data, error } = await supabaseClient.auth.verifyOtp({
                 email: await this._getVerificationEmail(),
@@ -197,10 +204,28 @@ const featureDB = {
                 type: 'email',
             });
             if (error) return { success: false, reason: error.message || 'Invalid or expired code.' };
-            return { success: true };
+            verified = data;
         } catch (e) {
             return { success: false, reason: e?.message || 'Verification failed.' };
         }
+
+        if (verified?.user?.id && verified.user.id !== original.user.id) {
+            try {
+                // Revoke the verification account's new session, then restore ours.
+                await supabaseClient.auth.signOut({ scope: 'local' });
+                const { error: restoreError } = await supabaseClient.auth.setSession({
+                    access_token:  original.access_token,
+                    refresh_token: original.refresh_token,
+                });
+                if (restoreError) throw restoreError;
+            } catch (e) {
+                console.error('[EmailVerify] Could not restore the original session:', e);
+                modal.alert('Session Ended', 'Please log in again.', 'warning');
+                setTimeout(() => auth.logout(), 1500);
+                return { success: false, reason: 'Please log in again.' };
+            }
+        }
+        return { success: true };
     },
 
     async _getVerificationEmail() {
@@ -530,7 +555,7 @@ const featureViews = {
         ).join('');
 
         const termOptions = (activeYear?.terms || []).map(t =>
-            `<option value="${t.id}">${t.name}</option>`
+            `<option value="${t.id}">${escapeHtml(t.name)}</option>`
         ).join('');
 
         // Render grouped weeks table
@@ -678,7 +703,7 @@ const featureViews = {
 
         const activeYear = (state.academicYears || []).find(y => y.active);
         const ayTermOpts = (activeYear?.terms || []).map(t =>
-            `<option value="${t.id}">${t.name}</option>`
+            `<option value="${t.id}">${escapeHtml(t.name)}</option>`
         ).join('');
         const ayId = activeYear?.id || '';
 
@@ -803,7 +828,7 @@ const featureViews = {
             } else if (applies === 'class') {
                 classes.forEach(c => targetSel.insertAdjacentHTML('beforeend', `<option value="${c}">${c}</option>`));
             } else if (applies === 'student') {
-                students.forEach(s => targetSel.insertAdjacentHTML('beforeend', `<option value="${s.id}">${s.name} (${s.cls || '—'})</option>`));
+                students.forEach(s => targetSel.insertAdjacentHTML('beforeend', `<option value="${s.id}">${escapeHtml(s.name)} (${s.cls || '—'})</option>`));
             }
         }
     },
@@ -847,8 +872,8 @@ const featureViews = {
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                         ${bills.map(b => `
-                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors" data-bill-name="${(b.bill_name || '').toLowerCase()}">
-                                <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${b.bill_name}</td>
+                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors" data-bill-name="${escapeHtml((b.bill_name || '').toLowerCase())}">
+                                <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(b.bill_name)}</td>
                                 <td class="px-6 py-4 font-bold text-emerald-600">₵${parseFloat(b.amount || 0).toLocaleString('en-GH', {minimumFractionDigits:2})}</td>
                                 <td class="px-6 py-4 text-slate-600 dark:text-slate-400">${getTermName(b.term_id)}</td>
                                 <td class="px-6 py-4 text-slate-600 dark:text-slate-400">${appliesLabel(b)}</td>
@@ -871,7 +896,7 @@ const featureViews = {
                                             title="${b.status === 'active' ? 'Archive' : 'Restore'}">
                                             <i class="fas fa-${b.status === 'active' ? 'archive' : 'redo'}"></i>
                                         </button>
-                                        <button onclick="featureActions.deleteBill('${b.id}','${b.bill_name}')"
+                                        <button onclick="featureActions.deleteBill('${b.id}',${jsArg(b.bill_name)})"
                                             class="px-3 py-1.5 text-xs font-bold rounded-lg border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 transition-all">
                                             <i class="fas fa-trash"></i>
                                         </button>
@@ -967,7 +992,7 @@ const featureViews = {
                         ${(state.fees || []).length === 0 ? '<p class="text-slate-500 text-center py-4">No fees published yet</p>' : (state.fees || []).map(fee => `
                             <div class="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
                                 <div>
-                                    <p class="font-bold text-slate-800 dark:text-slate-200">${fee.description}</p>
+                                    <p class="font-bold text-slate-800 dark:text-slate-200">${escapeHtml(fee.description)}</p>
                                     <p class="text-sm text-blue-700 dark:text-blue-300">₵${fee.amount} • ${fee.scope === 'global' ? 'All Students' : fee.scope}</p>
                                     <p class="text-xs text-slate-500">${new Date(fee.created_at).toLocaleDateString()}</p>
                                 </div>
@@ -998,9 +1023,9 @@ const featureViews = {
                             <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
                                 ${allArrears.map(a => `
                                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                                        <td class="px-6 py-3 font-semibold text-slate-800 dark:text-slate-200">${a.studentName}</td>
+                                        <td class="px-6 py-3 font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(a.studentName)}</td>
                                         <td class="px-6 py-3 text-slate-600 dark:text-slate-400">${a.studentClass}</td>
-                                        <td class="px-6 py-3 text-slate-600 dark:text-slate-400">${a.parentName}</td>
+                                        <td class="px-6 py-3 text-slate-600 dark:text-slate-400">${escapeHtml(a.parentName)}</td>
                                         <td class="px-6 py-3 text-right font-bold text-red-600">₵${a.amount.toFixed(2)}</td>
                                     </tr>
                                 `).join('')}
@@ -1020,7 +1045,7 @@ const featureViews = {
                         return `
                             <div class="flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
                                 <div>
-                                    <p class="font-bold text-slate-800 dark:text-slate-200">${student?.name || 'Unknown'}</p>
+                                    <p class="font-bold text-slate-800 dark:text-slate-200">${escapeHtml(student?.name || 'Unknown')}</p>
                                     <p class="text-sm text-amber-700 dark:text-amber-300">₵${t.amount} • ${t.method}</p>
                                     ${t.proof ? `<a href="${t.proof}" target="_blank" class="text-xs text-blue-500 underline">View Proof</a>` : ''}
                                 </div>
@@ -1062,7 +1087,7 @@ const featureViews = {
                                     return `
                                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                                             <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">${new Date(t.created_at).toLocaleDateString()}</td>
-                                            <td class="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">${student?.name || 'Unknown'}</td>
+                                            <td class="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">${escapeHtml(student?.name || 'Unknown')}</td>
                                             <td class="px-6 py-4 font-bold text-emerald-600">₵${t.amount}</td>
                                             <td class="px-6 py-4">
                                                 <span class="px-2 py-1 rounded-full text-xs font-bold ${statusBg} ${statusColor}">
@@ -1106,7 +1131,7 @@ const featureViews = {
                                <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                                    ${arrearsStudents.map(f => `
                                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
-                                           <td class="px-6 py-3 font-semibold text-slate-800 dark:text-slate-200">${f.studentName}</td>
+                                           <td class="px-6 py-3 font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(f.studentName)}</td>
                                            <td class="px-6 py-3 text-slate-500">${f.studentClass}</td>
                                            <td class="px-6 py-3 font-bold text-red-600 text-right">₵${f.outstanding.toLocaleString('en-GH',{minimumFractionDigits:2})}</td>
                                        </tr>
@@ -1159,7 +1184,7 @@ const featureViews = {
                                            : `Student: ${(state.students||[]).find(s=>s.id===b.target_value)?.name || b.target_value}`;
                                        return `
                                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
-                                               <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${b.bill_name}</td>
+                                               <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(b.bill_name)}</td>
                                                <td class="px-6 py-4 font-bold text-emerald-600">₵${parseFloat(b.amount||0).toLocaleString('en-GH',{minimumFractionDigits:2})}</td>
                                                <td class="px-6 py-4 text-slate-600 dark:text-slate-400">${appliesLabel}</td>
                                                <td class="px-6 py-4">
@@ -1296,7 +1321,7 @@ const featureViews = {
         ` : '';
 
         const termOptions = (activeYear?.terms || []).map(t =>
-            `<option value="${t.id}">${t.name}</option>`
+            `<option value="${t.id}">${escapeHtml(t.name)}</option>`
         ).join('');
 
         container.innerHTML = `
@@ -1457,7 +1482,7 @@ const featureViews = {
                                 <tbody>
                                     ${arrearsStudents.slice(0, 15).map(f => `
                                         <tr style="border-bottom:1px solid var(--rv-border,#e2e8f0);">
-                                            <td style="padding:10px 14px;font-weight:600;color:var(--rv-navy,#0f2044);">${f.studentName}</td>
+                                            <td style="padding:10px 14px;font-weight:600;color:var(--rv-navy,#0f2044);">${escapeHtml(f.studentName)}</td>
                                             <td style="padding:10px 14px;color:#64748b;">${f.studentClass}</td>
                                             <td style="padding:10px 14px;text-align:right;font-weight:700;color:#dc2626;">₵${f.outstanding.toLocaleString('en-GH',{minimumFractionDigits:2})}</td>
                                             <td style="padding:10px 14px;text-align:center;">
@@ -1519,7 +1544,7 @@ const featureActions = {
             w.end_date > data.start_date
         );
         if (overlaps.length > 0) {
-            return modal.alert('Overlap Detected', `This week overlaps with: ${overlaps.map(w => w.week_name).join(', ')}.`, 'error');
+            return modal.alert('Overlap Detected', `This week overlaps with: ${escapeHtml(overlaps.map(w => w.week_name).join(', '))}.`, 'error');
         }
 
         try {
@@ -1543,7 +1568,7 @@ const featureActions = {
 
         const modalId = 'edit-week-' + Date.now();
         const ayOpts  = years.map(y => `<option value="${y.id}" ${y.id === w.academic_year_id ? 'selected' : ''}>${y.year}</option>`).join('');
-        const termOpts = (ay?.terms || []).map(t => `<option value="${t.id}" ${t.id === w.term_id ? 'selected' : ''}>${t.name}</option>`).join('');
+        const termOpts = (ay?.terms || []).map(t => `<option value="${t.id}" ${t.id === w.term_id ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('');
 
         const html = `
             <div id="${modalId}" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;opacity:0;transition:opacity .25s;">
@@ -1636,7 +1661,7 @@ const featureActions = {
         if (!termSel) return;
         const ay = (state.academicYears || []).find(y => y.id === ayId);
         termSel.innerHTML = '<option value="">— Select Term —</option>' +
-            (ay?.terms || []).map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+            (ay?.terms || []).map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
     },
 
     // ── Bills ─────────────────────────────────────────────────────────────────────
@@ -1698,7 +1723,7 @@ const featureActions = {
                 ? '#059669' : fin.paymentStatus === 'PARTIAL PAYMENT' ? '#d97706' : '#dc2626';
             return `
                 <tr style="border-bottom:1px solid #1e293b;">
-                    <td style="padding:10px 14px;color:#f8fafc;font-weight:600;">${s.name}</td>
+                    <td style="padding:10px 14px;color:#f8fafc;font-weight:600;">${escapeHtml(s.name)}</td>
                     <td style="padding:10px 14px;color:#94a3b8;">${s.class || '—'}</td>
                     <td style="padding:10px 14px;color:#94a3b8;text-align:right;">₵${fin.totalPaid.toLocaleString('en-GH',{minimumFractionDigits:2})}</td>
                     <td style="padding:10px 14px;color:${statusColor};font-weight:700;font-size:11px;text-align:center;">${fin.paymentStatus}</td>
@@ -1711,7 +1736,7 @@ const featureActions = {
                 <div style="background:#0f172a;border-radius:20px;max-width:620px;width:100%;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.5);transform:translateY(16px);transition:transform .25s;">
                     <div style="background:linear-gradient(135deg,#1a56db,#0891b2);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;">
                         <div>
-                            <h3 style="color:#fff;font-size:17px;font-weight:700;margin:0;">${bill.bill_name}</h3>
+                            <h3 style="color:#fff;font-size:17px;font-weight:700;margin:0;">${escapeHtml(bill.bill_name)}</h3>
                             <p style="color:rgba(255,255,255,0.7);font-size:12px;margin:2px 0 0;">${bill.bill_category} • ₵${parseFloat(bill.amount).toLocaleString('en-GH',{minimumFractionDigits:2})} • ${students.length} students</p>
                         </div>
                         <button onclick="document.getElementById('${modalId}').remove()" style="background:rgba(255,255,255,0.15);border:none;border-radius:8px;color:#fff;width:32px;height:32px;cursor:pointer;font-size:16px;">✕</button>
