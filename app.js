@@ -32,6 +32,7 @@ const state = {
     notifications: [],
     receivedReports: [],
     pendingAdmins: [],
+    pendingTeachers: [],
     selectedUploadClass: '',
     isLoading: false,
     dataLoaded: false
@@ -71,6 +72,70 @@ function escapeHtml(value) {
 function jsArg(value) {
     return escapeHtml(JSON.stringify(String(value ?? '')));
 }
+
+// The reports and payments buckets are private. Stored file URLs keep the
+// public-URL format (it identifies the object); before use they are swapped
+// for a short-lived signed URL. Links, images and iframes rendered anywhere in
+// the app are handled automatically; use privateStorage.open() for window.open.
+const privateStorage = {
+    _cache: new Map(),
+    _pattern: /\/storage\/v1\/object\/public\/(reports|payments)\/([^?#]+)/,
+
+    parse(url) {
+        const m = typeof url === 'string' ? url.match(this._pattern) : null;
+        return m ? { bucket: m[1], path: decodeURIComponent(m[2]) } : null;
+    },
+
+    async sign(url) {
+        const ref = this.parse(url);
+        if (!ref || !supabaseClient) return url;
+        const cached = this._cache.get(url);
+        if (cached && cached.expires > Date.now()) return cached.url;
+        const { data, error } = await supabaseClient.storage.from(ref.bucket).createSignedUrl(ref.path, 3600);
+        if (error || !data?.signedUrl) {
+            console.warn('Could not sign storage URL:', error);
+            return url;
+        }
+        this._cache.set(url, { url: data.signedUrl, expires: Date.now() + 50 * 60 * 1000 });
+        return data.signedUrl;
+    },
+
+    async open(url) {
+        // Open the tab synchronously so popup blockers allow it, then navigate.
+        const win = window.open('', '_blank');
+        const signed = await this.sign(url);
+        if (win) win.location.href = signed;
+        else window.open(signed, '_blank');
+    },
+
+    async _swapSrc(el) {
+        const src = el.getAttribute('src');
+        if (!this.parse(src)) return;
+        el.setAttribute('src', await this.sign(src));
+    },
+
+    init() {
+        document.addEventListener('click', (e) => {
+            const a = e.target.closest?.('a[href]');
+            if (!a || !this.parse(a.getAttribute('href'))) return;
+            e.preventDefault();
+            this.open(a.getAttribute('href'));
+        }, true);
+
+        const scan = (root) => {
+            if (root.nodeType !== 1) return;
+            if (root.matches('img[src], iframe[src]')) this._swapSrc(root);
+            root.querySelectorAll?.('img[src], iframe[src]').forEach(el => this._swapSrc(el));
+        };
+        new MutationObserver(mutations => {
+            for (const m of mutations) {
+                if (m.type === 'attributes') scan(m.target);
+                else m.addedNodes.forEach(scan);
+            }
+        }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
+    }
+};
+privateStorage.init();
 
 // Parses a money amount typed by a user. Returns a positive number rounded to
 // pesewas, or null if the value is empty, not a number, zero or negative.
@@ -634,11 +699,8 @@ const app = {
         try {
             if (retryCount === 0) app.showLoading('Checking system...');
             
-            const { data, error } = await supabaseClient
-                .from('profiles')
-                .select('id, role, approved, is_super_admin')
-                .eq('role', 'admin')
-                .limit(1);
+            // profiles is not readable before sign-in; ask the server instead
+            const { data: adminExists, error } = await supabaseClient.rpc('admin_exists');
 
             if (error) {
                 console.error('Admin check error:', error);
@@ -661,7 +723,7 @@ const app = {
 
             app.hideLoading();
 
-            if (!data || data.length === 0) {
+            if (!adminExists) {
                 this.showSetupModal();
                 return;
             }
@@ -740,6 +802,11 @@ const app = {
 
             if (profile.role === 'admin' && !profile.approved && !profile.is_super_admin) {
                 modal.alert('Account Pending', 'Your admin account is pending approval. Please wait for a super admin to approve your account.', 'warning');
+                await auth.logout();
+                return;
+            }
+            if (profile.role === 'teacher' && !profile.approved) {
+                modal.alert('Account Pending', 'Your teacher account is pending approval. Please wait for an administrator to approve your account.', 'warning');
                 await auth.logout();
                 return;
             }
@@ -1377,26 +1444,15 @@ const auth = {
                 const normalisedPhone = phoneCheck.normalised;
                 app.showLoading('Looking up account...');
                 try {
-                    const { data: profileRows } = await supabaseClient
-                        .from('profiles')
-                        .select('email')
-                        .eq('phone', normalisedPhone)
-                        .limit(1);
-                    if (profileRows && profileRows.length > 0) {
-                        loginEmail = profileRows[0].email;
+                    const { data: phoneEmail, error: phoneError } = await supabaseClient
+                        .rpc('login_email_for_phone', { p_phone: normalisedPhone });
+                    if (phoneError) throw phoneError;
+                    if (phoneEmail) {
+                        loginEmail = phoneEmail;
                     } else {
-                        const { data: parentRows } = await supabaseClient
-                            .from('parents')
-                            .select('email')
-                            .eq('phone', normalisedPhone)
-                            .limit(1);
-                        if (parentRows && parentRows.length > 0) {
-                            loginEmail = parentRows[0].email;
-                        } else {
-                            app.hideLoading();
-                            modal.alert('Login Failed', 'No account found with that phone number. Please use your email address.', 'error');
-                            return;
-                        }
+                        app.hideLoading();
+                        modal.alert('Login Failed', 'No account found with that phone number. Please use your email address.', 'error');
+                        return;
                     }
                 } catch (err) {
                     app.hideLoading();
@@ -1424,71 +1480,31 @@ const auth = {
     async register(name, email, password) {
         app.showLoading('Creating account...');
         try {
-            const { data: existing } = await supabaseClient
-                .from('profiles')
-                .select('email')
-                .eq('email', email)
-                .maybeSingle();
-
-            if (existing) {
-                app.hideLoading();
-                modal.alert('Registration Failed', 'Email already exists', 'error');
-                return;
-            }
-
             // Get phone number if parent role — already validated & normalised by handleAction
             const rawPhone = document.getElementById('auth-phone')?.value?.trim() || null;
             const phoneInput = rawPhone ? (ghanaPhone.validate(rawPhone).normalised || rawPhone) : null;
 
-            const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+            const { error: authError } = await supabaseClient.auth.signUp({
                 email,
                 password,
+                // The profile and teacher/parent rows are created by the
+                // on_auth_user_created database trigger from this metadata.
+                // Role, approval and super-admin status are decided server-side.
                 options: {
-                    data: { full_name: name, role: state.role }
+                    data: { full_name: name, role: state.role, phone: phoneInput || null }
                 }
             });
 
             if (authError) throw authError;
 
-            const profileData = {
-                id: authData.user.id,
-                email: email,
-                full_name: name,
-                role: state.role,
-                phone: phoneInput || null,
-                approved: state.role !== 'admin',
-                created_at: new Date().toISOString()
-            };
-
-            const { error: profileError } = await supabaseClient
-                .from('profiles')
-                .insert([profileData]);
-
-            if (profileError) throw profileError;
-
-            if (state.role === 'teacher') {
-                const { error: teacherError } = await supabaseClient.from('teachers').insert([{
-                    profile_id: authData.user.id,
-                    email: email,
-                    full_name: name,
-                    assigned_class: null
-                }]);
-                if (teacherError) throw new Error('Profile created but failed to register teacher record: ' + teacherError.message);
-            } else if (state.role === 'parent') {
-                const { error: parentError } = await supabaseClient.from('parents').insert([{
-                    profile_id: authData.user.id,
-                    email: email,
-                    full_name: name,
-                    phone: phoneInput || null,
-                    children_ids: []
-                }]);
-                if (parentError) throw new Error('Profile created but failed to register parent record: ' + parentError.message);
-            }
-
             app.hideLoading();
+            const pendingMsg = {
+                admin: 'Your account is pending approval from a super admin.',
+                teacher: 'Please verify your email address. An administrator must approve your account before you can sign in.'
+            };
             modal.alert(
-                state.role === 'admin' ? 'Registration Successful' : 'Account Created', 
-                state.role === 'admin' ? 'Your account is pending approval from a super admin.' : 'Please verify your email address.', 
+                state.role === 'parent' ? 'Account Created' : 'Registration Successful',
+                pendingMsg[state.role] || 'Please verify your email address.',
                 'success'
             );
             app.toggleAuthMode();
@@ -1680,7 +1696,7 @@ const dataManager = {
             // Secondary: parents table for children_ids and phone
             const { data: parentRows, error: parentsError } = await supabaseClient
                 .from('parents')
-                .select('id, profile_id, children_ids, email, full_name, phone');
+                .select('id, profile_id, children_ids, pending_children_ids, email, full_name, phone');
 
             if (parentsError) console.warn('parents table query error:', parentsError);
 
@@ -1703,7 +1719,7 @@ const dataManager = {
             if (missingRows.length > 0) {
                 const { data: refreshed } = await supabaseClient
                     .from('parents')
-                    .select('id, profile_id, children_ids, email, full_name, phone');
+                    .select('id, profile_id, children_ids, pending_children_ids, email, full_name, phone');
                 finalParentRows = refreshed || [];
             }
 
@@ -1715,6 +1731,7 @@ const dataManager = {
                     id: pRow?.id || null,          // parents table row id
                     profile_id: p.id,              // auth/profiles uuid
                     children_ids: pRow?.children_ids || [],
+                    pending_children_ids: pRow?.pending_children_ids || [],
                     full_name: p.full_name || pRow?.full_name || 'Unknown',
                     email: p.email || pRow?.email || '',
                     phone: pRow?.phone || p.phone || null
@@ -1999,17 +2016,25 @@ const dataManager = {
     // ────────────────────────────────────────────────────────────────────────
 
     async loadPendingAdmins() {
+        if (state.role !== 'admin') {
+            state.pendingAdmins = [];
+            state.pendingTeachers = [];
+            return;
+        }
         try {
             const { data, error } = await supabaseClient
                 .from('profiles')
                 .select('id, full_name, email, role, approved, created_at')
-                .eq('role', 'admin')
+                .in('role', ['admin', 'teacher'])
                 .eq('approved', false);
             if (error) throw error;
-            state.pendingAdmins = (data || []).map(p => ({ ...p, profile_id: p.id }));
+            const rows = (data || []).map(p => ({ ...p, profile_id: p.id }));
+            state.pendingAdmins = rows.filter(p => p.role === 'admin');
+            state.pendingTeachers = rows.filter(p => p.role === 'teacher');
         } catch (err) {
             console.error('loadPendingAdmins error:', err);
             state.pendingAdmins = [];
+            state.pendingTeachers = [];
         }
     },
 
@@ -3995,7 +4020,7 @@ const views = {
                     
                     return `
                         <div class="glass-panel rounded-2xl overflow-hidden bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
-                            <div class="relative h-48 bg-slate-100 dark:bg-slate-700 overflow-hidden cursor-pointer" onclick="window.open('${t.proof}', '_blank')">
+                            <div class="relative h-48 bg-slate-100 dark:bg-slate-700 overflow-hidden cursor-pointer" onclick="privateStorage.open(${jsArg(t.proof)})">
                                 <img src="${t.proof}" alt="Payment Proof" class="w-full h-full object-cover hover:scale-105 transition-transform">
                                 <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                                     <span class="text-white font-bold"><i class="fas fa-search-plus mr-2"></i>View Full Image</span>
@@ -4035,14 +4060,58 @@ const views = {
     },
 
     renderApprovals() {
-        // Pending admins are in profiles with role='admin', not in teachers table
+        // Pending admins/teachers are profiles with approved=false
         const pendingAdmins = state.pendingAdmins || [];
+        const pendingTeachers = state.pendingTeachers || [];
+        const pendingLinks = (state.parents || []).flatMap(p =>
+            (p.pending_children_ids || []).map(studentId => ({
+                parent: p,
+                studentId,
+                student: state.students.find(s => s.id === studentId)
+            }))
+        );
+        const nothingPending = !pendingAdmins.length && !pendingTeachers.length && !pendingLinks.length;
         
         const html = `
             <h2 class="text-2xl font-bold mb-6 text-slate-800 dark:text-white">Pending Approvals</h2>
             
             <div class="space-y-4">
-                ${pendingAdmins.length === 0 ? '<div class="text-center py-12 text-slate-500 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">No pending approvals</div>' : pendingAdmins.map(admin => `
+                ${nothingPending ? '<div class="text-center py-12 text-slate-500 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">No pending approvals</div>' : ''}
+                ${pendingTeachers.map(t => `
+                    <div class="glass-panel rounded-2xl p-6 flex items-center justify-between bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
+                        <div>
+                            <h3 class="font-bold text-lg text-slate-800 dark:text-white">${escapeHtml(t.full_name)}</h3>
+                            <p class="text-sm text-slate-500">${escapeHtml(t.email)}</p>
+                            <span class="inline-block mt-2 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">Teacher · Pending Approval</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="actions.approveTeacher('${t.profile_id}')" class="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                                <i class="fas fa-check mr-2"></i> Approve
+                            </button>
+                            <button onclick="actions.rejectTeacher('${t.profile_id}')" class="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                                <i class="fas fa-times mr-2"></i> Reject
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+                ${pendingLinks.map(l => `
+                    <div class="glass-panel rounded-2xl p-6 flex items-center justify-between bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
+                        <div>
+                            <h3 class="font-bold text-lg text-slate-800 dark:text-white">${escapeHtml(l.parent.full_name)} → ${escapeHtml(l.student?.name || 'Unknown student')}</h3>
+                            <p class="text-sm text-slate-500">${escapeHtml(l.parent.email)}${l.parent.phone ? ' · ' + escapeHtml(l.parent.phone) : ''}${l.student?.class ? ' · ' + escapeHtml(l.student.class) : ''}</p>
+                            <span class="inline-block mt-2 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">Child Link Request</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="actions.reviewChildLink('${l.parent.id}', '${l.studentId}', true)" class="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                                <i class="fas fa-check mr-2"></i> Approve
+                            </button>
+                            <button onclick="actions.reviewChildLink('${l.parent.id}', '${l.studentId}', false)" class="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                                <i class="fas fa-times mr-2"></i> Reject
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+                ${pendingAdmins.map(admin => `
                     <div class="glass-panel rounded-2xl p-6 flex items-center justify-between bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
                         <div>
                             <h3 class="font-bold text-lg text-slate-800 dark:text-white">${escapeHtml(admin.full_name)}</h3>
@@ -4518,6 +4587,7 @@ const views = {
     renderParentChildren() {
         const parent = state.parents.find(p => p.profile_id === state.currentUser?.id);
         const myChildren = state.students.filter(s => parent?.children_ids?.includes(s.id));
+        const pendingCount = parent?.pending_children_ids?.length || 0;
 
         const html = `
             <div class="flex justify-between items-center mb-6">
@@ -4526,9 +4596,13 @@ const views = {
                     <i class="fas fa-plus mr-2"></i> Link Child
                 </button>
             </div>
+            ${pendingCount ? `
+                <div class="mb-6 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-sm font-semibold">
+                    <i class="fas fa-clock mr-2"></i>${pendingCount} link request${pendingCount === 1 ? '' : 's'} waiting for administrator approval.
+                </div>` : ''}
 
             <div class="grid gap-6">
-                ${myChildren.length === 0 ? '<p class="text-center py-8 text-slate-500 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">No children linked yet. Click "Link Child" to search and add your children.</p>' : myChildren.map(child => `
+                ${myChildren.length === 0 ? '<p class="text-center py-8 text-slate-500 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">No children linked yet. Click "Link Child" to search for your child and request a link.</p>' : myChildren.map(child => `
                     <div class="glass-panel rounded-2xl p-6 bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
                         <div class="flex items-center gap-4 mb-4">
                             <div class="w-16 h-16 bg-gradient-to-br from-ridge-500 to-blue-500 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg">
@@ -5452,66 +5526,42 @@ const actions = {
     },
 
     async searchAndLinkChild() {
-        const currentParent = state.parents.find(p => p.profile_id === state.currentUser?.id);
-        const linkedIds = new Set(state.parents.flatMap(p => p.children_ids || []));
-        
-        const availableStudents = state.students.map(s => ({
-            ...s,
-            disabled: linkedIds.has(s.id) && !currentParent?.children_ids?.includes(s.id)
-        }));
-
-        modal.selectStudent('Search for your child', availableStudents, async (studentId, studentName) => {
-            if (currentParent?.children_ids?.includes(studentId)) {
-                modal.alert('Info', 'This child is already linked to your account', 'info');
-                return;
-            }
-
-            const linkedToOther = state.parents.some(p => 
-                p.id !== currentParent?.id && p.children_ids?.includes(studentId)
-            );
-            
-            if (linkedToOther) {
-                modal.alert('Link Error', 'This child is already linked to another parent account', 'error');
-                return;
-            }
-
+        // Parents can only read their approved children, so the search runs
+        // server-side and the link waits for an administrator's approval.
+        modal.prompt("Enter at least 3 letters of your child's name:", '', async (query) => {
+            if (query === null) return;
             try {
-                app.showLoading('Linking child...');
-                const currentIds = currentParent?.children_ids || [];
-                const newIds = [...currentIds, studentId];
-                
-                const { error } = await supabaseClient
-                    .from('parents')
-                    .update({ children_ids: newIds })
-                    .eq('id', currentParent.id);
-                
+                app.showLoading('Searching...');
+                const { data: matches, error } = await supabaseClient
+                    .rpc('search_students_for_link', { p_query: query });
                 if (error) throw error;
-                
-                // Notify admin about the new child link
-                const { data: adminProfiles } = await supabaseClient
-                    .from('profiles')
-                    .select('id')
-                    .eq('role', 'admin')
-                    .eq('approved', true)
-                    .limit(5);
-                for (const adm of (adminProfiles || [])) {
-                    await supabaseClient.from('notifications').insert([{
-                        user_id: adm.id,
-                        title: 'Child Linked by Parent',
-                        message: `${state.currentUser?.full_name || 'A parent'} has linked ${studentName} to their account.`,
-                        type: 'child_linked',
-                        read: false,
-                        created_by: state.currentUser?.id,
-                        created_at: new Date().toISOString()
-                    }]);
-                }
-                ui.showToast(`Successfully linked ${studentName}`, 'success');
-                await dataManager.loadParents();
-                ui.route('parent_children');
-            } catch (err) {
-                modal.alert('Error', extractErrorMessage(err), 'error');
-            } finally {
                 app.hideLoading();
+                if (!matches || matches.length === 0) {
+                    modal.alert('No Match', 'No student found with that name. Check the spelling or contact the school.', 'info');
+                    return;
+                }
+                const currentParent = state.parents.find(p => p.profile_id === state.currentUser?.id);
+                const taken = new Set([...(currentParent?.children_ids || []), ...(currentParent?.pending_children_ids || [])]);
+                const options = matches.map(m => ({ ...m, disabled: taken.has(m.id) }));
+
+                modal.selectStudent('Select your child', options, async (studentId, studentName) => {
+                    try {
+                        app.showLoading('Sending request...');
+                        const { error: linkError } = await supabaseClient
+                            .rpc('request_child_link', { p_student_id: studentId });
+                        if (linkError) throw linkError;
+                        modal.alert('Request Sent', `Your request to link ${studentName} has been sent. An administrator will review it shortly.`, 'success');
+                        await dataManager.loadParents();
+                        ui.route('parent_children');
+                    } catch (err) {
+                        modal.alert('Error', extractErrorMessage(err), 'error');
+                    } finally {
+                        app.hideLoading();
+                    }
+                });
+            } catch (err) {
+                app.hideLoading();
+                modal.alert('Error', extractErrorMessage(err), 'error');
             }
         });
     },
@@ -5941,6 +5991,78 @@ const actions = {
         }
     },
 
+    async approveTeacher(profileId) {
+        try {
+            app.showLoading('Approving...');
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ approved: true })
+                .eq('id', profileId)
+                .eq('role', 'teacher');
+            if (error) throw error;
+            await supabaseClient.from('notifications').insert([{
+                user_id: profileId,
+                title: 'Account Approved',
+                message: 'Your teacher account has been approved. You can now sign in.',
+                type: 'system',
+                read: false,
+                created_by: state.currentUser?.id
+            }]);
+            ui.showToast('Teacher approved', 'success');
+            await Promise.all([dataManager.loadPendingAdmins(), dataManager.loadTeachers()]);
+            ui.route('approvals');
+        } catch (err) {
+            modal.alert('Error', extractErrorMessage(err), 'error');
+        } finally {
+            app.hideLoading();
+        }
+    },
+
+    async rejectTeacher(profileId) {
+        modal.confirmDelete('this teacher request', async () => {
+            try {
+                app.showLoading('Rejecting...');
+                // Deleting the profile cascades to the teachers row; without a
+                // profile the account cannot sign in.
+                const { data: removed, error } = await supabaseClient
+                    .from('profiles')
+                    .delete()
+                    .eq('id', profileId)
+                    .eq('role', 'teacher')
+                    .eq('approved', false)
+                    .select('id');
+                if (error) throw error;
+                if (!removed || removed.length === 0) throw new Error('The request could not be removed.');
+                ui.showToast('Teacher request rejected', 'success');
+                await Promise.all([dataManager.loadPendingAdmins(), dataManager.loadTeachers()]);
+                ui.route('approvals');
+            } catch (err) {
+                modal.alert('Error', extractErrorMessage(err), 'error');
+            } finally {
+                app.hideLoading();
+            }
+        });
+    },
+
+    async reviewChildLink(parentId, studentId, approve) {
+        try {
+            app.showLoading(approve ? 'Approving link...' : 'Rejecting link...');
+            const { error } = await supabaseClient.rpc('review_child_link', {
+                p_parent_id: parentId,
+                p_student_id: studentId,
+                p_approve: approve
+            });
+            if (error) throw error;
+            ui.showToast(approve ? 'Child link approved' : 'Child link rejected', 'success');
+            await dataManager.loadParents();
+            ui.route('approvals');
+        } catch (err) {
+            modal.alert('Error', extractErrorMessage(err), 'error');
+        } finally {
+            app.hideLoading();
+        }
+    },
+
     toggleProofUpload() {
         const method = document.getElementById('payment-method')?.value;
         const container = document.getElementById('proof-upload-container');
@@ -5997,25 +6119,13 @@ const actions = {
 
             if (error) throw error;
             
-            // Notify admin about the new payment pending review
-            const { data: adminList } = await supabaseClient
-                .from('profiles')
-                .select('id')
-                .eq('role', 'admin')
-                .eq('approved', true)
-                .limit(5);
+            // Notify admins about the new payment pending review
             const paymentStudent = state.students.find(s => s.id === studentId);
-            for (const adm of (adminList || [])) {
-                await supabaseClient.from('notifications').insert([{
-                    user_id: adm.id,
-                    title: 'New Payment Pending Approval',
-                    message: `${state.currentUser?.full_name || 'A parent'} submitted a payment of ₵${amount} for ${paymentStudent?.name || 'a student'}. Please review.`,
-                    type: 'payment',
-                    read: false,
-                    created_by: state.currentUser?.id,
-                    created_at: new Date().toISOString()
-                }]);
-            }
+            await supabaseClient.rpc('notify_admins', {
+                p_title: 'New Payment Pending Approval',
+                p_message: `${state.currentUser?.full_name || 'A parent'} submitted a payment of ₵${amount} for ${paymentStudent?.name || 'a student'}. Please review.`,
+                p_type: 'payment'
+            });
             ui.showToast('Payment submitted for approval', 'success');
             ui.route('parent_dashboard');
         } catch (err) {
@@ -6423,12 +6533,12 @@ const actions = {
             // In a real implementation, you would generate a ZIP file or download multiple files
             // For now, we'll download the main bundle file if it exists, or show individual reports
             if (report.bundle_url) {
-                window.open(report.bundle_url, '_blank');
+                privateStorage.open(report.bundle_url);
             } else {
                 const studentReports = state.reports.filter(r => r.submission_bundle_id === bundleId);
                 if (studentReports.length > 0) {
                     // Download first report as example, or implement batch download
-                    window.open(studentReports[0].file_url, '_blank');
+                    privateStorage.open(studentReports[0].file_url);
                 } else {
                     throw new Error('No files available for download');
                 }
