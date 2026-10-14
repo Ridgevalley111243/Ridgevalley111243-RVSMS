@@ -559,6 +559,13 @@ grant execute on function public.request_child_link(text) to authenticated;
 grant execute on function public.review_child_link(uuid, text, boolean) to authenticated;
 grant execute on function public.notify_admins(text, text, text) to authenticated;
 
+-- Supabase grants EXECUTE on new functions to anon directly; these four are
+-- for signed-in users only.
+revoke execute on function public.search_students_for_link(text) from anon;
+revoke execute on function public.request_child_link(text) from anon;
+revoke execute on function public.review_child_link(uuid, text, boolean) from anon;
+revoke execute on function public.notify_admins(text, text, text) from anon;
+
 -- -----------------------------------------------------------------------------
 -- 7. Storage: private buckets + scoped policies
 --    (report-templates stays public: it only holds blank .docx templates)
