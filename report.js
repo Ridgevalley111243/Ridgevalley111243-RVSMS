@@ -4129,7 +4129,8 @@ async function executeSubmission() {
                 student_id: student.id,
                 student_name: student.name,
                 file_url: fileUrl,
-                file_name: fileName
+                file_name: fileName,
+                blob: docxBlob
             });
         }
         
@@ -4201,10 +4202,10 @@ async function executeSubmission() {
         const zip = new JSZip();
         const reportsFolder = zip.folder("reports");
         
+        // The reports bucket is private, so bundle the blobs we just generated
+        // instead of re-downloading them by URL.
         for (const upload of uploadedReports) {
-            const response = await fetch(upload.file_url);
-            const arrayBuffer = await response.arrayBuffer();
-            reportsFolder.file(upload.file_name, arrayBuffer);
+            reportsFolder.file(upload.file_name, await upload.blob.arrayBuffer());
         }
         
         const zipBlob = await zip.generateAsync({ type: 'blob' });
