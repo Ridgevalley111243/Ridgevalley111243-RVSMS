@@ -623,6 +623,32 @@ async function initializeSupabase() {
         if (state.academicYear) localStorage.setItem('rv_report_year',         state.academicYear);
         if (state.term)         localStorage.setItem('rv_report_term',         state.term);
 
+        // ── Step 1b: Verify the real login session ───────────────────────────
+        // Never trust teacherId from the URL/localStorage alone: require a signed-in
+        // teacher or approved admin, and pin teachers to their own account.
+        const { data: { session } } = await state.supabaseClient.auth.getSession();
+        const { data: profile } = session
+            ? await state.supabaseClient
+                .from('profiles')
+                .select('role, approved, is_super_admin, full_name')
+                .eq('id', session.user.id)
+                .maybeSingle()
+            : { data: null };
+        const isTeacher = profile?.role === 'teacher';
+        const isAdmin   = profile?.role === 'admin' && (profile.approved || profile.is_super_admin);
+        if (!isTeacher && !isAdmin) {
+            hideGlobalLoading();
+            showToast('Authentication required. Please login again.', 'error');
+            renderEmptyState('Login Required', 'Please log in to the portal as a teacher or administrator, then open reports from your dashboard.');
+            return;
+        }
+        if (isTeacher) {
+            state.teacherId   = session.user.id;
+            state.teacherName = profile.full_name || state.teacherName;
+            localStorage.setItem('rv_report_teacher_id',   state.teacherId);
+            localStorage.setItem('rv_report_teacher_name', state.teacherName);
+        }
+
         if (!state.teacherId) {
             hideGlobalLoading();
             showToast('Authentication required. Please login again.', 'error');
@@ -1852,7 +1878,7 @@ function renderStudentsGrid() {
                             ${student.name.charAt(0).toUpperCase()}
                         </div>
                         <div class="min-w-0">
-                            <h4 class="font-bold text-slate-900 dark:text-white truncate">${student.name}</h4>
+                            <h4 class="font-bold text-slate-900 dark:text-white truncate">${escHtml(student.name)}</h4>
                             <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">${student.student_id || student.id}</p>
                         </div>
                     </div>
@@ -1919,7 +1945,7 @@ function renderStudentList() {
             <div onclick="switchStudent(${index})" class="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${isActive ? 'bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'}">
                 ${indicator}
                 <div class="flex-1 min-w-0">
-                    <p class="font-semibold text-sm text-slate-900 dark:text-white truncate ${isActive ? 'text-emerald-700 dark:text-emerald-400' : ''}">${student.name}</p>
+                    <p class="font-semibold text-sm text-slate-900 dark:text-white truncate ${isActive ? 'text-emerald-700 dark:text-emerald-400' : ''}">${escHtml(student.name)}</p>
                     <p class="text-xs text-slate-500 dark:text-slate-400">${student.student_id || student.id}</p>
                 </div>
             </div>
@@ -2264,7 +2290,7 @@ async function renderEditorContent() {
     container.innerHTML = config.sections.map(section => `
         <div class="glass-panel rounded-2xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-700 animate-slide-up">
             <div class="bg-slate-50 dark:bg-slate-800/50 px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-                <h3 class="font-bold text-slate-900 dark:text-white">${section.title}</h3>
+                <h3 class="font-bold text-slate-900 dark:text-white">${escHtml(section.title)}</h3>
                 ${section.subtitle ? `<p class="text-sm text-slate-500 dark:text-slate-400 mt-1">${section.subtitle}</p>` : ''}
             </div>
             <div class="p-6">
@@ -2417,7 +2443,7 @@ function renderDemographicFields(fields, savedData) {
             return `
                 <div class="space-y-2">
                     <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300">${field.label}</label>
-                    <input type="${inputType}" class="input-field w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800" data-field="${field.name}" value="${escHtml(value)}" placeholder="Enter ${field.label}">
+                    <input type="${inputType}" class="input-field w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800" data-field="${escHtml(field.name)}" value="${escHtml(value)}" placeholder="Enter ${field.label}">
                 </div>
             `;
         }).join('')}
@@ -2441,7 +2467,7 @@ function renderYesNoTable(fields, savedData) {
                             <tr>
                                 <td class="p-4 text-sm font-medium text-slate-800 dark:text-slate-200">${field.label}</td>
                                 <td class="p-4">
-                                    <input type="text" class="input-field w-full px-3 py-2 rounded-lg text-sm" data-field="${field.name}" value="${escHtml(value)}" placeholder="Specify...">
+                                    <input type="text" class="input-field w-full px-3 py-2 rounded-lg text-sm" data-field="${escHtml(field.name)}" value="${escHtml(value)}" placeholder="Specify...">
                                 </td>
                             </tr>
                         `;
@@ -2450,7 +2476,7 @@ function renderYesNoTable(fields, savedData) {
                         <tr>
                             <td class="p-4 text-sm font-medium text-slate-800 dark:text-slate-200">${field.label}</td>
                             <td class="p-4">
-                                <select class="input-field w-full px-3 py-2 rounded-lg text-sm font-semibold text-center" data-field="${field.name}">
+                                <select class="input-field w-full px-3 py-2 rounded-lg text-sm font-semibold text-center" data-field="${escHtml(field.name)}">
                                     <option value="">-</option>
                                     <option value="Yes" ${value === 'Yes' ? 'selected' : ''} class="text-emerald-600">Yes</option>
                                     <option value="No" ${value === 'No' ? 'selected' : ''} class="text-red-600">No</option>
@@ -2488,7 +2514,7 @@ function renderRatingTable(fields, savedData) {
                             <tr>
                                 <td class="p-4 text-sm font-medium text-slate-800 dark:text-slate-200" colspan="2">${field.label}</td>
                                 <td class="p-4">
-                                    <input type="text" class="input-field w-full px-3 py-2 rounded-lg text-sm" data-field="${field.name}" value="${escHtml(savedData[field.name] || '')}" placeholder="Value...">
+                                    <input type="text" class="input-field w-full px-3 py-2 rounded-lg text-sm" data-field="${escHtml(field.name)}" value="${escHtml(savedData[field.name] || '')}" placeholder="Value...">
                                 </td>
                             </tr>
                         `;
@@ -2498,7 +2524,7 @@ function renderRatingTable(fields, savedData) {
                         <tr>
                             <td class="p-4 text-sm font-medium text-slate-800 dark:text-slate-200">${field.label}</td>
                             <td class="p-4">
-                                <select class="input-field w-full px-3 py-2 rounded-lg text-sm font-bold text-center" data-field="${field.name}_rating"
+                                <select class="input-field w-full px-3 py-2 rounded-lg text-sm font-bold text-center" data-field="${escHtml(field.name)}_rating"
                                     onchange="(function(sel){
                                         const commentMap = {A:'EXCELLENT',B:'VERY GOOD',C:'GOOD',D:'FAIL'};
                                         const commentEl = sel.closest('tr').querySelector('[data-field=\\'${field.name}_comment\\']');
@@ -2515,7 +2541,7 @@ function renderRatingTable(fields, savedData) {
                                 </select>
                             </td>
                             <td class="p-4">
-                                <input type="text" class="input-field w-full px-3 py-2 rounded-lg text-sm bg-slate-50 dark:bg-slate-700" data-field="${field.name}_comment" value="${escHtml(comment)}" placeholder="Auto-filled from rating..." readonly tabindex="-1">
+                                <input type="text" class="input-field w-full px-3 py-2 rounded-lg text-sm bg-slate-50 dark:bg-slate-700" data-field="${escHtml(field.name)}_comment" value="${escHtml(comment)}" placeholder="Auto-filled from rating..." readonly tabindex="-1">
                             </td>
                         </tr>
                     `;
@@ -2563,22 +2589,22 @@ function renderSubjectsTable(fields, savedData, isFull) {
                             <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                 <td class="p-3 text-sm font-semibold text-slate-800 dark:text-slate-200 border-r border-slate-100 dark:border-slate-700 subject-label">${field.label}</td>
                                 <td class="p-2 border-r border-slate-100 dark:border-slate-700">
-                                    <input type="number" min="0" max="50" class="score-input text-emerald-600 dark:text-emerald-400" data-subject="${field.name}" data-field="class_score" value="${classScore}" onchange="calculateAllPositions(); autoFillRemarkAndGrade(this);">
+                                    <input type="number" min="0" max="50" class="score-input text-emerald-600 dark:text-emerald-400" data-subject="${escHtml(field.name)}" data-field="class_score" value="${classScore}" onchange="calculateAllPositions(); autoFillRemarkAndGrade(this);">
                                 </td>
                                 <td class="p-2 border-r border-slate-100 dark:border-slate-700">
-                                    <input type="number" min="0" max="50" class="score-input text-blue-600 dark:text-blue-400" data-subject="${field.name}" data-field="exam_score" value="${examScore}" onchange="calculateAllPositions(); autoFillRemarkAndGrade(this);">
+                                    <input type="number" min="0" max="50" class="score-input text-blue-600 dark:text-blue-400" data-subject="${escHtml(field.name)}" data-field="exam_score" value="${examScore}" onchange="calculateAllPositions(); autoFillRemarkAndGrade(this);">
                                 </td>
                                 <td class="p-2 border-r border-slate-100 dark:border-slate-700">
-                                    <input type="text" class="score-input bg-slate-100 dark:bg-slate-700 border-0" data-subject="${field.name}" data-field="total_score" value="${total}" readonly tabindex="-1">
+                                    <input type="text" class="score-input bg-slate-100 dark:bg-slate-700 border-0" data-subject="${escHtml(field.name)}" data-field="total_score" value="${total}" readonly tabindex="-1">
                                 </td>
                                 <td class="p-2 border-r border-slate-100 dark:border-slate-700">
-                                    <input type="text" class="score-input bg-slate-100 dark:bg-slate-700 border-0 text-xs ${position === '1st' ? 'text-yellow-600 font-bold' : ''}" data-subject="${field.name}" data-field="position" value="${position}" readonly tabindex="-1">
+                                    <input type="text" class="score-input bg-slate-100 dark:bg-slate-700 border-0 text-xs ${position === '1st' ? 'text-yellow-600 font-bold' : ''}" data-subject="${escHtml(field.name)}" data-field="position" value="${position}" readonly tabindex="-1">
                                 </td>
                                 <td class="p-2 border-r border-slate-100 dark:border-slate-700">
-                                    <input type="text" class="score-input bg-slate-100 dark:bg-slate-700 border-0 text-xs font-semibold uppercase text-center ${remarkColor}" data-subject="${field.name}" data-field="remarks" value="${escHtml(autoRemark)}" readonly tabindex="-1" title="Auto-filled from grade interpretation">
+                                    <input type="text" class="score-input bg-slate-100 dark:bg-slate-700 border-0 text-xs font-semibold uppercase text-center ${remarkColor}" data-subject="${escHtml(field.name)}" data-field="remarks" value="${escHtml(autoRemark)}" readonly tabindex="-1" title="Auto-filled from grade interpretation">
                                 </td>
                                 <td class="p-2">
-                                    <input type="text" class="input-field w-full px-2 py-1.5 rounded text-sm text-center uppercase font-bold grade-badge" data-subject="${field.name}" data-field="teacher_initials" value="${escHtml(autoGrade)}" maxlength="1" placeholder="A" readonly tabindex="-1" title="Auto-filled grade (A–G)">
+                                    <input type="text" class="input-field w-full px-2 py-1.5 rounded text-sm text-center uppercase font-bold grade-badge" data-subject="${escHtml(field.name)}" data-field="teacher_initials" value="${escHtml(autoGrade)}" maxlength="1" placeholder="A" readonly tabindex="-1" title="Auto-filled grade (A–G)">
                                 </td>
                             </tr>
                         `;
@@ -2588,16 +2614,16 @@ function renderSubjectsTable(fields, savedData, isFull) {
                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                             <td class="p-3 text-sm font-semibold text-slate-800 dark:text-slate-200 border-r border-slate-100 dark:border-slate-700">${field.label}</td>
                             <td class="p-2 border-r border-slate-100 dark:border-slate-700">
-                                <input type="number" min="0" max="50" class="score-input text-emerald-600 dark:text-emerald-400" data-subject="${field.name}" data-field="class_score" value="${classScore}">
+                                <input type="number" min="0" max="50" class="score-input text-emerald-600 dark:text-emerald-400" data-subject="${escHtml(field.name)}" data-field="class_score" value="${classScore}">
                             </td>
                             <td class="p-2 border-r border-slate-100 dark:border-slate-700">
-                                <input type="number" min="0" max="50" class="score-input text-blue-600 dark:text-blue-400" data-subject="${field.name}" data-field="exam_score" value="${examScore}">
+                                <input type="number" min="0" max="50" class="score-input text-blue-600 dark:text-blue-400" data-subject="${escHtml(field.name)}" data-field="exam_score" value="${examScore}">
                             </td>
                             <td class="p-2 border-r border-slate-100 dark:border-slate-700">
-                                <input type="text" class="score-input bg-slate-100 dark:bg-slate-700 border-0" data-subject="${field.name}" data-field="total_score" value="${total}" readonly tabindex="-1">
+                                <input type="text" class="score-input bg-slate-100 dark:bg-slate-700 border-0" data-subject="${escHtml(field.name)}" data-field="total_score" value="${total}" readonly tabindex="-1">
                             </td>
                             <td class="p-2">
-                                <input type="text" class="input-field w-full px-2 py-1.5 rounded text-sm" data-subject="${field.name}" data-field="remarks" value="${escHtml(remarks)}" placeholder="Remarks">
+                                <input type="text" class="input-field w-full px-2 py-1.5 rounded text-sm" data-subject="${escHtml(field.name)}" data-field="remarks" value="${escHtml(remarks)}" placeholder="Remarks">
                             </td>
                         </tr>
                     `;
@@ -2614,7 +2640,7 @@ function renderSensesTable(fields, savedData) {
             return `
                 <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                     <span class="font-semibold text-slate-800 dark:text-slate-200">${field.label}</span>
-                    <select class="input-field w-32 px-3 py-2 rounded-lg text-sm font-bold" data-field="${field.name}">
+                    <select class="input-field w-32 px-3 py-2 rounded-lg text-sm font-bold" data-field="${escHtml(field.name)}">
                         <option value="">Select</option>
                         <option value="Yes" ${value === 'Yes' ? 'selected' : ''} class="text-emerald-600">Yes ✓</option>
                         <option value="No" ${value === 'No' ? 'selected' : ''} class="text-red-600">No ✗</option>
@@ -2632,7 +2658,7 @@ function renderPhysicalDev(fields, savedData) {
             return `
                 <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                     <span class="font-semibold text-slate-800 dark:text-slate-200">${field.label}</span>
-                    <select class="input-field w-48 px-3 py-2 rounded-lg text-sm" data-field="${field.name}">
+                    <select class="input-field w-48 px-3 py-2 rounded-lg text-sm" data-field="${escHtml(field.name)}">
                         <option value="">Select Rating</option>
                         <option value="Excellent" ${value === 'Excellent' ? 'selected' : ''} class="text-emerald-600 font-bold">Excellent</option>
                         <option value="Good" ${value === 'Good' ? 'selected' : ''} class="text-blue-600 font-bold">Good</option>
@@ -2743,19 +2769,19 @@ function renderKGUnifiedTable(section, savedData) {
                 <td class="px-3 py-2 text-sm font-medium text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-700">${row.label}</td>
                 <td class="px-2 py-1.5 border-r border-slate-200 dark:border-slate-700">
                     <input type="number" min="0" max="50" class="score-input text-emerald-600 dark:text-emerald-400"
-                        data-subject="${row.name}" data-field="class_score" value="${escHtml(cs)}">
+                        data-subject="${escHtml(row.name)}" data-field="class_score" value="${escHtml(cs)}">
                 </td>
                 <td class="px-2 py-1.5 border-r border-slate-200 dark:border-slate-700">
                     <input type="number" min="0" max="50" class="score-input text-blue-600 dark:text-blue-400"
-                        data-subject="${row.name}" data-field="exam_score" value="${escHtml(es)}">
+                        data-subject="${escHtml(row.name)}" data-field="exam_score" value="${escHtml(es)}">
                 </td>
                 <td class="px-2 py-1.5 border-r border-slate-200 dark:border-slate-700">
                     <input type="text" class="score-input bg-slate-100 dark:bg-slate-700 border-0 font-bold"
-                        data-subject="${row.name}" data-field="total_score" value="${escHtml(ts)}" readonly tabindex="-1">
+                        data-subject="${escHtml(row.name)}" data-field="total_score" value="${escHtml(ts)}" readonly tabindex="-1">
                 </td>
                 <td class="px-2 py-1.5">
                     <input type="text" class="input-field w-full px-2 py-1 rounded text-sm"
-                        data-subject="${row.name}" data-field="remarks" value="${escHtml(rem)}" placeholder="Remarks">
+                        data-subject="${escHtml(row.name)}" data-field="remarks" value="${escHtml(rem)}" placeholder="Remarks">
                 </td>
             </tr>
         `;
@@ -2847,7 +2873,7 @@ function renderKGFooterInfo(section, savedData, student, attendance) {
                             </label>
                             <input type="${f.type === 'number' ? 'number' : 'text'}"
                                 class="input-field w-full px-3 py-2 rounded-lg text-sm ${bg}"
-                                data-field="${f.name}" value="${escHtml(v)}"
+                                data-field="${escHtml(f.name)}" value="${escHtml(v)}"
                                 ${isRO ? 'readonly tabindex="-1"' : ''}>
                         </div>
                     `;
@@ -2909,7 +2935,7 @@ function renderBasicInfo(fields, savedData, autoValues) {
                 return `
                     <div class="space-y-2">
                         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300">${field.label}</label>
-                        <input type="date" class="input-field w-full px-4 py-2.5 rounded-xl ${bgClass} ${textClass}" data-field="${field.name}" value="${escHtml(value)}" ${isReadOnly ? 'readonly tabindex="-1"' : ''}>
+                        <input type="date" class="input-field w-full px-4 py-2.5 rounded-xl ${bgClass} ${textClass}" data-field="${escHtml(field.name)}" value="${escHtml(value)}" ${isReadOnly ? 'readonly tabindex="-1"' : ''}>
                     </div>
                 `;
             }
@@ -2922,7 +2948,7 @@ function renderBasicInfo(fields, savedData, autoValues) {
                         ${field.auto && !field.calculated ? '<span class="text-xs text-blue-500 font-normal ml-1">(Auto)</span>' : ''}
                         ${field.name === 'days_absent' ? '<span class="text-xs text-blue-500 font-normal ml-1">(Auto)</span>' : ''}
                     </label>
-                    <input type="${field.type === 'number' ? 'number' : 'text'}" class="input-field w-full px-4 py-2.5 rounded-xl ${bgClass} ${textClass}" data-field="${field.name}" value="${escHtml(value)}" ${isReadOnly ? 'readonly tabindex="-1"' : ''}>
+                    <input type="${field.type === 'number' ? 'number' : 'text'}" class="input-field w-full px-4 py-2.5 rounded-xl ${bgClass} ${textClass}" data-field="${escHtml(field.name)}" value="${escHtml(value)}" ${isReadOnly ? 'readonly tabindex="-1"' : ''}>
                 </div>
             `;
         }).join('')}
@@ -2957,7 +2983,7 @@ function renderRemarks(fields, savedData) {
                 return `
                     <div class="space-y-2">
                         <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">${field.label}</label>
-                        <select class="input-field w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800" data-field="${field.name}">
+                        <select class="input-field w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800" data-field="${escHtml(field.name)}">
                             <option value="">— Select a remark —</option>
                             ${HEAD_TEACHER_REMARKS.map(r => `<option value="${escHtml(r)}" ${value === r ? 'selected' : ''}>${escHtml(r)}</option>`).join('')}
                         </select>
@@ -2967,7 +2993,7 @@ function renderRemarks(fields, savedData) {
             return `
                 <div class="space-y-2">
                     <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">${field.label}</label>
-                    <textarea class="input-field w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 resize-none" rows="${field.rows || 3}" data-field="${field.name}" placeholder="Enter ${field.label.toLowerCase()}...">${escHtml(value)}</textarea>
+                    <textarea class="input-field w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 resize-none" rows="${field.rows || 3}" data-field="${escHtml(field.name)}" placeholder="Enter ${field.label.toLowerCase()}...">${escHtml(value)}</textarea>
                 </div>
             `;
         }).join('')}
@@ -3210,7 +3236,7 @@ async function saveCurrentReport() {
 // ==================== SCHOOL INFO ====================
 async function loadSchoolInfo() {
     try {
-        // Try school_settings first, fall back to settings table
+        // School details live in school_settings (there is no "settings" table).
         let row = null;
         const { data: d1, error: e1 } = await state.supabaseClient
             .from('school_settings')
@@ -3218,16 +3244,7 @@ async function loadSchoolInfo() {
             .limit(1)
             .maybeSingle();
 
-        if (!e1 && d1) {
-            row = d1;
-        } else {
-            const { data: d2 } = await state.supabaseClient
-                .from('settings')
-                .select('school_name, logo_url, logo_base64')
-                .limit(1)
-                .maybeSingle();
-            if (d2) row = d2;
-        }
+        if (!e1 && d1) row = d1;
 
         if (!row) {
             console.warn('[loadSchoolInfo] No school_settings row found.');

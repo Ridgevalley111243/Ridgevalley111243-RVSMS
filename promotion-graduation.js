@@ -73,6 +73,9 @@ if (typeof state !== 'undefined') {
 // and dataManager.loadClasses() — which are called inside _runPromotion and
 // graduateStudents — do NOT trigger a re-render mid-action and cause UI flicker.
 let _promotionActionRunning = false;
+// academic year -> student ids promoted in this browser session (backup for the
+// duplicate-promotion guard if the promotion_logs insert fails).
+const _promotedThisSession = {};
 
 // ── Class progression map ─────────────────────────────────────────────────────────
 // Maps a student's current class grade to their NEXT class grade.
@@ -221,7 +224,8 @@ function _resolveClassObj(student) {
 
         // 3a. Exact "level - grade" match
         const byLabel = activeClasses.find(c =>
-            _normClassLabel(`${c.level} - ${c.grade}`) === norm
+            _normClassLabel(`${c.level} - ${c.grade}`) === norm ||
+            _normClassLabel(buildClassName(c)) === norm   // "LOWER PRIMARY - BASIC 2" format
         );
         if (byLabel) return byLabel;
 
@@ -409,9 +413,9 @@ async function loadGraduatedStudents() {
 async function loadPromotionLogs() {
     try {
         const { data, error } = await supabaseClient
-            .from('promotion_log')
+            .from('promotion_logs')
             .select('*')
-            .order('promoted_at', { ascending: false });
+            .order('performed_at', { ascending: false });
         if (error) throw error;
         state.promotionLogs = data || [];
     } catch (err) {
@@ -423,11 +427,15 @@ async function loadPromotionLogs() {
 // ── Core promotion engine ─────────────────────────────────────────────────────────
 const promotionEngine = {
 
-    // Check if promotion has already been done for this AY transition
-    hasAlreadyPromoted(fromYear, toYear) {
-        return (state.promotionLogs || []).some(
-            log => log.from_year === fromYear && log.to_year === toYear
-        );
+    // Students already promoted during this academic year (from promotion_logs,
+    // plus any promoted earlier in this browser session in case the log insert
+    // failed). Prevents a second click from moving a child up two classes.
+    getPromotedStudentIds(fromYear) {
+        const ids = new Set(_promotedThisSession[fromYear] || []);
+        (state.promotionLogs || []).forEach(log => {
+            if (log.action === 'promoted' && log.from_year === fromYear) ids.add(String(log.student_id));
+        });
+        return ids;
     },
 
     // Graduate a list of students (Class Six students)
@@ -640,9 +648,14 @@ const promotionEngine = {
     // Promote a list of students to their next class
     async promoteStudents(students, fromAY, toAY) {
         const results = { success: [], failed: [], skipped: [] };
+        const alreadyPromoted = this.getPromotedStudentIds(fromAY?.year);
 
         for (const student of students) {
             try {
+                if (alreadyPromoted.has(String(student.id))) {
+                    results.skipped.push({ student, reason: `Already promoted in ${fromAY.year}` });
+                    continue;
+                }
                 const nextClass = getNextClass(student);
                 if (!nextClass) {
                     // PROMOTION_MAP may have a valid next grade (e.g. KG 2 -> Basic 1) but
@@ -662,7 +675,11 @@ const promotionEngine = {
                     continue;
                 }
 
-                const nextClassLabel = `${nextClass.level} - ${nextClass.grade}`;
+                // Use the canonical name format ("LOWER PRIMARY - BASIC 2") so promoted
+                // students match the rest of the system.
+                const nextClassLabel = buildClassName(nextClass);
+                const fromClassLabel = student.class || '';
+                assertNotUUID(nextClassLabel, 'promoteStudents');
 
                 const { error } = await supabaseClient
                     .from('students')
@@ -684,6 +701,9 @@ const promotionEngine = {
                 }
 
                 results.success.push(student.id);
+                (_promotedThisSession[fromAY?.year] = _promotedThisSession[fromAY?.year] || []).push(String(student.id));
+                results.moves = results.moves || {};
+                results.moves[student.id] = { from: fromClassLabel, to: nextClassLabel };
             } catch (err) {
                 console.error('Promote student error:', student.name, err);
                 results.failed.push({ student, error: err.message });
@@ -692,16 +712,23 @@ const promotionEngine = {
         return results;
     },
 
-    // Log the promotion event for duplicate-prevention
-    async logPromotion(fromYear, toYear, promotedStudentIds) {
+    // Log one promotion_logs row per promoted student (same table and columns the
+    // graduation flow uses) so getPromotedStudentIds() can block repeat promotions.
+    async logPromotion(fromYear, toYear, promotedStudentIds, moves = {}) {
         try {
-            await supabaseClient.from('promotion_log').insert([{
+            const performedAt = new Date().toISOString();
+            const rows = promotedStudentIds.map(id => ({
+                student_id:   String(id),
+                action:       'promoted',
+                from_class:   moves[id]?.from || null,
+                to_class:     moves[id]?.to || null,
                 from_year:    fromYear,
                 to_year:      toYear,
-                promoted_by:  state.currentUser?.id || null,
-                student_ids:  promotedStudentIds,
-                promoted_at:  new Date().toISOString()
-            }]);
+                performed_by: state.currentUser?.id || null,
+                performed_at: performedAt,
+            }));
+            const { error } = await supabaseClient.from('promotion_logs').insert(rows);
+            if (error) console.warn('logPromotion insert failed (non-fatal):', error.code, error.message);
         } catch (err) {
             console.warn('logPromotion error (non-fatal):', err);
         }
@@ -825,7 +852,7 @@ const promotionViews = {
                             <i class="fas fa-graduation-cap" style="margin-right:10px;color:#1a56db;"></i>Promotion & Graduation
                         </h2>
                         <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:4px 0 0;">
-                            Academic Year: <strong>${currentAY?.year || '—'}</strong> &nbsp;·&nbsp; Active Term: <strong>${currentTerm?.name || '—'}</strong>
+                            Academic Year: <strong>${currentAY?.year || '—'}</strong> &nbsp;·&nbsp; Active Term: <strong>${escapeHtml(currentTerm?.name || '—')}</strong>
                         </p>
                     </div>
                     <div style="display:flex;gap:8px;">
@@ -892,7 +919,7 @@ const promotionViews = {
                     <h3 style="font-size:18px;font-weight:700;color:var(--rv-text);margin:0 0 8px;">Not Available Yet</h3>
                     <p style="font-size:14px;color:var(--rv-muted);max-width:420px;margin:0 auto 24px;line-height:1.6;">
                         The Promotion & Graduation panel is only accessible during <strong>Term Three</strong>.
-                        Currently active term: <strong>${state.currentTerm?.name || 'None'}</strong>.
+                        Currently active term: <strong>${escapeHtml(state.currentTerm?.name || 'None')}</strong>.
                     </p>
                     <button onclick="ui.route('academic')" style="padding:10px 24px;background:#1a56db;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
                         <i class="fas fa-calendar-alt" style="margin-right:6px;"></i>Go to Academic Setup
@@ -947,7 +974,7 @@ const promotionViews = {
                                     ${(s.name || 'S').charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                    <div style="font-weight:600;font-size:13px;color:#0f172a;">${s.name}</div>
+                                    <div style="font-weight:600;font-size:13px;color:#0f172a;">${escapeHtml(s.name)}</div>
                                     <div style="font-size:11px;color:#64748b;">${classLabel}</div>
                                 </div>
                             </div>
@@ -1030,7 +1057,7 @@ const promotionViews = {
                                                     ${(s.name || 'S').charAt(0).toUpperCase()}
                                                 </div>
                                                 <div style="flex:1;">
-                                                    <div style="font-weight:600;font-size:13px;color:var(--rv-text);">${s.name}</div>
+                                                    <div style="font-weight:600;font-size:13px;color:var(--rv-text);">${escapeHtml(s.name)}</div>
                                                     <div style="font-size:11px;color:var(--rv-muted);">${classLabel} → <span style="color:#1a56db;">${nextLbl}</span></div>
                                                 </div>
                                                 <button onclick="promotionActions.promoteSelected(['${s.id}'])"
@@ -1195,7 +1222,7 @@ const promotionViews = {
 
         // data-* attributes used by _filterGraduates() — must match filter logic
         return `
-            <tr data-name="${fullName.toLowerCase()}"
+            <tr data-name="${escapeHtml(fullName.toLowerCase())}"
                 data-ay="${g.graduation_academic_year || ''}"
                 data-year="${gradYear}"
                 data-class="${finalClass}"
@@ -1207,7 +1234,7 @@ const promotionViews = {
                             ${initial}
                         </div>
                         <div>
-                            <div style="font-weight:600;font-size:13px;color:var(--rv-text);">${fullName}</div>
+                            <div style="font-weight:600;font-size:13px;color:var(--rv-text);">${escapeHtml(fullName)}</div>
                             ${admNum ? `<div style="font-size:11px;color:var(--rv-muted);">Adm: ${admNum}</div>` : ''}
                         </div>
                     </div>
@@ -1273,10 +1300,13 @@ const promotionActions = {
     async confirmPromoteAll() {
         const currentAY  = state.currentAY;
         const allActive  = state.students.filter(s => s.status !== 'graduated');
-        const candidates = allActive.filter(s => !isGraduationGrade(s) && getNextClass(s) !== null);
+        const promotedIds = promotionEngine.getPromotedStudentIds(currentAY?.year);
+        const candidates = allActive.filter(s => !isGraduationGrade(s) && getNextClass(s) !== null && !promotedIds.has(String(s.id)));
 
         if (candidates.length === 0) {
-            modal.alert('No Students', 'No eligible students to promote.', 'info');
+            modal.alert('No Students', promotedIds.size > 0
+                ? `No eligible students to promote. Students have already been promoted in ${currentAY?.year}.`
+                : 'No eligible students to promote.', 'info');
             return;
         }
 
@@ -1394,7 +1424,7 @@ const promotionActions = {
 
             // Log promotion
             if (results.success.length > 0) {
-                await promotionEngine.logPromotion(fromAY.year, toAY.year, results.success);
+                await promotionEngine.logPromotion(fromAY.year, toAY.year, results.success, results.moves);
             }
 
             // Reload data so all views are in sync
@@ -1402,16 +1432,17 @@ const promotionActions = {
             await Promise.all([
                 dataManager.loadStudents(),
                 dataManager.loadTeachers(),
-                dataManager.loadAttendance(),
                 dataManager.loadReports(),
+                loadPromotionLogs(),
             ]);
 
             app.hideLoading();
 
+            const skippedNote = results.skipped.length > 0 ? ` ${results.skipped.length} skipped (already promoted or no next class).` : '';
             const msg = results.failed.length > 0
-                ? `${results.success.length} promoted, ${results.failed.length} failed.`
-                : `${results.success.length} student(s) successfully promoted!`;
-            const type = results.failed.length > 0 ? 'warning' : 'success';
+                ? `${results.success.length} promoted, ${results.failed.length} failed.${skippedNote}`
+                : `${results.success.length} student(s) successfully promoted!${skippedNote}`;
+            const type = (results.failed.length > 0 || results.skipped.length > 0) ? 'warning' : 'success';
             ui.showToast(msg, type);
 
             // Unlock before the intentional re-render so it goes through normally

@@ -55,6 +55,31 @@ function extractErrorMessage(error) {
     return 'Unknown error';
 }
 
+// Escapes text before it is placed into HTML built with template strings.
+// Use for anything a user typed (names, emails, messages, descriptions).
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Encodes a value as a JS string literal for use inside an inline handler,
+// e.g. onclick="actions.deleteTeacher('${id}', ${jsArg(name)})".
+function jsArg(value) {
+    return escapeHtml(JSON.stringify(String(value ?? '')));
+}
+
+// Parses a money amount typed by a user. Returns a positive number rounded to
+// pesewas, or null if the value is empty, not a number, zero or negative.
+function parseMoneyAmount(value) {
+    const n = Number(String(value ?? '').replace(/,/g, '').trim());
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return Math.round(n * 100) / 100;
+}
+
 function isNetworkError(error) {
     if (!error) return false;
     const msg = (error.message || error.toString() || '').toLowerCase();
@@ -157,7 +182,7 @@ const modal = {
                     <!-- Coloured top bar -->
                     <div style="background:${p.bar};padding:18px 24px;display:flex;align-items:center;gap:12px;">
                         <i class="fas ${p.icon}" style="color:#fff;font-size:22px;flex-shrink:0;"></i>
-                        <span style="color:#fff;font-size:17px;font-weight:700;line-height:1.3;">${title}</span>
+                        <span style="color:#fff;font-size:17px;font-weight:700;line-height:1.3;">${escapeHtml(title)}</span>
                     </div>
                     <!-- Body -->
                     <div style="background:#1e293b;padding:20px 24px 8px;color:#cbd5e1;font-size:14px;line-height:1.6;">
@@ -197,7 +222,7 @@ const modal = {
         this.createModal(
             'Confirm Deletion',
             `<div class="space-y-2">
-                <p class="text-slate-700 dark:text-slate-300">Are you sure you want to delete <strong class="text-slate-900 dark:text-white">${itemName}</strong>?</p>
+                <p class="text-slate-700 dark:text-slate-300">Are you sure you want to delete <strong class="text-slate-900 dark:text-white">${escapeHtml(itemName)}</strong>?</p>
                 <div class="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
                     <i class="fas fa-exclamation-triangle text-red-500"></i>
                     <p class="text-sm text-red-600 dark:text-red-400 font-medium">This action cannot be undone.</p>
@@ -227,7 +252,7 @@ const modal = {
                     <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                         <i class="fas fa-pen text-white text-xl"></i>
                     </div>
-                    <h3 class="text-xl font-bold mb-4 text-slate-800 dark:text-white text-center">${title}</h3>
+                    <h3 class="text-xl font-bold mb-4 text-slate-800 dark:text-white text-center">${escapeHtml(title)}</h3>
                     <input type="text" id="${modalId}-input" class="w-full rounded-xl px-4 py-3 border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 mb-6 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-800 dark:text-white" value="${defaultValue}" placeholder="Enter value...">
                     <div class="flex gap-3">
                         <button id="${modalId}-cancel" class="flex-1 py-3 px-4 border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">Cancel</button>
@@ -287,7 +312,7 @@ const modal = {
                         <div class="w-10 h-10 bg-gradient-to-br from-ridge-500 to-blue-500 rounded-xl flex items-center justify-center">
                             <i class="fas fa-user-graduate text-white"></i>
                         </div>
-                        <h3 class="text-xl font-bold text-slate-800 dark:text-white">${title}</h3>
+                        <h3 class="text-xl font-bold text-slate-800 dark:text-white">${escapeHtml(title)}</h3>
                     </div>
                     <div class="relative mb-4">
                         <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
@@ -295,13 +320,13 @@ const modal = {
                     </div>
                     <div id="${modalId}-results" class="overflow-y-auto flex-1 max-h-96 space-y-2 pr-2">
                         ${students.length === 0 ? '<p class="text-center text-slate-500 py-4">No students available</p>' : students.map(s => `
-                            <div class="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-600 transition-all border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-800 student-result ${s.disabled ? 'opacity-50 cursor-not-allowed' : ''}" data-id="${s.id}" data-name="${s.name}">
+                            <div class="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-600 transition-all border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-800 student-result ${s.disabled ? 'opacity-50 cursor-not-allowed' : ''}" data-id="${s.id}" data-name="${escapeHtml(s.name)}">
                                 <div class="flex items-center gap-3">
                                     <div class="w-10 h-10 rounded-full bg-gradient-to-br from-ridge-500 to-blue-500 flex items-center justify-center text-white font-bold">
                                         ${s.name.charAt(0)}
                                     </div>
                                     <div class="flex-1">
-                                        <div class="font-semibold text-slate-800 dark:text-white">${s.name}</div>
+                                        <div class="font-semibold text-slate-800 dark:text-white">${escapeHtml(s.name)}</div>
                                         <div class="text-sm text-slate-500">${resolveClassLabel(s)} • Age: ${s.age || 'N/A'}${s.disabled ? ' <span class="text-red-500 font-bold">(Already linked)</span>' : ''}</div>
                                     </div>
                                     ${!s.disabled ? '<i class="fas fa-chevron-right text-slate-400"></i>' : ''}
@@ -372,7 +397,7 @@ const modal = {
                         <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
                             <i class="fas fa-calendar-alt text-white"></i>
                         </div>
-                        <h3 class="text-xl font-bold text-slate-800 dark:text-white">${title}</h3>
+                        <h3 class="text-xl font-bold text-slate-800 dark:text-white">${escapeHtml(title)}</h3>
                     </div>
                     <div class="space-y-3 max-h-96 overflow-y-auto">
                         ${terms.length === 0 ? '<p class="text-center text-slate-500 py-4">No terms available</p>' : terms.map(t => `
@@ -380,7 +405,7 @@ const modal = {
                                 class="w-full p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border-2 border-transparent hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-600 transition-all text-left group">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <div class="font-bold text-slate-800 dark:text-white group-hover:text-blue-600 transition-colors">${t.name}</div>
+                                        <div class="font-bold text-slate-800 dark:text-white group-hover:text-blue-600 transition-colors">${escapeHtml(t.name)}</div>
                                         ${t.active ? '<span class="text-xs text-emerald-600 font-bold">Currently Active</span>' : ''}
                                     </div>
                                     <i class="fas fa-check-circle text-slate-300 group-hover:text-blue-500 transition-colors"></i>
@@ -436,7 +461,7 @@ const modal = {
                             <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
                                 <i class="fas fa-file-pdf text-white"></i>
                             </div>
-                            <h3 class="text-xl font-bold text-slate-800 dark:text-white">${title}</h3>
+                            <h3 class="text-xl font-bold text-slate-800 dark:text-white">${escapeHtml(title)}</h3>
                         </div>
                         <button id="${modalId}-close" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all">
                             <i class="fas fa-times"></i>
@@ -552,17 +577,28 @@ async function initApp() {
     }
 }
 
+// Coalesce bursts of realtime events (e.g. a bulk upload) into one refresh,
+// and skip refreshing when nobody is logged in.
+let _realtimeRefreshTimer = null;
+function scheduleRealtimeRefresh() {
+    if (!state.currentUser) return;
+    clearTimeout(_realtimeRefreshTimer);
+    _realtimeRefreshTimer = setTimeout(() => {
+        if (state.currentUser) actions.refreshData();
+    }, 1500);
+}
+
 function setupRealtimeSubscriptions() {
     const channels = [
-        supabaseClient.channel('public:academic_years').on('postgres_changes', { event: '*', schema: 'public', table: 'academic_years' }, () => actions.refreshData()),
-        supabaseClient.channel('public:classes').on('postgres_changes', { event: '*', schema: 'public', table: 'classes' }, () => actions.refreshData()),
-        supabaseClient.channel('public:students').on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => actions.refreshData()),
-        supabaseClient.channel('public:teachers').on('postgres_changes', { event: '*', schema: 'public', table: 'teachers' }, () => actions.refreshData()),
-        supabaseClient.channel('public:parents').on('postgres_changes', { event: '*', schema: 'public', table: 'parents' }, () => actions.refreshData()),
-        supabaseClient.channel('public:transactions').on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => actions.refreshData()),
-        supabaseClient.channel('public:fees').on('postgres_changes', { event: '*', schema: 'public', table: 'fees' }, () => actions.refreshData()),
-        supabaseClient.channel('public:reports').on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, () => actions.refreshData()),
-        supabaseClient.channel('public:received_reports').on('postgres_changes', { event: '*', schema: 'public', table: 'received_reports' }, () => actions.refreshData())
+        supabaseClient.channel('public:academic_years').on('postgres_changes', { event: '*', schema: 'public', table: 'academic_years' }, scheduleRealtimeRefresh),
+        supabaseClient.channel('public:classes').on('postgres_changes', { event: '*', schema: 'public', table: 'classes' }, scheduleRealtimeRefresh),
+        supabaseClient.channel('public:students').on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, scheduleRealtimeRefresh),
+        supabaseClient.channel('public:teachers').on('postgres_changes', { event: '*', schema: 'public', table: 'teachers' }, scheduleRealtimeRefresh),
+        supabaseClient.channel('public:parents').on('postgres_changes', { event: '*', schema: 'public', table: 'parents' }, scheduleRealtimeRefresh),
+        supabaseClient.channel('public:transactions').on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, scheduleRealtimeRefresh),
+        supabaseClient.channel('public:fees').on('postgres_changes', { event: '*', schema: 'public', table: 'fees' }, scheduleRealtimeRefresh),
+        supabaseClient.channel('public:reports').on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, scheduleRealtimeRefresh),
+        supabaseClient.channel('public:received_reports').on('postgres_changes', { event: '*', schema: 'public', table: 'received_reports' }, scheduleRealtimeRefresh)
     ];
     
     channels.forEach(channel => channel.subscribe());
@@ -2757,7 +2793,7 @@ const ui = {
                             </div>
                             <div>
                                 <p style="font-weight:700;font-size:16px;color:var(--rv-navy,#0f2044);margin:0 0 6px;">Something went wrong</p>
-                                <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:0;">${err.message || 'An unexpected error occurred loading this section.'}</p>
+                                <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:0;">${escapeHtml(err.message || 'An unexpected error occurred loading this section.')}</p>
                             </div>
                             <button onclick="ui.route('${view}')" style="padding:10px 24px;background:#1a56db;color:#fff;border:none;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;">
                                 <i class="fas fa-redo" style="margin-right:6px;"></i>Retry
@@ -2790,7 +2826,7 @@ const ui = {
                 stopOnFocus: true
             }).showToast();
         } else {
-            modal.alert(type.toUpperCase(), msg, type);
+            modal.alert(type.toUpperCase(), escapeHtml(msg), type);
         }
     }
 };
@@ -2824,7 +2860,7 @@ const views = {
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
                 <div>
                     <h2 style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:700;color:var(--rv-navy,#0f2044);margin:0;">Dashboard Overview</h2>
-                    <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:2px 0 0;">${state.currentAY?.year || ''} ${state.currentTerm ? '· ' + state.currentTerm.name : ''}</p>
+                    <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:2px 0 0;">${state.currentAY?.year || ''} ${escapeHtml(state.currentTerm ? '· ' + state.currentTerm.name : '')}</p>
                 </div>
                 <button onclick="actions.refreshData()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--rv-surface);border:1.5px solid var(--rv-border);border-radius:10px;font-size:13px;font-weight:600;color:var(--rv-muted);cursor:pointer;">
                     <i class="fas fa-sync-alt"></i> Refresh
@@ -2908,7 +2944,7 @@ const views = {
                                 <tbody>
                                     ${allArrears.slice(0, 5).map(a => `
                                         <tr style="border-top:1px solid var(--rv-border);">
-                                            <td style="padding:10px 12px;font-weight:600;color:var(--rv-text);">${a.studentName}</td>
+                                            <td style="padding:10px 12px;font-weight:600;color:var(--rv-text);">${escapeHtml(a.studentName)}</td>
                                             <td style="padding:10px 12px;color:var(--rv-muted);">${a.studentClass}</td>
                                             <td style="padding:10px 12px;text-align:right;font-weight:700;color:#dc2626;">₵<span class="rv-money-val" data-raw="${a.amount.toFixed(2)}">${window._rvMoneyHidden ? '•••' : a.amount.toFixed(2)}</span></td>
                                         </tr>
@@ -2928,8 +2964,8 @@ const views = {
                         ${state.notifications.length > 0
                             ? state.notifications.slice(0, 6).map(n => `
                                 <div style="padding:10px 14px;border-radius:10px;background:var(--rv-bg);border-left:3px solid ${n.read ? 'var(--rv-border)' : '#1a56db'};">
-                                    <p style="font-weight:700;font-size:12.5px;color:var(--rv-text);margin:0;">${n.title}</p>
-                                    <p style="font-size:11.5px;color:var(--rv-muted);margin:2px 0 0;">${n.message?.substring(0, 80)}${n.message?.length > 80 ? '...' : ''}</p>
+                                    <p style="font-weight:700;font-size:12.5px;color:var(--rv-text);margin:0;">${escapeHtml(n.title)}</p>
+                                    <p style="font-size:11.5px;color:var(--rv-muted);margin:2px 0 0;">${escapeHtml(n.message?.substring(0, 80))}${escapeHtml(n.message?.length > 80 ? '...' : '')}</p>
                                 </div>
                             `).join('')
                             : `<p style="text-align:center;color:var(--rv-muted);padding:24px 0;font-size:13px;">No notifications yet</p>`
@@ -2968,7 +3004,7 @@ const views = {
                                     const classLabel = classObj ? buildClassName(classObj) : (s.class || '—');
                                     return `
                                     <tr class="text-sm">
-                                        <td class="px-4 py-2 font-semibold">${s.name}</td>
+                                        <td class="px-4 py-2 font-semibold">${escapeHtml(s.name)}</td>
                                         <td class="px-4 py-2 text-slate-500">${classLabel}</td>
                                         <td class="px-4 py-2 text-slate-500">${s.age || 'N/A'}</td>
                                     </tr>`;
@@ -2984,8 +3020,8 @@ const views = {
                     <div class="max-h-96 overflow-y-auto space-y-2">
                         ${state.teachers.map(t => `
                             <div class="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                                <p class="font-semibold">${t.full_name}</p>
-                                <p class="text-sm text-slate-500">${t.email}</p>
+                                <p class="font-semibold">${escapeHtml(t.full_name)}</p>
+                                <p class="text-sm text-slate-500">${escapeHtml(t.email)}</p>
                             </div>
                         `).join('')}
                     </div>
@@ -3049,8 +3085,8 @@ const views = {
                             <tbody class="divide-y">
                                 ${arrears.map(a => `
                                     <tr class="text-sm">
-                                        <td class="px-4 py-2 font-semibold">${a.studentName}</td>
-                                        <td class="px-4 py-2 text-slate-500">${a.parentName}</td>
+                                        <td class="px-4 py-2 font-semibold">${escapeHtml(a.studentName)}</td>
+                                        <td class="px-4 py-2 text-slate-500">${escapeHtml(a.parentName)}</td>
                                         <td class="px-4 py-2 text-right font-bold text-red-600">₵<span class="rv-money-val" data-raw="${a.amount.toFixed(2)}">${window._rvMoneyHidden ? '•••' : a.amount.toFixed(2)}</span></td>
                                     </tr>
                                 `).join('')}
@@ -3341,8 +3377,8 @@ const views = {
                                 <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
                                     ${studentsByClass[cls].map(s => `
                                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                                            <td class="px-5 py-3 font-mono text-xs text-ridge-600 dark:text-ridge-400 font-bold">${s.admission_number || '—'}</td>
-                                            <td class="px-5 py-3 font-semibold text-slate-800 dark:text-slate-200">${s.name}</td>
+                                            <td class="px-5 py-3 font-mono text-xs text-ridge-600 dark:text-ridge-400 font-bold">${escapeHtml(s.admission_number || '—')}</td>
+                                            <td class="px-5 py-3 font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(s.name)}</td>
                                             <td class="px-5 py-3 text-slate-600 dark:text-slate-400">
                                                 ${s.gender ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${s.gender.toLowerCase().startsWith('m') ? 'rgba(59,130,246,0.15)' : s.gender.toLowerCase().startsWith('f') ? 'rgba(236,72,153,0.15)' : 'rgba(100,116,139,0.15)'};color:${s.gender.toLowerCase().startsWith('m') ? '#3b82f6' : s.gender.toLowerCase().startsWith('f') ? '#ec4899' : '#64748b'};">
                                                     <i class="fas fa-${s.gender.toLowerCase().startsWith('m') ? 'mars' : s.gender.toLowerCase().startsWith('f') ? 'venus' : 'genderless'}"></i>
@@ -3351,7 +3387,7 @@ const views = {
                                             </td>
                                             <td class="px-5 py-3 text-slate-600 dark:text-slate-400">${s.dob ? new Date(s.dob).toLocaleDateString('en-GB') : '—'}</td>
                                             <td class="px-5 py-3 text-slate-800 dark:text-slate-200">${s.age || '—'}</td>
-                                            <td class="px-5 py-3 text-slate-600 dark:text-slate-400">${s.parent_phone || '—'}</td>
+                                            <td class="px-5 py-3 text-slate-600 dark:text-slate-400">${escapeHtml(s.parent_phone || '—')}</td>
                                             <td class="px-5 py-3 text-right">
                                                 <button onclick="actions.editStudent('${s.id}')" class="text-blue-500 hover:text-blue-700 transition-colors p-2 mr-1" title="Edit">
                                                     <i class="fas fa-edit"></i>
@@ -3403,8 +3439,8 @@ const views = {
                             <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
                                 ${state.teachers.map(t => `
                                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                                        <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${t.full_name}</td>
-                                        <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">${t.email}</td>
+                                        <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(t.full_name)}</td>
+                                        <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">${escapeHtml(t.email)}</td>
                                         <td class="px-6 py-4">
                                             <select onchange="actions.assignTeacher('${t.profile_id}', this.value)" class="input-field rounded-lg px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
                                                 <option value="">Not Assigned</option>
@@ -3416,7 +3452,7 @@ const views = {
                                             </select>
                                         </td>
                                         <td class="px-6 py-4 text-right">
-                                            <button onclick="actions.deleteTeacher('${t.profile_id}', '${t.full_name}')" class="text-red-500 hover:text-red-700 transition-colors p-2" title="Delete">
+                                            <button onclick="actions.deleteTeacher('${t.profile_id}', ${jsArg(t.full_name)})" class="text-red-500 hover:text-red-700 transition-colors p-2" title="Delete">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </td>
@@ -3469,15 +3505,15 @@ const views = {
                                     
                                     return `
                                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                                            <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${p.full_name}</td>
-                                            <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">${p.email}</td>
-                                            <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">${p.phone || '—'}</td>
+                                            <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(p.full_name)}</td>
+                                            <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">${escapeHtml(p.email)}</td>
+                                            <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">${escapeHtml(p.phone || '—')}</td>
                                             <td class="px-6 py-4 text-sm max-w-xs truncate text-slate-600 dark:text-slate-400" title="${children}">${children}</td>
                                             <td class="px-6 py-4 text-right">
                                                 <button onclick="actions.editParentChildren('${p.id}')" class="text-blue-500 hover:text-blue-700 mr-3 transition-colors p-2" title="Edit Children">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
-                                                <button onclick="actions.deleteParent('${p.id}', '${p.full_name}')" class="text-red-500 hover:text-red-700 transition-colors p-2" title="Delete">
+                                                <button onclick="actions.deleteParent('${p.id}', ${jsArg(p.full_name)})" class="text-red-500 hover:text-red-700 transition-colors p-2" title="Delete">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </td>
@@ -3523,7 +3559,7 @@ const views = {
                         ${state.fees.length === 0 ? '<p class="text-slate-500 text-center py-4">No fees published yet</p>' : state.fees.map(fee => `
                             <div class="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
                                 <div>
-                                    <p class="font-bold text-slate-800 dark:text-slate-200">${fee.description}</p>
+                                    <p class="font-bold text-slate-800 dark:text-slate-200">${escapeHtml(fee.description)}</p>
                                     <p class="text-sm text-blue-700 dark:text-blue-300">₵<span class="rv-money-val" data-raw="${fee.amount}">${window._rvMoneyHidden ? '•••' : fee.amount}</span> • ${fee.scope === 'global' ? 'All Students' : fee.scope}</p>
                                     <p class="text-xs text-slate-500">${new Date(fee.created_at).toLocaleDateString()}</p>
                                 </div>
@@ -3555,9 +3591,9 @@ const views = {
                             <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
                                 ${allArrears.map(a => `
                                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                                        <td class="px-6 py-3 font-semibold text-slate-800 dark:text-slate-200">${a.studentName}</td>
+                                        <td class="px-6 py-3 font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(a.studentName)}</td>
                                         <td class="px-6 py-3 text-slate-600 dark:text-slate-400">${a.studentClass}</td>
-                                        <td class="px-6 py-3 text-slate-600 dark:text-slate-400">${a.parentName}</td>
+                                        <td class="px-6 py-3 text-slate-600 dark:text-slate-400">${escapeHtml(a.parentName)}</td>
                                         <td class="px-6 py-3 text-right font-bold text-red-600">₵<span class="rv-money-val" data-raw="${a.amount.toFixed(2)}">${window._rvMoneyHidden ? '•••' : a.amount.toFixed(2)}</span></td>
                                     </tr>
                                 `).join('')}
@@ -3577,7 +3613,7 @@ const views = {
                         return `
                             <div class="flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
                                 <div>
-                                    <p class="font-bold text-slate-800 dark:text-slate-200">${student?.name || 'Unknown'}</p>
+                                    <p class="font-bold text-slate-800 dark:text-slate-200">${escapeHtml(student?.name || 'Unknown')}</p>
                                     <p class="text-sm text-amber-700 dark:text-amber-300">₵<span class="rv-money-val" data-raw="${t.amount}">${window._rvMoneyHidden ? '•••' : t.amount}</span> • ${t.method}</p>
                                     ${t.proof ? `<a href="${t.proof}" target="_blank" class="text-xs text-blue-500 underline">View Proof</a>` : ''}
                                 </div>
@@ -3619,7 +3655,7 @@ const views = {
                                     return `
                                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                                             <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">${new Date(t.created_at).toLocaleDateString()}</td>
-                                            <td class="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">${student?.name || 'Unknown'}</td>
+                                            <td class="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">${escapeHtml(student?.name || 'Unknown')}</td>
                                             <td class="px-6 py-4 font-bold text-emerald-600">₵<span class="rv-money-val" data-raw="${t.amount}">${window._rvMoneyHidden ? '•••' : t.amount}</span></td>
                                             <td class="px-6 py-4">
                                                 <span class="px-2 py-1 rounded-full text-xs font-bold ${statusBg} ${statusColor}">
@@ -3675,7 +3711,7 @@ const views = {
                                                 ${report.teacher_name ? report.teacher_name.charAt(0) : 'T'}
                                             </div>
                                             <div>
-                                                <h4 class="font-bold text-slate-800 dark:text-white text-lg">${report.teacher_name || 'Unknown Teacher'}</h4>
+                                                <h4 class="font-bold text-slate-800 dark:text-white text-lg">${escapeHtml(report.teacher_name || 'Unknown Teacher')}</h4>
                                                 <p class="text-sm text-slate-500">${report.class} • ${report.term} • ${report.academic_year}</p>
                                             </div>
                                         </div>
@@ -3746,7 +3782,7 @@ const views = {
                             <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
                                 ${reviewedReports.map(report => `
                                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                                        <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${report.teacher_name || 'Unknown'}</td>
+                                        <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(report.teacher_name || 'Unknown')}</td>
                                         <td class="px-6 py-4 text-slate-600 dark:text-slate-400">${report.class}</td>
                                         <td class="px-6 py-4 text-slate-600 dark:text-slate-400">${report.term}</td>
                                         <td class="px-6 py-4 text-center font-bold text-slate-800 dark:text-slate-200">${report.student_count}</td>
@@ -3838,10 +3874,10 @@ const views = {
                                             : 'bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600'}">
                                         <div class="flex items-center gap-3">
                                             <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow ${existing ? 'bg-emerald-500' : 'bg-gradient-to-br from-ridge-500 to-blue-600'}">
-                                                ${existing ? '<i class="fas fa-check text-xs"></i>' : student.name.charAt(0).toUpperCase()}
+                                                ${existing ? '<i class="fas fa-check text-xs"></i>' : escapeHtml(student.name.charAt(0).toUpperCase())}
                                             </div>
                                             <div>
-                                                <p class="font-bold ${existing ? 'text-slate-400 dark:text-slate-500 line-through' : 'text-slate-800 dark:text-slate-200'}">${student.name}</p>
+                                                <p class="font-bold ${existing ? 'text-slate-400 dark:text-slate-500 line-through' : 'text-slate-800 dark:text-slate-200'}">${escapeHtml(student.name)}</p>
                                                 <p class="text-xs ${existing ? 'text-emerald-500 dark:text-emerald-400 font-semibold' : 'text-slate-500 dark:text-slate-400'}">${existing ? 'Report uploaded ✓' : (student.student_id || student.id)}</p>
                                             </div>
                                         </div>
@@ -3854,7 +3890,7 @@ const views = {
                                                     class="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600 transition-colors">
                                                     <i class="fas fa-eye mr-1"></i>View
                                                 </a>
-                                                <button onclick="actions.undoStudentReport('${existing.id}', '${student.name.replace(/'/g, "\\'")}')"
+                                                <button onclick="actions.undoStudentReport('${existing.id}', ${jsArg(student.name)})"
                                                     class="px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-bold hover:bg-amber-600 transition-colors flex items-center gap-1">
                                                     <i class="fas fa-undo"></i> Undo
                                                 </button>
@@ -3863,7 +3899,7 @@ const views = {
                                                     <i class="fas fa-cloud-upload-alt"></i>
                                                     Upload Report
                                                     <input type="file" accept=".pdf,.doc,.docx" class="hidden"
-                                                        onchange="actions.uploadStudentReport('${student.id}', '${student.name.replace(/'/g, "\\'")}', this)">
+                                                        onchange="actions.uploadStudentReport('${student.id}', ${jsArg(student.name)}, this)">
                                                 </label>
                                             `}
                                         </div>
@@ -3899,7 +3935,7 @@ const views = {
                                     const student = state.students.find(s => s.id === report.student_id);
                                     return `
                                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                                            <td class="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200">${student?.name || 'Unknown'}</td>
+                                            <td class="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(student?.name || 'Unknown')}</td>
                                             <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-sm">${student?.class || '—'}</td>
                                             <td class="px-4 py-3">
                                                 <span class="px-2 py-1 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 rounded-full text-xs font-bold">
@@ -3912,7 +3948,7 @@ const views = {
                                                         class="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600 transition-colors">
                                                         <i class="fas fa-eye"></i>
                                                     </a>
-                                                    <button onclick="actions.undoStudentReport('${report.id}', '${(student?.name || 'this student').replace(/'/g, "\\'")}')"
+                                                    <button onclick="actions.undoStudentReport('${report.id}', ${jsArg((student?.name || 'this student'))})"
                                                         class="px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-bold hover:bg-amber-600 transition-colors">
                                                         <i class="fas fa-undo mr-1"></i>Undo
                                                     </button>
@@ -3968,13 +4004,13 @@ const views = {
                             <div class="p-4">
                                 <div class="flex justify-between items-start mb-2">
                                     <div>
-                                        <p class="font-bold text-slate-800 dark:text-white">${student?.name || 'Unknown Student'}</p>
+                                        <p class="font-bold text-slate-800 dark:text-white">${escapeHtml(student?.name || 'Unknown Student')}</p>
                                         <p class="text-sm text-slate-500">${student?.class || ''}</p>
                                     </div>
                                     <span class="px-2 py-1 bg-amber-100 text-amber-700 rounded text-xs font-bold">Pending</span>
                                 </div>
                                 <div class="space-y-1 text-sm text-slate-600 dark:text-slate-400 mb-4">
-                                    <p><i class="fas fa-user mr-2"></i>Parent: ${parent?.full_name || 'Unknown'}</p>
+                                    <p><i class="fas fa-user mr-2"></i>Parent: ${escapeHtml(parent?.full_name || 'Unknown')}</p>
                                     <p><i class="fas fa-money-bill mr-2"></i>Amount: ₵<span class="rv-money-val" data-raw="${t.amount}">${window._rvMoneyHidden ? '•••' : t.amount}</span></p>
                                     <p><i class="fas fa-calendar mr-2"></i>Date: ${new Date(t.created_at).toLocaleDateString()}</p>
                                     <p><i class="fas fa-hashtag mr-2"></i>Ref: ${t.id.substring(0, 8).toUpperCase()}</p>
@@ -4009,8 +4045,8 @@ const views = {
                 ${pendingAdmins.length === 0 ? '<div class="text-center py-12 text-slate-500 bg-white dark:bg-slate-800 rounded-2xl shadow-lg">No pending approvals</div>' : pendingAdmins.map(admin => `
                     <div class="glass-panel rounded-2xl p-6 flex items-center justify-between bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
                         <div>
-                            <h3 class="font-bold text-lg text-slate-800 dark:text-white">${admin.full_name}</h3>
-                            <p class="text-sm text-slate-500">${admin.email}</p>
+                            <h3 class="font-bold text-lg text-slate-800 dark:text-white">${escapeHtml(admin.full_name)}</h3>
+                            <p class="text-sm text-slate-500">${escapeHtml(admin.email)}</p>
                             <span class="inline-block mt-2 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">Pending Approval</span>
                         </div>
                         <div class="flex gap-2">
@@ -4087,8 +4123,8 @@ const views = {
                                 <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
                                     <div class="flex items-start justify-between gap-4">
                                         <div class="flex-1 min-w-0">
-                                            <p class="font-bold text-slate-800 dark:text-white">${n.title}</p>
-                                            <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">${n.message}</p>
+                                            <p class="font-bold text-slate-800 dark:text-white">${escapeHtml(n.title)}</p>
+                                            <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">${escapeHtml(n.message)}</p>
                                         </div>
                                         <div class="text-right shrink-0">
                                             <span class="inline-block px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
@@ -4138,10 +4174,10 @@ const views = {
                                         </div>
                                         <div class="flex-1 min-w-0">
                                             <div class="flex items-center justify-between gap-2 mb-1">
-                                                <p class="font-bold text-slate-800 dark:text-white">${n.title}</p>
+                                                <p class="font-bold text-slate-800 dark:text-white">${escapeHtml(n.title)}</p>
                                                 <p class="text-xs text-slate-400 shrink-0">${new Date(n.created_at).toLocaleString()}</p>
                                             </div>
-                                            <p class="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">${n.message}</p>
+                                            <p class="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">${escapeHtml(n.message)}</p>
                                             <p class="text-xs text-slate-400 dark:text-slate-500 mt-2">
                                                 <i class="fas fa-user-shield mr-1"></i>School Administration
                                             </p>
@@ -4175,7 +4211,7 @@ const views = {
                         </div>
                         <div>
                             <p style="font-weight:700;font-size:16px;color:var(--rv-navy,#0f2044);margin:0 0 6px;">Failed to load Data Analysis</p>
-                            <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:0;">${err.message || 'An unexpected error occurred.'}</p>
+                            <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:0;">${escapeHtml(err.message || 'An unexpected error occurred.')}</p>
                         </div>
                         <button onclick="ui.route('data_analysis')" style="padding:10px 24px;background:#1a56db;color:#fff;border:none;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;">
                             <i class="fas fa-redo" style="margin-right:6px;"></i>Retry
@@ -4208,7 +4244,7 @@ const views = {
         const html = `
             <div class="mb-6">
                 <h2 style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:700;color:var(--rv-navy,#0f2044);margin:0 0 4px;">My Dashboard</h2>
-                <p style="font-size:13px;color:var(--rv-muted,#64748b);">Welcome, ${state.currentUser?.full_name || 'Teacher'}</p>
+                <p style="font-size:13px;color:var(--rv-muted,#64748b);">Welcome, ${escapeHtml(state.currentUser?.full_name || 'Teacher')}</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -4342,7 +4378,7 @@ const views = {
                             <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
                                 ${myStudents.map(s => `
                                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                                        <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${s.name}</td>
+                                        <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(s.name)}</td>
                                         <td class="px-6 py-4 text-slate-800 dark:text-slate-200">${resolveClassLabel(s)}</td>
                                         <td class="px-6 py-4 text-slate-800 dark:text-slate-200">${s.age || 'N/A'}</td>
                                     </tr>
@@ -4424,7 +4460,7 @@ const views = {
                     The report generator has been opened in a new tab with your class data pre-loaded.
                 </p>
                 <div class="text-left bg-slate-50 dark:bg-slate-700 p-4 rounded-xl text-sm text-slate-600 dark:text-slate-400 mb-4">
-                    <p><strong>Teacher:</strong> ${teacherName}</p>
+                    <p><strong>Teacher:</strong> ${escapeHtml(teacherName)}</p>
                     <p><strong>Class:</strong> ${classString}</p>
                     <p><strong>Year:</strong> ${year}</p>
                     <p><strong>Term:</strong> ${term}</p>
@@ -4459,7 +4495,7 @@ const views = {
                             <div class="w-16 h-16 bg-gradient-to-br from-ridge-500 to-blue-500 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-4 shadow-lg">
                                 ${child.name.charAt(0)}
                             </div>
-                            <h3 class="font-bold text-xl mb-1 text-slate-800 dark:text-white">${child.name}</h3>
+                            <h3 class="font-bold text-xl mb-1 text-slate-800 dark:text-white">${escapeHtml(child.name)}</h3>
                             <p class="text-sm text-slate-500 mb-4">${child.class}</p>
                             
                             <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-xl">
@@ -4499,7 +4535,7 @@ const views = {
                                 ${child.name.charAt(0)}
                             </div>
                             <div class="flex-1">
-                                <h3 class="font-bold text-xl text-slate-800 dark:text-white">${child.name}</h3>
+                                <h3 class="font-bold text-xl text-slate-800 dark:text-white">${escapeHtml(child.name)}</h3>
                                 <p class="text-slate-500">${child.class}</p>
                             </div>
                         </div>
@@ -4583,7 +4619,7 @@ const views = {
                         ${relevantFees.map(fee => `
                             <div class="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
                                 <div>
-                                    <p class="font-bold text-slate-800 dark:text-slate-200">${fee.description}</p>
+                                    <p class="font-bold text-slate-800 dark:text-slate-200">${escapeHtml(fee.description)}</p>
                                     <p class="text-xs text-slate-500">${fee.scope === 'global' ? 'All Students' : fee.scope} • Posted ${new Date(fee.created_at).toLocaleDateString()}</p>
                                 </div>
                                 <span class="text-lg font-black text-blue-600 dark:text-blue-400">₵<span class="rv-money-val" data-raw="${fee.amount}">${window._rvMoneyHidden ? '•••' : fee.amount}</span></span>
@@ -4603,7 +4639,7 @@ const views = {
                         ? '<p class="text-slate-500 text-center py-4">No children linked to your account yet.</p>'
                         : `<div class="space-y-4">
                             <select id="payment-child" class="input-field w-full rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
-                                ${myChildren.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+                                ${myChildren.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}
                             </select>
                             <input type="number" id="payment-amount" class="input-field w-full rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Amount (₵)">
                             <select id="payment-method" onchange="actions.toggleProofUpload()" class="input-field w-full rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-slate-700 dark:to-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
@@ -4639,7 +4675,7 @@ const views = {
                                     <div class="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
                                         <div class="flex items-start justify-between mb-2">
                                             <div>
-                                                <p class="font-bold text-slate-800 dark:text-white">${student?.name || 'Unknown'}</p>
+                                                <p class="font-bold text-slate-800 dark:text-white">${escapeHtml(student?.name || 'Unknown')}</p>
                                                 <p class="text-sm text-slate-500">₵<span class="rv-money-val" data-raw="${t.amount}">${window._rvMoneyHidden ? '•••' : t.amount}</span> • ${t.method === 'momo' ? 'Mobile Money' : 'Cash'}</p>
                                                 <p class="text-xs text-slate-400">${new Date(t.created_at).toLocaleDateString()}</p>
                                             </div>
@@ -4691,10 +4727,10 @@ const views = {
                         <div class="glass-panel rounded-2xl p-6 bg-white dark:bg-slate-800 shadow-lg border-l-4 border-emerald-500 hover:shadow-xl transition-shadow">
                             <div class="flex items-start justify-between mb-4">
                                 <div>
-                                    <h3 class="font-bold text-lg text-slate-800 dark:text-white">${student?.name || 'Unknown Student'}</h3>
-                                    <p class="text-sm text-slate-500 mb-2">${student?.class || ''} • ${report.title || 'Academic Report'}</p>
+                                    <h3 class="font-bold text-lg text-slate-800 dark:text-white">${escapeHtml(student?.name || 'Unknown Student')}</h3>
+                                    <p class="text-sm text-slate-500 mb-2">${student?.class || ''} • ${escapeHtml(report.title || 'Academic Report')}</p>
                                     <p class="text-xs text-slate-400">
-                                        <i class="fas fa-chalkboard-teacher mr-1"></i> Teacher: ${teacher?.full_name || 'Unknown'}<br>
+                                        <i class="fas fa-chalkboard-teacher mr-1"></i> Teacher: ${escapeHtml(teacher?.full_name || 'Unknown')}<br>
                                         <i class="fas fa-calendar mr-1"></i> Published: ${new Date(report.published_at || report.updated_at).toLocaleDateString()}
                                     </p>
                                 </div>
@@ -5081,11 +5117,11 @@ const actions = {
                     <div style="padding:24px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;max-height:calc(85vh - 90px);">
                         <div>
                             <label style="display:block;color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Admission Number</label>
-                            <input type="text" id="${modalId}-admission" value="${student.admission_number || ''}" style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;outline:none;" placeholder="Admission Number">
+                            <input type="text" id="${modalId}-admission" value="${escapeHtml(student.admission_number || '')}" style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;outline:none;" placeholder="Admission Number">
                         </div>
                         <div>
                             <label style="display:block;color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Full Name</label>
-                            <input type="text" id="${modalId}-name" value="${student.name || ''}" style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;outline:none;" placeholder="Full Name">
+                            <input type="text" id="${modalId}-name" value="${escapeHtml(student.name || '')}" style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;outline:none;" placeholder="Full Name">
                         </div>
                         <div>
                             <label style="display:block;color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Gender</label>
@@ -5113,7 +5149,7 @@ const actions = {
                         </div>
                         <div>
                             <label style="display:block;color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Parent Phone Number</label>
-                            <input type="tel" id="${modalId}-phone" value="${student.parent_phone || ''}" style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;outline:none;" placeholder="Parent Phone Number">
+                            <input type="tel" id="${modalId}-phone" value="${escapeHtml(student.parent_phone || '')}" style="width:100%;padding:11px 14px;border-radius:10px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:14px;outline:none;" placeholder="Parent Phone Number">
                         </div>
                         <div style="display:flex;gap:10px;margin-top:6px;">
                             <button id="${modalId}-cancel" style="flex:1;padding:11px 20px;border-radius:10px;border:1.5px solid #475569;background:transparent;color:#94a3b8;font-weight:600;font-size:14px;cursor:pointer;">Cancel</button>
@@ -5516,12 +5552,13 @@ const actions = {
         const desc = document.getElementById('fee-desc')?.value;
 
         if (!amount || !desc) return modal.alert('Validation Error', 'Please fill all fields', 'warning');
+        if (parseMoneyAmount(amount) === null) return modal.alert('Validation Error', 'Please enter an amount greater than zero', 'warning');
 
         try {
             app.showLoading('Adding fee...');
             const { error } = await supabaseClient.from('fees').insert([{
                 scope,
-                amount: parseFloat(amount),
+                amount: parseMoneyAmount(amount),
                 description: desc,
                 year_id: state.currentAY?.id,
                 term_id: state.currentTerm?.id,
@@ -5802,7 +5839,7 @@ const actions = {
     async undoStudentReport(reportId, studentName) {
         modal.confirmAction(
             'Undo Report Upload',
-            `This will remove the report for <strong>${studentName}</strong> from their parent's dashboard. The file will be deleted and you can re-upload a new one. Continue?`,
+            `This will remove the report for <strong>${escapeHtml(studentName)}</strong> from their parent's dashboard. The file will be deleted and you can re-upload a new one. Continue?`,
             async () => {
                 try {
                     app.showLoading('Undoing report...');
@@ -5879,12 +5916,20 @@ const actions = {
     async rejectAdmin(profileId) {
         try {
             app.showLoading('Rejecting...');
-            const { error } = await supabaseClient
+            // profiles has no "rejected" column — remove the pending profile instead
+            // (same as deleteTeacher). Without a profile the account cannot log in.
+            const { data: removed, error } = await supabaseClient
                 .from('profiles')
-                .update({ approved: false, rejected: true })
-                .eq('id', profileId);
+                .delete()
+                .eq('id', profileId)
+                .eq('role', 'admin')
+                .eq('approved', false)
+                .select('id');
 
             if (error) throw error;
+            if (!removed || removed.length === 0) {
+                throw new Error('The request could not be removed. Check that your account has permission to delete profiles.');
+            }
             
             ui.showToast('Admin request rejected', 'success');
             await dataManager.loadPendingAdmins();
@@ -5914,7 +5959,9 @@ const actions = {
         const method = document.getElementById('payment-method')?.value;
         const proofInput = document.getElementById('payment-proof');
         
+        if (!studentId) return modal.alert('Validation Error', 'Please select a child', 'warning');
         if (!amount) return modal.alert('Validation Error', 'Please enter amount', 'warning');
+        if (parseMoneyAmount(amount) === null) return modal.alert('Validation Error', 'Please enter an amount greater than zero', 'warning');
 
         try {
             app.showLoading('Processing payment...');
@@ -5940,7 +5987,7 @@ const actions = {
                 student_id: studentId,
                 parent_id: state.currentUser?.id,
                 type: 'payment',
-                amount: parseFloat(amount),
+                amount: parseMoneyAmount(amount),
                 method,
                 proof: proofUrl,
                 status: 'pending',
@@ -6038,7 +6085,7 @@ const actions = {
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Payment Receipt - ${student?.name || 'Student'}</title>
+                <title>Payment Receipt - ${escapeHtml(student?.name || 'Student')}</title>
                 <style>
                     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap');
                     @page { size: A5; margin: 0; }
@@ -6287,7 +6334,7 @@ const actions = {
                     <div class="details">
                         <div class="detail-row">
                             <span class="detail-label">Student Name</span>
-                            <span class="detail-value">${student?.name || 'N/A'}</span>
+                            <span class="detail-value">${escapeHtml(student?.name || 'N/A')}</span>
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">Class</span>
@@ -6338,7 +6385,7 @@ const actions = {
             `Report Bundle: ${report.class}`,
             `<div class="max-h-96 overflow-y-auto space-y-3">
                 <div class="bg-slate-50 dark:bg-slate-700 p-4 rounded-lg mb-4">
-                    <p class="font-bold text-slate-800 dark:text-white mb-1">Teacher: ${report.teacher_name}</p>
+                    <p class="font-bold text-slate-800 dark:text-white mb-1">Teacher: ${escapeHtml(report.teacher_name)}</p>
                     <p class="text-sm text-slate-500">Submitted: ${new Date(report.submitted_at).toLocaleString()}</p>
                     <p class="text-sm text-slate-500">Students: ${report.student_count} | Template: ${report.template_used || 'Standard'}</p>
                 </div>
@@ -6349,7 +6396,7 @@ const actions = {
                             const student = state.students.find(s => s.id === r.student_id);
                             return `
                                 <div class="flex items-center justify-between p-3 bg-white dark:bg-slate-600 rounded-lg border border-slate-200 dark:border-slate-500">
-                                    <span class="font-medium">${student?.name || 'Unknown Student'}</span>
+                                    <span class="font-medium">${escapeHtml(student?.name || 'Unknown Student')}</span>
                                     <a href="${r.file_url}" target="_blank" class="text-blue-500 hover:text-blue-700 text-sm font-bold">
                                         <i class="fas fa-eye mr-1"></i> View
                                     </a>
@@ -6808,11 +6855,11 @@ const actions = {
                             const phone = phoneIdx >= 0 ? String(row[phoneIdx] || '') : '';
                             return `<tr style="border-top:1px solid #1e293b;">
                                 <td style="padding:8px 12px;color:#67e8f9;">${adm || '<span style="color:#64748b;">—</span>'}</td>
-                                <td style="padding:8px 12px;color:#e2e8f0;">${name || '<span style="color:#64748b;">—</span>'}</td>
+                                <td style="padding:8px 12px;color:#e2e8f0;">${name ? escapeHtml(name) : '<span style="color:#64748b;">—</span>'}</td>
                                 <td style="padding:8px 12px;color:#f9a8d4;">${gender || '<span style="color:#64748b;">—</span>'}</td>
                                 <td style="padding:8px 12px;color:#e2e8f0;">${dobStr || '<span style="color:#64748b;">—</span>'}</td>
                                 <td style="padding:8px 12px;color:#10b981;font-weight:600;">${age}</td>
-                                <td style="padding:8px 12px;color:#a78bfa;">${phone || '<span style="color:#64748b;">—</span>'}</td>
+                                <td style="padding:8px 12px;color:#a78bfa;">${phone ? escapeHtml(phone) : '<span style="color:#64748b;">—</span>'}</td>
                             </tr>`;
                         }).join('')}
                     </tbody>
@@ -7076,8 +7123,8 @@ const notificationManager = {
                 </div>
                 <div style="flex:1;min-width:0;">
                     <div style="font-weight:700;color:#e2e8f0;font-size:13px;margin-bottom:2px;">New Notification</div>
-                    <div style="color:#94a3b8;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${latest.title}</div>
-                    <div style="color:#64748b;font-size:11px;margin-top:2px;">${latest.message?.substring(0,60)}${latest.message?.length>60?'...':''}</div>
+                    <div style="color:#94a3b8;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(latest.title)}</div>
+                    <div style="color:#64748b;font-size:11px;margin-top:2px;">${escapeHtml(latest.message?.substring(0,60))}${escapeHtml(latest.message?.length>60?'...':'')}</div>
                 </div>
                 <button onclick="this.closest('#notif-prompt-banner').remove()" style="background:none;border:none;color:#64748b;cursor:pointer;padding:2px;font-size:16px;">×</button>
             </div>
@@ -7123,8 +7170,8 @@ const notificationManager = {
                                     <i class="fas ${icon}" style="color:#1a56db;font-size:13px;"></i>
                                 </div>
                                 <div style="flex:1;min-width:0;">
-                                    <div style="font-weight:600;color:#e2e8f0;font-size:13px;">${n.title}</div>
-                                    <div style="color:#94a3b8;font-size:12px;margin-top:2px;line-height:1.4;">${n.message}</div>
+                                    <div style="font-weight:600;color:#e2e8f0;font-size:13px;">${escapeHtml(n.title)}</div>
+                                    <div style="color:#94a3b8;font-size:12px;margin-top:2px;line-height:1.4;">${escapeHtml(n.message)}</div>
                                     <div style="color:#475569;font-size:11px;margin-top:4px;">${new Date(n.created_at).toLocaleString()}</div>
                                 </div>
                                 ${!n.read?`<span style="width:8px;height:8px;border-radius:50%;background:#1a56db;flex-shrink:0;margin-top:4px;"></span>`:''}
