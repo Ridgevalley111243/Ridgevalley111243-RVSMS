@@ -578,8 +578,12 @@ const modal = {
 };
 
 // ==================== INITIALIZATION ====================
+// A page restored from the back/forward cache keeps old form values
+window.addEventListener('pageshow', e => { if (e.persisted && !state.currentUser) app.clearAuthForm(); });
+
 document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
+    app.clearAuthForm();
     app.initAccountantGesture();
     await initApp();
 });
@@ -822,6 +826,7 @@ const app = {
 
             state.currentUser = { ...user, ...profile };
             state.role = profile.role;
+            app.clearAuthForm();
 
             document.getElementById('landing-page')?.classList.add('hidden');
             document.getElementById('auth-container')?.classList.add('hidden');
@@ -933,9 +938,10 @@ const app = {
         const forgotSection = document.getElementById('forgot-password-section');
         const adminNote     = document.getElementById('admin-reg-note');
         if (forgotSection && adminNote) {
-            if (role === 'admin') {
+            if (role === 'admin' || role === 'accountant') {
+                // Admin and accountant passwords are reset by the school, not by email link
                 forgotSection.classList.add('hidden');
-                adminNote.classList.remove('hidden');
+                adminNote.classList.toggle('hidden', role !== 'admin');
             } else {
                 forgotSection.classList.remove('hidden');
                 adminNote.classList.add('hidden');
@@ -1054,6 +1060,20 @@ const app = {
             if (phoneField) phoneField.classList.add('hidden');
         }
         if (state.accountantLogin) this._applyAccountantChrome();
+    },
+
+    // Empties the sign-in form so the next visitor gets a clean page.
+    clearAuthForm() {
+        ['auth-name', 'auth-email', 'auth-password', 'auth-phone', 'reset-email'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        const pw = document.getElementById('auth-password');
+        if (pw && pw.type !== 'password') {
+            pw.type = 'password';
+            const icon = pw.nextElementSibling?.querySelector('i');
+            if (icon) icon.className = 'fas fa-eye';
+        }
     },
 
     // ── Hidden accountant sign-in ─────────────────────────────────────────────
@@ -1633,7 +1653,10 @@ const auth = {
         await supabaseClient.auth.signOut();
         state.currentUser = null;
         state.role = 'admin';
-        location.reload();
+        app.clearAuthForm();
+        // replace() instead of reload(): a reload makes the browser refill the
+        // sign-in form with what was typed before.
+        location.replace(location.pathname);
     }
 };
 
