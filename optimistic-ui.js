@@ -1079,3 +1079,13 @@ if (_origLoadInitialData) {
 }
 
 console.log('[optimistic-ui] Loaded — skeleton screens, optimistic mutations, progress bar active');
+
+// ── Role guard: outermost ui.route wrapper (this file loads last) ─────────────
+// Finance screens are the accountant's only; every other role keeps its own.
+(function guardRoutesByRole() {
+    if (typeof ui === 'undefined' || typeof ui.route !== 'function' || typeof ui.allowedView !== 'function') return;
+    const _route = ui.route.bind(ui);
+    ui.route = function(view) {
+        return _route(ui.allowedView(view));
+    };
+})();

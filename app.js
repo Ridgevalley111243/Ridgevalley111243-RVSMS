@@ -580,6 +580,7 @@ const modal = {
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
+    app.initAccountantGesture();
     await initApp();
 });
 
@@ -808,6 +809,11 @@ const app = {
                 await auth.logout();
                 return;
             }
+            if (profile.role === 'accountant' && !profile.approved) {
+                modal.alert('Account Pending', 'Your accountant account is pending approval. Please wait for an administrator to approve your account.', 'warning');
+                await auth.logout();
+                return;
+            }
             if (profile.role === 'teacher' && !profile.approved) {
                 modal.alert('Account Pending', 'Your teacher account is pending approval. Please wait for an administrator to approve your account.', 'warning');
                 await auth.logout();
@@ -849,9 +855,7 @@ const app = {
                 }
             }, 800);
             
-            if (state.role === 'admin') ui.route('overview');
-            else if (state.role === 'teacher') ui.route('teacher_dashboard');
-            else if (state.role === 'parent') ui.route('parent_dashboard');
+            ui.route(ui.homeView());
             
             ui.showToast(`Welcome, ${profile.full_name || 'User'}!`, 'success');
             
@@ -1049,6 +1053,76 @@ const app = {
             const phoneField = document.getElementById('phone-reg-field');
             if (phoneField) phoneField.classList.add('hidden');
         }
+        if (state.accountantLogin) this._applyAccountantChrome();
+    },
+
+    // ── Hidden accountant sign-in ─────────────────────────────────────────────
+    // Nothing on the login screen links to it. Double-click an empty part of
+    // the login screen (desktop) or press and hold one (touch) to open it.
+    _isEmptyAuthSpace(target) {
+        return !!target && !target.closest('.glass-panel, button, a, input, select, textarea, label');
+    },
+
+    initAccountantGesture() {
+        const screen = document.getElementById('auth-container');
+        if (!screen || screen.dataset.rvAcct) return;
+        screen.dataset.rvAcct = '1';
+
+        screen.addEventListener('dblclick', e => {
+            if (!this._isEmptyAuthSpace(e.target)) return;
+            window.getSelection?.()?.removeAllRanges();
+            this.showAccountantLogin();
+        });
+
+        let timer = null, startX = 0, startY = 0;
+        const cancel = () => { clearTimeout(timer); timer = null; };
+        screen.addEventListener('pointerdown', e => {
+            if (e.pointerType === 'mouse' || !this._isEmptyAuthSpace(e.target)) return;
+            startX = e.clientX; startY = e.clientY;
+            cancel();
+            timer = setTimeout(() => {
+                timer = null;
+                try { navigator.vibrate?.(15); } catch (_) {}
+                this.showAccountantLogin();
+            }, 650);
+        });
+        screen.addEventListener('pointermove', e => {
+            if (timer && Math.hypot(e.clientX - startX, e.clientY - startY) > 10) cancel();
+        });
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => screen.addEventListener(t, cancel));
+        // No "copy / save image" menu when holding the background
+        screen.addEventListener('contextmenu', e => { if (this._isEmptyAuthSpace(e.target)) e.preventDefault(); });
+    },
+
+    showAccountantLogin() {
+        if (state.accountantLogin) return;
+        state.accountantLogin = true;
+        if (state.authMode === 'register') this.toggleAuthMode();
+        this.setRole('accountant');
+        this._applyAccountantChrome();
+        document.getElementById('auth-email')?.focus({ preventScroll: true });
+    },
+
+    exitAccountantLogin() {
+        state.accountantLogin = false;
+        if (state.authMode === 'register') this.toggleAuthMode();
+        this._applyAccountantChrome();
+        this.setRole('admin');
+    },
+
+    _applyAccountantChrome() {
+        const on = !!state.accountantLogin;
+        const register = state.authMode === 'register';
+        document.getElementById('role-switch')?.classList.toggle('hidden', on);
+        document.getElementById('accountant-exit')?.classList.toggle('hidden', !on);
+        const title = document.getElementById('auth-title');
+        const subtitle = document.getElementById('auth-subtitle');
+        if (title) title.textContent = on
+            ? (register ? 'Accountant Registration' : 'Accounts Office')
+            : (register ? 'Create Account' : 'Secure Login');
+        if (subtitle) subtitle.textContent = on
+            ? (register ? 'New accountant accounts are approved by an administrator' : 'Finance staff sign in')
+            : 'Ridgevalley Unified Security Gateway';
     },
 
     togglePassword(inputId) {
@@ -1473,6 +1547,19 @@ const auth = {
         try {
             const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
             if (error) throw error;
+            // Accountants sign in only through the accounts-office screen, and
+            // that screen only lets accountants in.
+            const { data: prof } = await supabaseClient
+                .from('profiles').select('role').eq('id', data.user.id).maybeSingle();
+            const isAccountant = prof?.role === 'accountant';
+            if (isAccountant !== !!state.accountantLogin) {
+                await supabaseClient.auth.signOut();
+                app.hideLoading();
+                modal.alert('Login Failed',
+                    state.accountantLogin ? 'This sign-in is for the accounts office only.' : 'Invalid login credentials',
+                    'error');
+                return;
+            }
             await app.loadUserData(data.user);
         } catch (error) {
             app.hideLoading();
@@ -1503,6 +1590,7 @@ const auth = {
             app.hideLoading();
             const pendingMsg = {
                 admin: 'Your account is pending approval from a super admin.',
+                accountant: 'Please verify your email address. An administrator must approve your account before you can sign in.',
                 teacher: 'Please verify your email address. An administrator must approve your account before you can sign in.'
             };
             modal.alert(
@@ -1830,7 +1918,8 @@ const dataManager = {
                     .from('notifications')
                     .select('*')
                     .eq('user_id', state.currentUser.id)
-                    .in('type', ['payment', 'report_submitted', 'child_linked', 'system', 'report_correction'])
+                    // Payment alerts go to the accountant now
+                    .in('type', ['report_submitted', 'child_linked', 'system', 'report_correction'])
                     .order('created_at', { ascending: false })
                     .limit(50);
 
@@ -2022,22 +2111,25 @@ const dataManager = {
         if (state.role !== 'admin') {
             state.pendingAdmins = [];
             state.pendingTeachers = [];
+            state.pendingAccountants = [];
             return;
         }
         try {
             const { data, error } = await supabaseClient
                 .from('profiles')
                 .select('id, full_name, email, role, approved, created_at')
-                .in('role', ['admin', 'teacher'])
+                .in('role', ['admin', 'teacher', 'accountant'])
                 .eq('approved', false);
             if (error) throw error;
             const rows = (data || []).map(p => ({ ...p, profile_id: p.id }));
             state.pendingAdmins = rows.filter(p => p.role === 'admin');
             state.pendingTeachers = rows.filter(p => p.role === 'teacher');
+            state.pendingAccountants = rows.filter(p => p.role === 'accountant');
         } catch (err) {
             console.error('loadPendingAdmins error:', err);
             state.pendingAdmins = [];
             state.pendingTeachers = [];
+            state.pendingAccountants = [];
         }
     },
 
@@ -2824,10 +2916,8 @@ const ui = {
             { id: 'teachers',            label: 'Faculty',            icon: 'fa-chalkboard-teacher' },
             { id: 'parents',             label: 'Parents',            icon: 'fa-users' },
             { section: 'Operations' },
-            { id: 'finance',             label: 'Finance',            icon: 'fa-wallet' },
             { id: 'received_reports',    label: 'Class Reports',      icon: 'fa-folder-open' },
             { id: 'admin_upload_reports',label: 'Upload Reports',     icon: 'fa-cloud-upload-alt' },
-            { id: 'screenshots',         label: 'Payment Proofs',     icon: 'fa-image' },
             { section: 'Admin' },
             { id: 'approvals',           label: 'Approvals',          icon: 'fa-user-clock' },
             { id: 'announcements',       label: 'Announcements',      icon: 'fa-bullhorn' },
@@ -2851,11 +2941,22 @@ const ui = {
             { id: 'announcements',    label: 'Announcements',icon: 'fa-bullhorn' },
         ];
 
-        const roleMap = { admin: adminItems, teacher: teacherItems, parent: parentItems };
-        const roleLabel = { admin: 'Administrator', teacher: 'Teacher', parent: 'Parent' };
+        const accountantItems = [
+            { section: 'Finance' },
+            { id: 'accountant_dashboard', label: 'Dashboard',        icon: 'fa-chart-line' },
+            { id: 'finance',              label: 'Fees & Payments',  icon: 'fa-wallet' },
+            { id: 'billing',              label: 'Billing',          icon: 'fa-file-invoice-dollar' },
+            { id: 'screenshots',          label: 'Payment Proofs',   icon: 'fa-image' },
+            { id: 'financial_report',     label: 'Financial Report', icon: 'fa-chart-pie' },
+            { section: 'General' },
+            { id: 'announcements',        label: 'Announcements',    icon: 'fa-bullhorn' },
+        ];
+
+        const roleMap = { admin: adminItems, teacher: teacherItems, parent: parentItems, accountant: accountantItems };
+        const roleLabel = { admin: 'Administrator', teacher: 'Teacher', parent: 'Parent', accountant: 'Accountant' };
         if (roleEl) roleEl.textContent = roleLabel[state.role] || '';
 
-        const items = roleMap[state.role] || adminItems;
+        const items = roleMap[state.role] || [];
 
         if (nav) {
             nav.innerHTML = items.map(item => {
@@ -2931,6 +3032,29 @@ const ui = {
         }
     },
 
+    // Home screen for the signed-in role.
+    homeView() {
+        return {
+            admin: 'overview',
+            teacher: 'teacher_dashboard',
+            parent: 'parent_dashboard',
+            accountant: 'accountant_dashboard'
+        }[state.role] || 'overview';
+    },
+
+    // Finance screens belong to the accountant; the admin's menu no longer has
+    // them. Keeps each role on its own screens even if a stale link or button
+    // asks for another one.
+    allowedView(view) {
+        const FINANCE = ['finance', 'billing', 'screenshots', 'financial_report', 'financial_analytics', 'accountant_dashboard'];
+        if (state.role === 'accountant') {
+            if (view === 'financial_analytics') return 'financial_report';
+            return FINANCE.includes(view) || view === 'announcements' ? view : 'accountant_dashboard';
+        }
+        if (state.role === 'admin' && FINANCE.includes(view)) return 'overview';
+        return view;
+    },
+
     route(view) {
         // Reset class filter when leaving the upload reports view
         if (state.currentView === 'admin_upload_reports' && view !== 'admin_upload_reports') {
@@ -2960,6 +3084,8 @@ const ui = {
             try {
                 switch(view) {
                     case 'overview':               views.renderOverview(); break;
+                    case 'accountant_dashboard':   views.renderAccountantDashboard(); break;
+                    case 'financial_report':       views.renderFinancialReport(); break;
                     case 'academic':               views.renderAcademic(); break;
                     case 'classes':                views.renderClasses(); break;
                     case 'students':               views.renderStudents(); break;
@@ -2982,7 +3108,7 @@ const ui = {
                     case 'parent_children':        views.renderParentChildren(); break;
                     case 'parent_finance':         views.renderParentFinance(); break;
                     case 'parent_reports':         views.renderParentReports(); break;
-                    default: views.renderOverview();
+                    default: ui.route(ui.homeView()); return;
                 }
             } catch (err) {
                 console.error(`Route render error [${view}]:`, err);
@@ -3035,7 +3161,15 @@ const ui = {
 
 // ==================== VIEWS ====================
 const views = {
-    renderOverview() {
+    // The accountant's home screen: the finance half of the old admin overview.
+    renderAccountantDashboard() {
+        this.renderOverview('accountant');
+    },
+
+    // Admin dashboard (people and classes). Finance figures appear only on the
+    // accountant's dashboard, which renders through this function too.
+    renderOverview(mode = 'admin') {
+        const isFinance = mode === 'accountant';
         const totalStudents  = state.students.length;
         const totalTeachers  = state.teachers.length;
         const totalClasses   = state.classes.length;
@@ -3048,20 +3182,23 @@ const views = {
         const totalArrears   = allArrears.reduce((sum, a) => sum + a.amount, 0);
         const pendingReports = 0; // teachers no longer submit report bundles
 
-        const stats = [
+        const stats = isFinance ? [
+            { label: 'Revenue (₵)',    value: totalRevenue.toLocaleString(), icon: 'fa-wallet',      img: 'revenue', color: '#059669', bg: 'rgba(5,150,105,0.1)',   action: "views.showDetailModal('revenue')" },
+            { label: 'Arrears (₵)',    value: totalArrears.toLocaleString(), icon: 'fa-exclamation-triangle', img: 'arrears', color: '#dc2626', bg: 'rgba(220,38,38,0.1)', action: "views.showDetailModal('arrears')" },
+            { label: 'Pending Payments', value: pendingPayments,      icon: 'fa-clock',              img: 'outbox', color: '#d97706', bg: 'rgba(217,119,6,0.1)',   action: "ui.route('screenshots')" },
+            { label: 'Students',       value: totalStudents,          icon: 'fa-user-graduate',      img: 'students', color: '#1a56db', bg: 'rgba(26,86,219,0.1)',  action: '' },
+        ] : [
             { label: 'Students',       value: totalStudents,          icon: 'fa-user-graduate',      img: 'students', color: '#1a56db', bg: 'rgba(26,86,219,0.1)',  action: "views.showDetailModal('students')" },
             { label: 'Teaching Staff', value: totalTeachers,          icon: 'fa-chalkboard-teacher', img: 'teachers', color: '#059669', bg: 'rgba(5,150,105,0.1)',   action: "views.showDetailModal('teachers')" },
             { label: 'Classes',        value: totalClasses,           icon: 'fa-school',             img: 'classes', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)',  action: "views.showDetailModal('classes')" },
             { label: 'Parents',        value: totalParents,           icon: 'fa-users',              img: 'parents', color: '#0891b2', bg: 'rgba(8,145,178,0.1)',   action: '' },
-            { label: 'Revenue (₵)',    value: totalRevenue.toLocaleString(), icon: 'fa-wallet',      img: 'revenue', color: '#059669', bg: 'rgba(5,150,105,0.1)',   action: "views.showDetailModal('revenue')" },
-            { label: 'Arrears (₵)',    value: totalArrears.toLocaleString(), icon: 'fa-exclamation-triangle', img: 'arrears', color: '#dc2626', bg: 'rgba(220,38,38,0.1)', action: "views.showDetailModal('arrears')" },
         ];
 
         const html = `
             <!-- Page header -->
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
                 <div>
-                    <h2 style="font-family:inherit;font-size:22px;font-weight:700;color:var(--rv-navy,#0f2044);margin:0;">Dashboard Overview</h2>
+                    <h2 style="font-family:inherit;font-size:22px;font-weight:700;color:var(--rv-navy,#0f2044);margin:0;">${isFinance ? 'Finance Overview' : 'Dashboard Overview'}</h2>
                     <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:2px 0 0;">${state.currentAY?.year || ''} ${escapeHtml(state.currentTerm ? '· ' + state.currentTerm.name : '')}</p>
                 </div>
                 <button onclick="actions.refreshData()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--rv-surface);border:1.5px solid var(--rv-border);border-radius:10px;font-size:13px;font-weight:600;color:var(--rv-muted);cursor:pointer;">
@@ -3093,7 +3230,7 @@ const views = {
             </div>
 
             <!-- Alert row -->
-            ${(pendingPayments > 0 || pendingReports > 0) ? `
+            ${isFinance && (pendingPayments > 0 || pendingReports > 0) ? `
             <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
                 ${pendingPayments > 0 ? `
                 <div style="flex:1;min-width:200px;display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;">
@@ -3120,9 +3257,9 @@ const views = {
             </div>` : ''}
 
             <!-- Bottom panels -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="rv-overview-panels" style="display:grid;grid-template-columns:${isFinance ? '1fr 1fr' : '1fr'};gap:16px;">
 
-                <!-- Arrears table -->
+                ${isFinance ? `<!-- Arrears table -->
                 <div style="background:var(--rv-surface);border:1px solid var(--rv-border);border-radius:14px;padding:20px;box-shadow:var(--rv-shadow);">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
                         <h3 style="font-size:14px;font-weight:700;color:var(--rv-text);margin:0;display:flex;align-items:center;gap:8px;">
@@ -3153,7 +3290,7 @@ const views = {
                             </table>
                         </div>`
                     }
-                </div>
+                </div>` : ''}
 
                 <!-- Recent notifications -->
                 <div style="background:var(--rv-surface);border:1px solid var(--rv-border);border-radius:14px;padding:20px;box-shadow:var(--rv-shadow);">
@@ -4290,6 +4427,7 @@ const views = {
         // Pending admins/teachers are profiles with approved=false
         const pendingAdmins = state.pendingAdmins || [];
         const pendingTeachers = state.pendingTeachers || [];
+        const pendingAccountants = state.pendingAccountants || [];
         const pendingLinks = (state.parents || []).flatMap(p =>
             (p.pending_children_ids || []).map(studentId => ({
                 parent: p,
@@ -4297,7 +4435,7 @@ const views = {
                 student: state.students.find(s => s.id === studentId)
             }))
         );
-        const nothingPending = !pendingAdmins.length && !pendingTeachers.length && !pendingLinks.length;
+        const nothingPending = !pendingAdmins.length && !pendingTeachers.length && !pendingAccountants.length && !pendingLinks.length;
         
         const html = `
             <h2 class="text-2xl font-bold mb-6 text-slate-800 dark:text-white">Pending Approvals</h2>
@@ -4316,6 +4454,23 @@ const views = {
                                 <i class="fas fa-check mr-2"></i> Approve
                             </button>
                             <button onclick="actions.rejectTeacher('${t.profile_id}')" class="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                                <i class="fas fa-times mr-2"></i> Reject
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+                ${pendingAccountants.map(a => `
+                    <div class="glass-panel rounded-2xl p-6 flex flex-wrap gap-4 items-center justify-between bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
+                        <div class="min-w-0">
+                            <h3 class="font-bold text-lg text-slate-800 dark:text-white">${escapeHtml(a.full_name)}</h3>
+                            <p class="text-sm text-slate-500 break-all">${escapeHtml(a.email)}</p>
+                            <span class="inline-block mt-2 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">Accountant · Pending Approval</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="actions.approveAccountant('${a.profile_id}')" class="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                                <i class="fas fa-check mr-2"></i> Approve
+                            </button>
+                            <button onclick="actions.rejectAccountant('${a.profile_id}')" class="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                                 <i class="fas fa-times mr-2"></i> Reject
                             </button>
                         </div>
@@ -4367,7 +4522,7 @@ const views = {
         if (state.role === 'admin') {
             // FIX 2: Use sentAnnouncements (admin's own sent items), not state.notifications
             const sent = state.sentAnnouncements || state.notifications.filter(n => n.type === 'announcement');
-            const targetLabel = { all: 'All Users', teachers: 'Teachers', parents: 'Parents' };
+            const targetLabel = { all: 'All Users', teachers: 'Teachers', parents: 'Parents', accountants: 'Accountants' };
 
             const html = `
                 <div class="flex justify-between items-center mb-6">
@@ -4398,6 +4553,10 @@ const views = {
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <input type="radio" name="announcement-target" value="parents" class="text-ridge-500 focus:ring-ridge-500">
                                 <span class="text-slate-700 dark:text-slate-300 font-medium">Parents Only</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" name="announcement-target" value="accountants" class="text-ridge-500 focus:ring-ridge-500">
+                                <span class="text-slate-700 dark:text-slate-300 font-medium">Accountants Only</span>
                             </label>
                         </div>
                         <button onclick="actions.sendAnnouncement()"
@@ -4442,7 +4601,7 @@ const views = {
 
         // ── TEACHER / PARENT: read-only inbox of admin announcements ──────────
         const inbox = state.notifications.filter(n => n.type === 'announcement');
-        const roleLabel = state.role === 'teacher' ? 'Teacher' : 'Parent';
+        const roleLabel = { teacher: 'Teacher', parent: 'Parent', accountant: 'Accountant' }[state.role] || 'Parent';
 
         const html = `
             <div class="flex justify-between items-center mb-6">
@@ -4487,6 +4646,20 @@ const views = {
         `;
         const container = document.getElementById('view-content');
         if (container) container.innerHTML = html;
+    },
+
+    // Accountant: the term/year financial report generator on its own page.
+    renderFinancialReport() {
+        const container = document.getElementById('view-content');
+        if (!container) return;
+        if (typeof financialReportGenerator === 'undefined') {
+            container.innerHTML = '<p class="p-8 text-center text-slate-500">The financial report tool could not be loaded. Please refresh the page.</p>';
+            return;
+        }
+        container.innerHTML = financialReportGenerator.renderFinancialReportSection()
+            .replace('id="frg-section" style="margin-top:32px;"', 'id="frg-section"');
+        financialReportGenerator._onYearChange();
+        financialReportGenerator._setMode('term');
     },
 
     renderDataAnalysis() {
@@ -6299,6 +6472,57 @@ const actions = {
                 if (!removed || removed.length === 0) throw new Error('The request could not be removed.');
                 ui.showToast('Teacher request rejected', 'success');
                 await Promise.all([dataManager.loadPendingAdmins(), dataManager.loadTeachers()]);
+                ui.route('approvals');
+            } catch (err) {
+                modal.alert('Error', extractErrorMessage(err), 'error');
+            } finally {
+                app.hideLoading();
+            }
+        });
+    },
+
+    async approveAccountant(profileId) {
+        try {
+            app.showLoading('Approving...');
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ approved: true })
+                .eq('id', profileId)
+                .eq('role', 'accountant');
+            if (error) throw error;
+            await supabaseClient.from('notifications').insert([{
+                user_id: profileId,
+                title: 'Account Approved',
+                message: 'Your accountant account has been approved. You can now sign in.',
+                type: 'system',
+                read: false,
+                created_by: state.currentUser?.id
+            }]);
+            ui.showToast('Accountant approved', 'success');
+            await dataManager.loadPendingAdmins();
+            ui.route('approvals');
+        } catch (err) {
+            modal.alert('Error', extractErrorMessage(err), 'error');
+        } finally {
+            app.hideLoading();
+        }
+    },
+
+    async rejectAccountant(profileId) {
+        modal.confirmDelete('this accountant request', async () => {
+            try {
+                app.showLoading('Rejecting...');
+                const { data: removed, error } = await supabaseClient
+                    .from('profiles')
+                    .delete()
+                    .eq('id', profileId)
+                    .eq('role', 'accountant')
+                    .eq('approved', false)
+                    .select('id');
+                if (error) throw error;
+                if (!removed || removed.length === 0) throw new Error('The request could not be removed.');
+                ui.showToast('Accountant request rejected', 'success');
+                await dataManager.loadPendingAdmins();
                 ui.route('approvals');
             } catch (err) {
                 modal.alert('Error', extractErrorMessage(err), 'error');

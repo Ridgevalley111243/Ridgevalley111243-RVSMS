@@ -496,7 +496,7 @@ const financialSecurity = {
         } else {
             modal.createModal(
                 'Verification Required',
-                '<p style="color:#cbd5e1;font-size:14px;">This action requires email verification. A code will be sent to the registered admin email to unlock access.</p>',
+                '<p style="color:#cbd5e1;font-size:14px;">This action requires email verification. A code will be sent to the registered finance email to unlock access.</p>',
                 () => this.requestEmailVerification(),
                 null,
                 'Send Verification Email',
@@ -940,13 +940,13 @@ const featureViews = {
                     <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">Financial Data Protected</h3>
                     <p class="text-sm text-slate-500 mb-6">
                         This section requires email verification.<br>
-                        A verification code will be sent to the registered admin email to unlock.
+                        A verification code will be sent to the registered finance email to unlock.
                     </p>
                     <button onclick="financialSecurity.requestEmailVerification()"
                         class="px-8 py-3 bg-amber-500 text-white rounded-xl font-bold text-base hover:shadow-lg transition-all w-full btn-primary">
                         <i class="fas fa-envelope mr-2"></i>Send Verification Email
                     </button>
-                    <p class="text-xs text-slate-400 mt-3">A 6-digit code will be sent to the registered admin email • Expires in 10 minutes</p>
+                    <p class="text-xs text-slate-400 mt-3">A 6-digit code will be sent to the registered finance email • Expires in 10 minutes</p>
                 </div>
             `;
             return;
