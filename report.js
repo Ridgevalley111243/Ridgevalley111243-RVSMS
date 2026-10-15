@@ -21,6 +21,7 @@ const state = {
     template: { file: null, arrayBuffer: null, xmlContent: null, found: false, filename: null },
     isSubmitting: false,
     isLoading: false,
+    isAdmin: false,         // admin view: read-only except the head teacher's remark
     calculateClassPosition: false,
     isTerm3: false,
     hasUnsavedChanges: false,
@@ -29,7 +30,6 @@ const state = {
     maxRetries: 3,
     autoSaveTimer: null,
     autoSaveInterval: null,
-    pendingBundle: null,
     schoolName: '',
     schoolLogoBase64: '',
     positionManuallySet: false   // true once teacher has explicitly toggled the button
@@ -595,6 +595,69 @@ async function refreshTeacherAssignment() {
     }
 }
 
+// ==================== ADMIN VIEW ====================
+// Admins open any class from the dashboard's Class Reports screen. They see the
+// teachers' saved reports read-only and can only fill the head teacher's remark.
+async function resolveAdminClass(classId) {
+    state.assignedClassId = classId;
+    state.assignedClass   = new URLSearchParams(window.location.search).get('class') || '';
+    if (!classId) return;
+    const { data: classRecord, error } = await state.supabaseClient
+        .from('classes')
+        .select('id, level, grade')
+        .eq('id', classId)
+        .maybeSingle();
+    if (error || !classRecord) {
+        console.warn('[resolveAdminClass] Could not resolve class', classId, error);
+        return;
+    }
+    state.assignedClassLevel = (classRecord.level || '').trim();
+    state.assignedClassGrade = (classRecord.grade || '').trim();
+    state.assignedClass = buildResolvedClassName(state.assignedClassLevel, state.assignedClassGrade) || state.assignedClass;
+}
+
+function applyAdminChrome() {
+    document.title = 'Ridgevalley Report System | Class Reports';
+    const sub = document.querySelector('#landing-page header h1 + p');
+    if (sub) sub.textContent = 'Administrator · read-only';
+    const hint = document.getElementById('reports-hint');
+    if (hint) hint.textContent = "Open a student to review their report and add the head teacher's remark";
+    const fill = document.querySelector('#fill-reports-btn span');
+    if (fill) fill.textContent = 'Review Reports';
+    const sub2 = document.getElementById('editor-subtitle');
+    if (sub2) sub2.textContent = "Read-only · only the head teacher's remark can be edited";
+}
+
+// Head teacher's remark fields (one per template level).
+function isHeadRemarkField(name) {
+    const n = String(name || '').toLowerCase();
+    return n.includes('head') && (n.includes('remark') || n.includes('comment'));
+}
+
+// Admin: everything read-only except the head teacher's remark.
+// Teacher: everything editable except the head teacher's remark (the admin fills it).
+function applyFieldPermissions(container) {
+    container.querySelectorAll('input, select, textarea').forEach(el => {
+        const isHead = isHeadRemarkField(el.getAttribute('data-field'));
+        const locked = state.isAdmin ? !isHead : isHead;
+        if (!locked) return;
+        el.disabled = true;
+        el.classList.add('rv-locked');
+        if (isHead) {
+            el.title = "Filled by the head teacher from the admin portal";
+        }
+    });
+    if (!state.isAdmin) {
+        container.querySelectorAll('select[data-field]').forEach(el => {
+            if (!isHeadRemarkField(el.getAttribute('data-field'))) return;
+            const note = document.createElement('p');
+            note.className = 'text-xs text-slate-500 dark:text-slate-400';
+            note.textContent = 'Filled by the head teacher from the admin portal.';
+            el.insertAdjacentElement('afterend', note);
+        });
+    }
+}
+
 // ==================== INITIALIZATION ====================
 async function initializeSupabase() {
     showGlobalLoading('Connecting to database...', 'Initializing report system');
@@ -649,17 +712,25 @@ async function initializeSupabase() {
             localStorage.setItem('rv_report_teacher_name', state.teacherName);
         }
 
-        if (!state.teacherId) {
+        if (!state.teacherId && !isAdmin) {
             hideGlobalLoading();
             showToast('Authentication required. Please login again.', 'error');
             return;
         }
 
-        // ── Step 2: Refresh teacher assignment live from Supabase ─────────────
-        // This is the critical fix: always re-fetch the teacher's current
-        // assigned_class UUID from the DB so reassignments take effect immediately
-        // without requiring logout, hard refresh, or cache clearing.
-        await refreshTeacherAssignment();
+        // ── Step 2: Resolve the class ─────────────────────────────────────────
+        // Teachers: always re-fetch their current assigned_class from the DB so
+        // reassignments take effect immediately. Admins: use the class they
+        // picked on the Class Reports screen (passed as ?classId=).
+        if (isAdmin) {
+            state.isAdmin     = true;
+            state.teacherId   = session.user.id;
+            state.teacherName = profile.full_name || 'Administrator';
+            await resolveAdminClass(params.get('classId') || '');
+            applyAdminChrome();
+        } else {
+            await refreshTeacherAssignment();
+        }
 
         // ── Step 3: Validate that a class is now resolved ─────────────────────
         if (!state.assignedClassId && !state.assignedClass) {
@@ -717,7 +788,7 @@ async function initializeSupabase() {
 
         // Auto-patch: silently update live-auto fields in all saved reports
         // (fixes stale no_on_roll, attendance, term etc. without user action)
-        patchLiveFieldsInSavedReports().then(patched => {
+        if (!state.isAdmin) patchLiveFieldsInSavedReports().then(patched => {
             if (patched > 0) {
                 console.log(`[startup] Auto-patched ${patched} saved reports with updated live fields`);
                 renderStudentsGrid(); // re-render to reflect any changes
@@ -1859,16 +1930,14 @@ function renderStudentsGrid() {
     container.innerHTML = state.students.map((student, index) => {
         const report = state.reportsData[student.id];
         const hasReport = report?.completed;
-        const isSubmitted = report?.submitted;
         const savedAtt = report?.data?.attendance || '';
         const savedTotal = report?.data?.total_days || '';
         
-        let statusClass = hasReport 
-            ? (isSubmitted ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300')
+        const statusClass = hasReport
+            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
             : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
-        
-        let statusIcon = hasReport ? (isSubmitted ? 'fa-check-circle' : 'fa-edit') : 'fa-clock';
-        let statusText = hasReport ? (isSubmitted ? 'Submitted' : 'Completed') : 'Pending';
+        const statusIcon = hasReport ? 'fa-check-circle' : 'fa-clock';
+        const statusText = hasReport ? 'Saved' : (state.isAdmin ? 'Not filled' : 'Pending');
         
         return `
             <div onclick="openBulkEditor(${index})" class="student-card glass-panel rounded-2xl p-5 cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700 ${hasReport ? 'ring-1 ring-emerald-500/20' : ''}">
@@ -1892,7 +1961,7 @@ function renderStudentsGrid() {
                         <i class="fas fa-calendar-check mr-1 text-emerald-500"></i>
                         ${savedAtt && savedTotal ? `${savedAtt}/${savedTotal} days` : 'Attendance not entered'}
                     </span>
-                    ${isSubmitted ? `<span class="text-xs text-slate-400">${new Date(report.submittedAt).toLocaleDateString()}</span>` : ''}
+                    ${hasReport && report.lastModified ? `<span class="text-xs text-slate-400">${new Date(report.lastModified).toLocaleDateString()}</span>` : ''}
                 </div>
             </div>
         `;
@@ -1913,17 +1982,6 @@ function updateProgress() {
     const sidebarProgress = document.getElementById('sidebar-progress');
     if (sidebarProgress) sidebarProgress.textContent = `${completed}/${total}`;
     
-    // Update submit button state
-    const submitBtn = document.getElementById('submit-btn');
-    if (submitBtn) {
-        if (completed === total && total > 0) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Submit';
-        } else {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = `<i class="fas fa-lock mr-2"></i>${completed}/${total}`;
-        }
-    }
 }
 
 function renderStudentList() {
@@ -1934,11 +1992,9 @@ function renderStudentList() {
         const report = state.reportsData[student.id];
         const isActive = index === state.currentStudentIndex;
         const isCompleted = report?.completed;
-        const isSubmitted = report?.submitted;
         
         let indicator = '';
-        if (isSubmitted) indicator = '<i class="fas fa-check-circle text-blue-500"></i>';
-        else if (isCompleted) indicator = '<i class="fas fa-circle text-emerald-500"></i>';
+        if (isCompleted) indicator = '<i class="fas fa-circle text-emerald-500"></i>';
         else indicator = '<i class="far fa-circle text-slate-300"></i>';
         
         return `
@@ -2238,7 +2294,7 @@ async function renderEditorContent() {
 
     // Step 5: Inject Activate Position button (primary levels only) + update position display
     const isPrimaryLevel = ['lower', 'upper'].includes(state.classLevel);
-    if (isPrimaryLevel) {
+    if (isPrimaryLevel && !state.isAdmin) {
         // Inject button once — reuse on subsequent renders
         let posToggleWrap = document.getElementById('pos-toggle-wrap');
         if (!posToggleWrap) {
@@ -2301,6 +2357,8 @@ async function renderEditorContent() {
 
     // Step 7: Force-populate every field from state — definitive pass after DOM is built
     populateFormFromState(student.id);
+    applyFieldPermissions(container);
+    updateMobileStudentNav();
 
     // Step 8: Attach input listeners for live calculations + debounced auto-save
     container.querySelectorAll('input, select, textarea').forEach(el => {
@@ -3011,6 +3069,9 @@ function saveCurrentReportData(isAutoSave = false) {
     const student = state.students[state.currentStudentIndex];
     if (!student) return Promise.resolve();
 
+    // Admins only ever write the head teacher's remark
+    if (state.isAdmin) return saveHeadRemarkAsAdmin(student, isAutoSave);
+
     // Block save if any score input exceeds 50
     if (!allScoresValid()) {
         if (!isAutoSave) showToast('Cannot save — one or more scores exceed the maximum of 50.', 'error');
@@ -3172,6 +3233,17 @@ async function saveToSupabase(studentId, isAutoSave) {
         let error = null;
 
         if (existingId) {
+            // The head teacher's remark belongs to the admin: carry the stored
+            // value forward so a teacher save never overwrites it.
+            const { data: current } = await state.supabaseClient
+                .from('reports')
+                .select('data')
+                .eq('id', existingId)
+                .maybeSingle();
+            const stored = (current && typeof current.data === 'object' && current.data) || {};
+            Object.keys(saveData.data || {}).forEach(k => {
+                if (isHeadRemarkField(k)) saveData.data[k] = stored[k] || '';
+            });
             // Update existing record — match by id for precision
             const { error: updateError } = await state.supabaseClient
                 .from('reports')
@@ -4025,282 +4097,130 @@ async function generateAndDownloadDOCX() {
     }
 }
 
-// ==================== STORAGE UPLOAD FUNCTIONS ====================
-async function uploadReportToStorage(studentId, blob, fileName) {
+// ==================== ADMIN: HEAD TEACHER'S REMARK ====================
+async function saveHeadRemarkAsAdmin(student, isAutoSave) {
+    const container = document.getElementById('form-container');
+    const fields = {};
+    container?.querySelectorAll('[data-field]').forEach(el => {
+        const name = el.getAttribute('data-field');
+        if (isHeadRemarkField(name) && !el.hasAttribute('data-subject')) fields[name] = el.value;
+    });
+    if (Object.keys(fields).length === 0) return;
+
+    const hash = JSON.stringify(fields);
+    if (isAutoSave && state.lastSavedHash === hash) return;
+
     try {
-        const filePath = `${state.academicYear}/${state.term}/${state.assignedClass.replace(/\s+/g, '_')}/${fileName}`;
-        
-        const { error: uploadError } = await state.supabaseClient.storage
-            .from('reports')
-            .upload(filePath, blob, {
-                contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                upsert: true
-            });
-        
-        if (uploadError) {
-            throw new AppError(`Storage upload failed: ${uploadError.message}`, 'error');
+        const report = state.reportsData[student.id];
+        // Re-read the row so the teacher's latest entries are kept as they are
+        let row = null;
+        if (report?.id) {
+            const { data } = await state.supabaseClient
+                .from('reports').select('id, data').eq('id', report.id).maybeSingle();
+            row = data;
         }
-        
-        // Get public URL
-        const { data: { publicUrl } } = state.supabaseClient.storage
+        if (!row) {
+            const { data } = await state.supabaseClient
+                .from('reports').select('id, data')
+                .eq('student_id', student.id)
+                .eq('term', state.term)
+                .eq('academic_year', state.academicYear)
+                .order('last_modified', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            row = data;
+        }
+        if (!row) {
+            if (!isAutoSave) showToast("The class teacher hasn't saved this report yet.", 'warning');
+            return;
+        }
+
+        const current = (row.data && typeof row.data === 'object' && !Array.isArray(row.data)) ? row.data : {};
+        const merged = { ...current, ...fields };
+        const { error } = await state.supabaseClient
             .from('reports')
-            .getPublicUrl(filePath);
-        
-        return publicUrl;
+            .update({ data: merged, last_modified: new Date().toISOString() })
+            .eq('id', row.id);
+        if (error) throw error;
+
+        state.reportsData[student.id] = { ...(report || {}), id: row.id, data: merged, lastModified: new Date().toISOString() };
+        state.hasUnsavedChanges = false;
+        state.lastSavedHash = hash;
+        if (!isAutoSave) showToast("Head teacher's remark saved", 'success');
     } catch (err) {
-        console.error('Storage upload error:', err);
+        if (!isAutoSave) handleError(err, "Save head teacher's remark");
         throw err;
     }
 }
 
-async function uploadBundleToStorage(zipBlob, bundleName) {
-    try {
-        const filePath = `bundles/${state.academicYear}/${state.term}/${bundleName}`;
-        
-        const { error: uploadError } = await state.supabaseClient.storage
-            .from('reports')
-            .upload(filePath, zipBlob, {
-                contentType: 'application/zip',
-                upsert: true
-            });
-        
-        if (uploadError) {
-            throw new AppError(`Bundle upload failed: ${uploadError.message}`, 'error');
-        }
-        
-        const { data: { publicUrl } } = state.supabaseClient.storage
-            .from('reports')
-            .getPublicUrl(filePath);
-        
-        return publicUrl;
-    } catch (err) {
-        console.error('Bundle upload error:', err);
-        throw err;
-    }
-}
-
-// ==================== SUBMISSION ====================
-async function submitToAdmin() {
+// ==================== CLASS REPORT DOWNLOAD ====================
+// Builds every saved report in the class as a Word file and bundles them into
+// one ZIP on this device. Nothing is uploaded to storage.
+async function downloadClassReports() {
     if (state.isSubmitting) return;
-    
-    const completedCount = Object.values(state.reportsData).filter(r => r.completed).length;
-    if (completedCount < state.students.length) {
-        showToast(`Complete all reports first (${completedCount}/${state.students.length})`, 'warning');
-        return;
-    }
-    
-    showConfirmModal(
-        'Submit to Admin',
-        `You are about to submit ${completedCount} reports to the admin. This action cannot be undone. Continue?`,
-        async () => {
-            await executeSubmission();
-        }
-    );
-}
-
-async function executeSubmission() {
     state.isSubmitting = true;
-    showGlobalLoading('Submitting reports...', 'Please wait while we process your submission');
-    
     try {
-        // Save any pending changes
-        await saveCurrentReportData(false);
-        
-        // Generate and upload individual reports
-        const uploadedReports = [];
-        const totalStudents = state.students.length;
-        
-        for (let i = 0; i < state.students.length; i++) {
-            const student = state.students[i];
-            const report = state.reportsData[student.id];
-            
-            if (!report?.completed) continue;
-            
-            showGlobalLoading(`Uploading reports...`, `${i + 1} of ${totalStudents}: ${student.name}`);
-            
-            // Generate DOCX blob from saved data (no template file needed)
-            const docxBlob = await buildReportDocx(student, report.data);
-            const fileName = `${student.name.replace(/\s+/g, '_')}_${state.term}_Report.docx`;
-            
-            // Upload to storage
-            const fileUrl = await uploadReportToStorage(student.id, docxBlob, fileName);
-            
-            uploadedReports.push({
-                student_id: student.id,
-                student_name: student.name,
-                file_url: fileUrl,
-                file_name: fileName,
-                blob: docxBlob
-            });
+        if (state.currentStudentIndex >= 0 && state.hasUnsavedChanges) {
+            await saveCurrentReportData(false);
         }
-        
-        // Prepare updates array with file URLs
-        const updates = uploadedReports.map(upload => ({
-            student_id: upload.student_id,
-            student_name: upload.student_name,
-            teacher_id: state.teacherId,
-            class: state.assignedClass,
-            class_id: state.assignedClassId || null,
-            term: state.term,
-            academic_year: state.academicYear,
-            data: state.reportsData[upload.student_id].data,
-            file_url: upload.file_url,
-            file_name: upload.file_name,
-            completed: true,
-            submitted: true,
-            submitted_at: new Date().toISOString(),
-            last_modified: new Date().toISOString()
-        }));
-        
-        // Process each report individually
-        for (const updateData of updates) {
-            // Check if record exists — prefer class_id lookup
-            let existing = null;
-            if (state.assignedClassId) {
-                const { data: existUuid } = await state.supabaseClient
-                    .from('reports')
-                    .select('id')
-                    .eq('student_id', updateData.student_id)
-                    .eq('class_id', state.assignedClassId)
-                    .eq('term', updateData.term)
-                    .eq('academic_year', updateData.academic_year)
-                    .maybeSingle();
-                if (existUuid) existing = existUuid;
-            }
-            if (!existing) {
-                const { data: existStr, error: checkError } = await state.supabaseClient
-                    .from('reports')
-                    .select('id')
-                    .eq('student_id', updateData.student_id)
-                    .eq('class', updateData.class)
-                    .eq('term', updateData.term)
-                    .eq('academic_year', updateData.academic_year)
-                    .maybeSingle();
-                if (checkError) throw checkError;
-                existing = existStr;
-            }
-            
-            if (existing) {
-                // Update existing record — match by id for precision
-                const { error: updateError } = await state.supabaseClient
-                    .from('reports')
-                    .update(updateData)
-                    .eq('id', existing.id);
-                if (updateError) throw updateError;
-            } else {
-                // Insert new record
-                const { error: insertError } = await state.supabaseClient
-                    .from('reports')
-                    .insert([updateData]);
-                
-                if (insertError) throw insertError;
-            }
-        }
-        
-        // Generate and upload ZIP bundle
-        showGlobalLoading('Creating bundle...', 'Uploading ZIP file');
-        const zip = new JSZip();
-        const reportsFolder = zip.folder("reports");
-        
-        // The reports bucket is private, so bundle the blobs we just generated
-        // instead of re-downloading them by URL.
-        for (const upload of uploadedReports) {
-            reportsFolder.file(upload.file_name, await upload.blob.arrayBuffer());
-        }
-        
-        const zipBlob = await zip.generateAsync({ type: 'blob' });
-        const bundleName = `${state.assignedClass.replace(/\s+/g, '_')}_${state.term}_Reports_${Date.now()}.zip`;
-        const bundleUrl = await uploadBundleToStorage(zipBlob, bundleName);
-        
-        // Create received_reports entry for admin
-        const bundleData = {
-            teacher_id: state.teacherId,
-            teacher_name: state.teacherName,
-            class: state.assignedClass,
-            term: state.term,
-            academic_year: state.academicYear,
-            student_count: uploadedReports.length,
-            status: 'pending_review',
-            submitted_at: new Date().toISOString(),
-            class_level: state.classLevel,
-            template_used: `template_${state.classLevel}`,
-            bundle_url: bundleUrl,
-            bundle_name: bundleName,
-            report_summary: uploadedReports.map(r => ({
-                student_id: r.student_id,
-                student_name: r.student_name,
-                file_url: r.file_url,
-                total_score: state.reportsData[r.student_id]?.data?.total_score || null
-            }))
-        };
-        
-        const { data: receivedEntry, error: receivedError } = await state.supabaseClient
-            .from('received_reports')
-            .insert([bundleData])
-            .select()
-            .single();
-        
-        if (receivedError) throw receivedError;
-        
-        // Update reports with bundle ID
-        const bulkUpdateQuery = state.supabaseClient
-            .from('reports')
-            .update({ 
-                status: 'submitted_to_admin',
-                submitted_to_admin_at: new Date().toISOString(),
-                submission_bundle_id: receivedEntry.id
-            })
-            .eq('teacher_id', state.teacherId)
-            .eq('term', state.term)
-            .eq('academic_year', state.academicYear);
+        calculateAllPositions();
 
-        if (state.assignedClassId) {
-            await bulkUpdateQuery.eq('class_id', state.assignedClassId);
-        } else {
-            await bulkUpdateQuery.eq('class', state.assignedClass);
+        const ready = state.students.filter(s => state.reportsData[s.id]?.completed);
+        if (ready.length === 0) {
+            showToast('No saved reports in this class yet.', 'warning');
+            return;
         }
-        
-        // Store bundle in state so teacher can download on demand via the Download button
-        state.pendingBundle = { blob: zipBlob, name: bundleName };
-        
-        hideGlobalLoading();
-        showToast('Reports submitted to admin successfully! Use the Download button to save the ZIP.', 'success');
-        
-        // Show download button if present
-        const dlBtn = document.getElementById('download-bundle-btn');
-        if (dlBtn) {
-            dlBtn.classList.remove('hidden');
-            dlBtn.onclick = () => {
-                if (state.pendingBundle) {
-                    saveAs(state.pendingBundle.blob, state.pendingBundle.name);
-                }
-            };
+
+        const zip = new JSZip();
+        const folder = zip.folder('reports');
+        for (let i = 0; i < ready.length; i++) {
+            const student = ready[i];
+            showGlobalLoading('Preparing class report...', `${i + 1} of ${ready.length}: ${student.name}`);
+            const blob = await buildReportDocx(student, state.reportsData[student.id].data || {});
+            folder.file(`${student.name.replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, '_')}_${state.term}_Report.docx`, blob);
         }
-        
-        // Close editor after delay
-        setTimeout(() => {
-            closeEditor();
-            // Refresh data
-            loadSavedReports().then(() => {
-                renderStudentsGrid();
-                updateProgress();
-            });
-        }, 2000);
-        
+        showGlobalLoading('Preparing class report...', 'Bundling Word files');
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const safe = v => String(v || '').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, '_');
+        saveAs(zipBlob, `${safe(state.assignedClass)}_${safe(state.term)}_${safe(state.academicYear)}_Reports.zip`);
+
+        const skipped = state.students.length - ready.length;
+        showToast(skipped > 0
+            ? `Downloaded ${ready.length} reports. ${skipped} not filled yet.`
+            : `Downloaded all ${ready.length} reports.`, skipped > 0 ? 'warning' : 'success');
     } catch (err) {
-        hideGlobalLoading();
+        handleError(err, 'Download class report');
+    } finally {
         state.isSubmitting = false;
-        handleError(err, 'Submit to Admin');
+        hideGlobalLoading();
     }
 }
 
-// ==================== BUNDLE DOWNLOAD ====================
-function downloadBundle() {
-    if (state.pendingBundle) {
-        saveAs(state.pendingBundle.blob, state.pendingBundle.name);
-    } else {
-        showToast('No bundle available to download yet.', 'warning');
+// ==================== MOBILE STUDENT NAVIGATION ====================
+// Phones and tablets have no student list beside the form, so the editor
+// shows Previous / Next student buttons there (hidden from lg up).
+function updateMobileStudentNav() {
+    const prev = document.getElementById('prev-student-btn');
+    const next = document.getElementById('next-student-btn');
+    const pos  = document.getElementById('mobile-student-pos');
+    const i = state.currentStudentIndex;
+    const n = state.students.length;
+    if (pos) pos.textContent = n ? `${i + 1} of ${n}` : '';
+    if (prev) prev.disabled = i <= 0;
+    if (next) {
+        const last = i >= n - 1;
+        next.disabled = last;
+        const label = next.querySelector('span');
+        if (label) label.textContent = last ? 'Last student' : 'Next student';
     }
+}
+
+async function goToAdjacentStudent(step) {
+    const target = state.currentStudentIndex + step;
+    if (target < 0 || target >= state.students.length) return;
+    await switchStudent(target);
+    const scroller = document.querySelector('#report-editor .editor-content');
+    if (scroller) scroller.scrollTop = 0;
 }
 
 // ==================== UI UTILITIES ====================
@@ -4379,13 +4299,13 @@ function goBackToDashboard() {
             () => {
                 if (state.autoSaveTimer)    clearTimeout(state.autoSaveTimer);
                 if (state.autoSaveInterval) clearInterval(state.autoSaveInterval);
-                window.location.href = 'index.html?view=teacher_dashboard';
+                window.location.href = state.isAdmin ? 'index.html' : 'index.html?view=teacher_dashboard';
             }
         );
     } else {
         if (state.autoSaveTimer)    clearTimeout(state.autoSaveTimer);
         if (state.autoSaveInterval) clearInterval(state.autoSaveInterval);
-        window.location.href = 'index.html?view=teacher_dashboard';
+        window.location.href = state.isAdmin ? 'index.html' : 'index.html?view=teacher_dashboard';
     }
 }
 
