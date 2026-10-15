@@ -2685,6 +2685,45 @@ const ui = {
                 .dark #main-nav { background: #000000 !important; border-bottom-color: #1f1f1f !important; }
                 #admin-sidebar { scrollbar-color: rgba(255,255,255,0.18) transparent; }
 
+                /* ── Light mode: white sidebar (dark mode keeps the black one) ── */
+                html:not(.dark) #admin-sidebar {
+                    background: #ffffff !important;
+                    border-right: 1px solid #e6eaf0 !important;
+                    scrollbar-color: #c3cad6 transparent;
+                }
+                html:not(.dark) #admin-sidebar [class*="border-"],
+                html:not(.dark) #admin-sidebar .border-t,
+                html:not(.dark) .rv-sidebar-logo { border-color: #eef1f5 !important; }
+                html:not(.dark) #admin-sidebar #sidebar-name,
+                html:not(.dark) .rv-sidebar-school { color: #0f2044 !important; }
+                html:not(.dark) #admin-sidebar #sidebar-role { color: #047857 !important; }
+                html:not(.dark) .rv-sidebar-tagline { color: #64748b; }
+                html:not(.dark) .rv-sidebar-logo img { box-shadow: 0 0 0 1px #e6eaf0; }
+                html:not(.dark) #admin-sidebar #user-avatar {
+                    background: #047857 !important;
+                    color: #ffffff !important;
+                    box-shadow: none;
+                }
+                html:not(.dark) #admin-sidebar .bg-slate-50,
+                html:not(.dark) #admin-sidebar .rv-user-card { background: #f6f8fb !important; border-color: #e6eaf0 !important; }
+                html:not(.dark) #admin-sidebar .sidebar-item { color: #475569 !important; }
+                html:not(.dark) #admin-sidebar .sidebar-item:hover { background: #f1f4f8 !important; color: #0f2044 !important; }
+                html:not(.dark) #admin-sidebar .sidebar-item.active {
+                    background: #ecfdf5 !important;
+                    color: #065f46 !important;
+                    box-shadow: inset 0 0 0 1px #d1fae5 !important;
+                }
+                html:not(.dark) #admin-sidebar .sidebar-item.active i { color: #059669; }
+                html:not(.dark) #admin-sidebar .rv-nav-section { color: #94a3b8; }
+                html:not(.dark) #admin-sidebar .rv-logout {
+                    color: #b91c1c !important;
+                    background: linear-gradient(rgba(220,38,38,0.07), rgba(220,38,38,0.07)), #ffffff !important;
+                    box-shadow: 0 -12px 16px -4px #ffffff;
+                }
+                html:not(.dark) #admin-sidebar .rv-logout:hover {
+                    background: linear-gradient(rgba(220,38,38,0.13), rgba(220,38,38,0.13)), #ffffff !important;
+                }
+
                 /* ── Desktop: the sidebar stays open beside the content ── */
                 @media (min-width: 1024px) {
                     body:has(#dashboard:not(.hidden)) #admin-sidebar {
@@ -2786,7 +2825,7 @@ const ui = {
             { id: 'parents',             label: 'Parents',            icon: 'fa-users' },
             { section: 'Operations' },
             { id: 'finance',             label: 'Finance',            icon: 'fa-wallet' },
-            { id: 'received_reports',    label: 'Received Reports',   icon: 'fa-file-import' },
+            { id: 'received_reports',    label: 'Class Reports',      icon: 'fa-folder-open' },
             { id: 'admin_upload_reports',label: 'Upload Reports',     icon: 'fa-cloud-upload-alt' },
             { id: 'screenshots',         label: 'Payment Proofs',     icon: 'fa-image' },
             { section: 'Admin' },
@@ -2928,7 +2967,7 @@ const ui = {
                     case 'parents':                views.renderParents(); break;
                     case 'finance':                views.renderFinance(); break;
                     case 'attendance':             /* attendance removed */ break;
-                    case 'received_reports':       views.renderReceivedReports(); break;
+                    case 'received_reports':       views.renderClassReports(); break;
                     case 'admin_upload_reports':   views.renderAdminUploadReports(); break;
                     case 'screenshots':            views.renderScreenshots(); break;
                     case 'approvals':              views.renderApprovals(); break;
@@ -3007,7 +3046,7 @@ const views = {
             .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
         const allArrears     = dataManager.getAllArrears();
         const totalArrears   = allArrears.reduce((sum, a) => sum + a.amount, 0);
-        const pendingReports = state.receivedReports.filter(r => r.status === 'pending_review').length;
+        const pendingReports = 0; // teachers no longer submit report bundles
 
         const stats = [
             { label: 'Students',       value: totalStudents,          icon: 'fa-user-graduate',      img: 'students', color: '#1a56db', bg: 'rgba(26,86,219,0.1)',  action: "views.showDetailModal('students')" },
@@ -3840,6 +3879,60 @@ const views = {
         if (container) container.innerHTML = html;
     },
 
+    // Admin: pick a class to review the reports its teacher has saved.
+    renderClassReports() {
+        const term = state.currentTerm?.name || '';
+        const year = state.currentAY?.year ? String(state.currentAY.year) : '';
+        const rows = state.classes.map(c => {
+                const students = state.students.filter(s => s.class_id
+                    ? s.class_id === c.id
+                    : normalizeClassName(s.class) === normalizeClassName(buildClassName(c)));
+                const ids = new Set(students.map(s => s.id));
+                const saved = new Set(state.reports
+                    .filter(r => ids.has(r.student_id) && r.completed
+                        && (!term || r.term === term)
+                        && (!year || String(r.academic_year) === year))
+                    .map(r => r.student_id)).size;
+                const teacher = state.teachers.find(t => t.assigned_class === c.id);
+                return { c, name: buildClassName(c), total: students.length, saved, teacher };
+            });
+
+        const html = `
+            <div class="flex flex-wrap justify-between items-end gap-3 mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Class Reports</h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">${escapeHtml(term)}${term && year ? ' · ' : ''}${escapeHtml(year)} — open a class to read its reports, add the head teacher's remark and download the class report.</p>
+                </div>
+            </div>
+            ${rows.length === 0 ? '<div class="glass-panel rounded-2xl p-10 text-center text-slate-500 bg-white dark:bg-slate-800">No classes set up yet.</div>' : `
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                ${rows.map(r => {
+                    const pct = r.total ? Math.round(r.saved / r.total * 100) : 0;
+                    return `
+                    <div class="glass-panel rounded-2xl p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-col gap-4">
+                        <div class="min-w-0">
+                            <h3 class="font-bold text-slate-800 dark:text-white truncate" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">${r.teacher ? escapeHtml(r.teacher.full_name || 'Class teacher') : 'No class teacher assigned'}</p>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">
+                                <span>Reports saved</span><span class="tabular-nums">${r.saved} / ${r.total}</span>
+                            </div>
+                            <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                <div class="bg-ridge-600 h-2 rounded-full" style="width:${pct}%"></div>
+                            </div>
+                        </div>
+                        <button onclick="actions.downloadBulkReports(${escapeHtml(JSON.stringify(r.name))}, ${escapeHtml(JSON.stringify(term))}, '${r.c.id}')" class="mt-auto w-full px-4 py-2.5 bg-ridge-600 hover:bg-ridge-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2">
+                            <i class="fas fa-folder-open"></i> Open Class Reports
+                        </button>
+                    </div>`;
+                }).join('')}
+            </div>`}
+        `;
+        const container = document.getElementById('view-content');
+        if (container) container.innerHTML = html;
+    },
+
     renderReceivedReports() {
         const pendingReports = state.receivedReports.filter(r => r.status === 'pending_review');
         const reviewedReports = state.receivedReports.filter(r => r.status === 'reviewed' || r.status === 'archived');
@@ -4438,11 +4531,13 @@ const views = {
 
         const myStudents = dataManager.getTeacherStudents();
 
-        // Report status: look up received_reports submitted by this teacher
-        const teacherBundles = state.receivedReports.filter(r => r.teacher_id === state.currentUser?.id);
-        const pendingBundles = teacherBundles.filter(r => r.status === 'pending_review');
-        const approvedBundles = teacherBundles.filter(r => r.status === 'reviewed');
-        const rejectedBundles = teacherBundles.filter(r => r.status === 'rejected');
+        // Report progress: saved reports for this term's students
+        const myIds = new Set(myStudents.map(s => s.id));
+        const savedReportCount = new Set(state.reports
+            .filter(r => myIds.has(r.student_id) && r.completed
+                && (!state.currentTerm?.name || r.term === state.currentTerm.name)
+                && (!state.currentAY?.year || String(r.academic_year) === String(state.currentAY.year)))
+            .map(r => r.student_id)).size;
 
         const html = `
             <div class="mb-6">
@@ -4468,70 +4563,21 @@ const views = {
                 </div>
             </div>
 
-            <!-- Report Status Section -->
+            <!-- Report Progress (this term) -->
             <div class="glass-panel rounded-2xl p-6 bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
-                <div class="flex items-center gap-3 mb-5">
+                <div class="flex flex-col sm:flex-row sm:items-center gap-4">
                     <img src="assets/3d/outbox.png" alt="" width="44" height="44" loading="lazy" decoding="async" style="width:44px;height:44px;object-fit:contain;flex:none;">
-                    <div>
-                        <h3 class="font-bold text-lg text-slate-800 dark:text-white">Report Submission Status</h3>
-                        <p class="text-xs text-slate-500">Status of reports you have submitted to the admin</p>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-bold text-lg text-slate-800 dark:text-white">Report Progress</h3>
+                        <p class="text-sm text-slate-500">${savedReportCount} of ${myStudents.length} reports saved for ${escapeHtml(state.currentTerm?.name || 'this term')}. The admin reviews them and adds the head teacher's remark.</p>
+                        <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 mt-3">
+                            <div class="bg-ridge-600 h-2 rounded-full" style="width:${myStudents.length ? Math.round(savedReportCount / myStudents.length * 100) : 0}%"></div>
+                        </div>
                     </div>
+                    <button onclick="ui.route('teacher_create_report')" class="px-5 py-3 bg-ridge-600 hover:bg-ridge-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2">
+                        <i class="fas fa-pen"></i> Open Reports
+                    </button>
                 </div>
-
-                ${teacherBundles.length === 0 ? `
-                    <div class="text-center py-10">
-                        <div class="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <i class="fas fa-inbox text-2xl text-slate-300"></i>
-                        </div>
-                        <p class="text-slate-500 font-medium">No report bundles submitted yet</p>
-                        <p class="text-sm text-slate-400 mt-1">Reports you submit will appear here with their admin review status.</p>
-                    </div>
-                ` : `
-                    <!-- Summary pills -->
-                    <div class="flex flex-wrap gap-3 mb-5">
-                        <div class="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-full">
-                            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-                            <span class="text-sm font-bold text-amber-700 dark:text-amber-400">${pendingBundles.length} Pending Review</span>
-                        </div>
-                        <div class="flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-full">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            <span class="text-sm font-bold text-emerald-700 dark:text-emerald-400">${approvedBundles.length} Approved</span>
-                        </div>
-                        <div class="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-full">
-                            <span class="w-2 h-2 rounded-full bg-red-500"></span>
-                            <span class="text-sm font-bold text-red-700 dark:text-red-400">${rejectedBundles.length} Rejected</span>
-                        </div>
-                    </div>
-
-                    <!-- Bundle list -->
-                    <div class="space-y-3">
-                        ${teacherBundles.map(bundle => {
-                            const statusConfig = {
-                                'pending_review': { color: 'amber', label: 'Pending Review', icon: 'fa-clock', bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
-                                'reviewed':       { color: 'emerald', label: 'Approved', icon: 'fa-check-circle', bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400' },
-                                'rejected':       { color: 'red', label: 'Rejected', icon: 'fa-times-circle', bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' }
-                            };
-                            const cfg = statusConfig[bundle.status] || statusConfig['pending_review'];
-                            return `
-                                <div class="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-full bg-ridge-600 flex items-center justify-center text-white font-bold text-xs shadow">
-                                            ${(bundle.class || 'R').charAt(0)}
-                                        </div>
-                                        <div>
-                                            <p class="font-bold text-slate-800 dark:text-slate-200">${bundle.class || 'Report Bundle'}</p>
-                                            <p class="text-xs text-slate-500">${bundle.student_count || 0} students · Submitted ${new Date(bundle.submitted_at).toLocaleDateString()}</p>
-                                            ${bundle.reviewed_at ? `<p class="text-xs text-slate-400">Reviewed: ${new Date(bundle.reviewed_at).toLocaleDateString()}</p>` : ''}
-                                        </div>
-                                    </div>
-                                    <span class="flex items-center gap-1.5 px-3 py-1.5 ${cfg.bg} ${cfg.text} rounded-full text-xs font-bold">
-                                        <i class="fas ${cfg.icon}"></i> ${cfg.label}
-                                    </span>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                `}
             </div>
         `;
         
@@ -4568,6 +4614,7 @@ const views = {
                                     <th class="px-6 py-4 font-bold text-sm text-slate-700 dark:text-slate-200">Name</th>
                                     <th class="px-6 py-4 font-bold text-sm text-slate-700 dark:text-slate-200">Class</th>
                                     <th class="px-6 py-4 font-bold text-sm text-slate-700 dark:text-slate-200">Age</th>
+                                    <th class="px-6 py-4 font-bold text-sm text-slate-700 dark:text-slate-200 text-right"><span class="sr-only">Actions</span></th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
@@ -4575,7 +4622,12 @@ const views = {
                                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                                         <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(s.name)}</td>
                                         <td class="px-6 py-4 text-slate-800 dark:text-slate-200">${resolveClassLabel(s)}</td>
-                                        <td class="px-6 py-4 text-slate-800 dark:text-slate-200">${s.age || 'N/A'}</td>
+                                        <td class="px-6 py-4 text-slate-800 dark:text-slate-200">${escapeHtml(s.age || 'N/A')}</td>
+                                        <td class="px-6 py-4 text-right">
+                                            <button onclick="actions.teacherEditStudent('${s.id}')" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-ridge-700 dark:text-ridge-400 hover:bg-ridge-50 dark:hover:bg-white/5">
+                                                <i class="fas fa-pen text-xs"></i> Edit
+                                            </button>
+                                        </td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -5296,6 +5348,84 @@ const actions = {
         } finally {
             app.hideLoading();
         }
+    },
+
+    // Class teacher: edit the basic details of a student in their own class.
+    // The server (teacher_update_student) re-checks that the student is theirs.
+    teacherEditStudent(id) {
+        const student = state.students.find(s => s.id === id);
+        if (!student) return;
+        const modalId = 'teacher-edit-student-' + Date.now();
+        const field = 'w-full px-4 py-3 rounded-xl input-field bg-white dark:bg-slate-900 text-slate-800 dark:text-white';
+        const label = 'block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5';
+        const sex = (student.gender || '').toLowerCase();
+        const html = `
+            <div id="${modalId}" class="fixed inset-0 z-[9999] bg-black/60 flex items-start sm:items-center justify-center p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="${modalId}-title">
+                <form id="${modalId}-form" class="w-full max-w-md my-auto rounded-2xl bg-white dark:bg-[#0f0f0f] border border-slate-200 dark:border-neutral-800 shadow-2xl">
+                    <div class="px-6 pt-6 pb-2">
+                        <h3 id="${modalId}-title" class="text-lg font-bold text-slate-800 dark:text-white">Edit Student</h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">${escapeHtml(student.name || '')}</p>
+                    </div>
+                    <div class="px-6 py-4 space-y-4">
+                        <div><label class="${label}" for="${modalId}-name">Full name</label>
+                            <input id="${modalId}-name" class="${field}" value="${escapeHtml(student.name || '')}" required autocomplete="off"></div>
+                        <div><label class="${label}" for="${modalId}-adm">Admission number</label>
+                            <input id="${modalId}-adm" class="${field}" value="${escapeHtml(student.admission_number || '')}" autocomplete="off"></div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="${label}" for="${modalId}-sex">Sex</label>
+                                <select id="${modalId}-sex" class="${field}">
+                                    <option value="">Select</option>
+                                    <option value="Male" ${sex === 'male' ? 'selected' : ''}>Male</option>
+                                    <option value="Female" ${sex === 'female' ? 'selected' : ''}>Female</option>
+                                </select></div>
+                            <div><label class="${label}" for="${modalId}-age">Age</label>
+                                <input id="${modalId}-age" class="${field}" value="${escapeHtml(student.age || '')}" autocomplete="off"></div>
+                        </div>
+                        <div><label class="${label}" for="${modalId}-dob">Date of birth</label>
+                            <input id="${modalId}-dob" type="date" class="${field}" value="${escapeHtml(student.dob || '')}"></div>
+                    </div>
+                    <div class="px-6 pb-6 flex gap-3">
+                        <button type="button" id="${modalId}-cancel" class="flex-1 py-3 rounded-xl border border-slate-300 dark:border-neutral-700 font-semibold text-slate-600 dark:text-slate-300">Cancel</button>
+                        <button type="submit" class="flex-[2] py-3 rounded-xl bg-ridge-600 hover:bg-ridge-700 text-white font-semibold"><i class="fas fa-save mr-2"></i>Save Changes</button>
+                    </div>
+                </form>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+        const modalEl = document.getElementById(modalId);
+        const $ = suffix => document.getElementById(`${modalId}-${suffix}`);
+        const close = () => modalEl.remove();
+        $('cancel').onclick = close;
+        modalEl.addEventListener('click', e => { if (e.target === modalEl) close(); });
+        $('dob').addEventListener('change', () => {
+            const d = $('dob').value;
+            if (d) $('age').value = Math.floor((Date.now() - new Date(d)) / 31557600000) + ' years';
+        });
+        $('name').focus();
+        $('form').onsubmit = async (e) => {
+            e.preventDefault();
+            const name = $('name').value.trim();
+            if (!name) { ui.showToast('Name is required', 'warning'); return; }
+            try {
+                app.showLoading('Saving student...');
+                const { error } = await supabaseClient.rpc('teacher_update_student', {
+                    p_student_id: id,
+                    p_name: name,
+                    p_admission_number: $('adm').value.trim(),
+                    p_gender: $('sex').value,
+                    p_age: $('age').value.trim(),
+                    p_dob: $('dob').value
+                });
+                if (error) throw error;
+                close();
+                await dataManager.loadStudents();
+                ui.route('teacher_students');
+                ui.showToast('Student updated', 'success');
+            } catch (err) {
+                modal.alert('Error', extractErrorMessage(err), 'error');
+            } finally {
+                app.hideLoading();
+            }
+        };
     },
 
     async editStudent(id) {
