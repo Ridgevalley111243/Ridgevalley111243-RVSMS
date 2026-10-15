@@ -2,8 +2,9 @@
 -- Accountant role
 --
 -- Finance moves out of the admin dashboard into a dedicated "accountant" user.
---  1. profiles.role accepts 'accountant'; new accountant sign-ups wait for an
---     admin to approve them (like teachers).
+--  1. profiles.role accepts 'accountant'. The first accountant to sign up is
+--     approved automatically (bootstrap, like the first admin); every later
+--     accountant waits for an existing accountant to approve them.
 --  2. private.is_accountant() / private.is_finance() helpers.
 --  3. Accountants get the finance tables (fees, bills, bill assignments,
 --     transactions, payment-proof storage) plus read access to the people
@@ -37,7 +38,8 @@ revoke all on function private.is_finance() from public;
 grant execute on function private.is_accountant() to authenticated;
 grant execute on function private.is_finance() to authenticated;
 
--- Sign-up: accept 'accountant' and leave it unapproved until an admin approves.
+-- Sign-up: accept 'accountant'. The first accountant is approved on sign-up;
+-- later ones wait for an approved accountant, who is notified.
 create or replace function private.handle_new_user()
 returns trigger language plpgsql security definer set search_path = '' as $$
 declare
@@ -45,9 +47,18 @@ declare
   v_name  text := coalesce(nullif(trim(new.raw_user_meta_data->>'full_name'), ''), split_part(new.email, '@', 1));
   v_phone text := nullif(trim(new.raw_user_meta_data->>'phone'), '');
   v_first_admin boolean := false;
+  v_first_accountant boolean := false;
 begin
   if v_role not in ('admin', 'teacher', 'parent', 'accountant') then
     v_role := 'parent';
+  end if;
+
+  -- With no approved accountant yet, this one is the first and is approved.
+  if v_role = 'accountant' then
+    perform pg_advisory_xact_lock(hashtext('rvsms_first_accountant'));
+    v_first_accountant := not exists (
+      select 1 from public.profiles where role = 'accountant' and approved
+    );
   end if;
 
   -- Only the very first admin account is auto-approved (system bootstrap).
@@ -58,9 +69,19 @@ begin
 
   insert into public.profiles (id, email, full_name, role, phone, approved, is_super_admin)
   values (new.id, new.email, v_name, v_role, v_phone,
-          v_role = 'parent' or v_first_admin,   -- teachers, accountants and admins wait for approval
+          v_role = 'parent' or v_first_admin or v_first_accountant,
           v_first_admin)
   on conflict (id) do nothing;
+
+  -- Tell the approved accountants that a new accountant is waiting.
+  if v_role = 'accountant' and not v_first_accountant then
+    insert into public.notifications (user_id, title, message, type, read, created_by)
+    select pr.id, 'New Accountant Request',
+           left(v_name || ' (' || new.email || ') registered as an accountant and is waiting for your approval.', 1000),
+           'system', false, new.id
+    from public.profiles pr
+    where pr.role = 'accountant' and pr.approved;
+  end if;
 
   if v_role = 'teacher' then
     insert into public.teachers (profile_id, email, full_name, assigned_class)
@@ -75,6 +96,73 @@ begin
   return new;
 end;
 $$;
+
+-- Accountants approve other accountants (approval only; never a role change).
+create or replace function private.guard_profile_update()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if auth.uid() is null then
+    return new;  -- service role / dashboard / SQL editor
+  end if;
+
+  if new.id is distinct from old.id then
+    raise exception 'Profile id cannot be changed';
+  end if;
+
+  if new.is_super_admin is distinct from old.is_super_admin
+     and not private.is_super_admin() then
+    raise exception 'Only the super admin can change super-admin status';
+  end if;
+
+  if new.role is distinct from old.role or new.approved is distinct from old.approved then
+    if old.id = auth.uid() then
+      raise exception 'You cannot change your own role or approval';
+    end if;
+    if private.is_accountant() and old.role = 'accountant' and new.role = 'accountant' then
+      return new;
+    end if;
+    if not private.is_admin() then
+      raise exception 'Only an administrator can change role or approval';
+    end if;
+    if (old.role = 'admin' or new.role = 'admin') and not private.is_super_admin() then
+      raise exception 'Only the super admin can approve or change admin accounts';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+-- Accountants see, approve and reject other accountant accounts.
+drop policy if exists "profiles: read own or admin" on public.profiles;
+create policy "profiles: read own or admin" on public.profiles
+  for select to authenticated
+  using (
+    id = (select auth.uid())
+    or private.is_admin()
+    or (private.is_accountant() and role = 'accountant')
+  );
+drop policy if exists "profiles: update own or admin" on public.profiles;
+create policy "profiles: update own or admin" on public.profiles
+  for update to authenticated
+  using (
+    id = (select auth.uid())
+    or private.is_admin()
+    or (private.is_accountant() and role = 'accountant')
+  )
+  with check (
+    id = (select auth.uid())
+    or private.is_admin()
+    or (private.is_accountant() and role = 'accountant')
+  );
+create policy "profiles: accountant rejects pending accountant" on public.profiles
+  for delete to authenticated
+  using (
+    private.is_accountant()
+    and role = 'accountant'
+    and not approved
+    and id <> (select auth.uid())
+  );
 
 -- 3. Finance tables: admin OR accountant ------------------------------------------
 drop policy if exists "fees: admin write" on public.fees;

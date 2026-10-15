@@ -810,7 +810,7 @@ const app = {
                 return;
             }
             if (profile.role === 'accountant' && !profile.approved) {
-                modal.alert('Account Pending', 'Your accountant account is pending approval. Please wait for an administrator to approve your account.', 'warning');
+                modal.alert('Account Pending', 'Your accountant account is waiting for approval from an existing accountant.', 'warning');
                 await auth.logout();
                 return;
             }
@@ -1121,7 +1121,7 @@ const app = {
             ? (register ? 'Accountant Registration' : 'Accounts Office')
             : (register ? 'Create Account' : 'Secure Login');
         if (subtitle) subtitle.textContent = on
-            ? (register ? 'New accountant accounts are approved by an administrator' : 'Finance staff sign in')
+            ? (register ? 'New accountants are approved by an existing accountant' : 'Finance staff sign in')
             : 'Ridgevalley Unified Security Gateway';
     },
 
@@ -1590,7 +1590,7 @@ const auth = {
             app.hideLoading();
             const pendingMsg = {
                 admin: 'Your account is pending approval from a super admin.',
-                accountant: 'Please verify your email address. An administrator must approve your account before you can sign in.',
+                accountant: "Please verify your email address. If you are the school's first accountant you can sign in straight away; otherwise an existing accountant must approve your account first.",
                 teacher: 'Please verify your email address. An administrator must approve your account before you can sign in.'
             };
             modal.alert(
@@ -2108,6 +2108,25 @@ const dataManager = {
     // ────────────────────────────────────────────────────────────────────────
 
     async loadPendingAdmins() {
+        // Accountants approve new accountants; admins approve admins and teachers.
+        if (state.role === 'accountant') {
+            state.pendingAdmins = [];
+            state.pendingTeachers = [];
+            try {
+                const { data, error } = await supabaseClient
+                    .from('profiles')
+                    .select('id, full_name, email, role, approved, created_at')
+                    .eq('role', 'accountant')
+                    .eq('approved', false)
+                    .order('created_at', { ascending: true });
+                if (error) throw error;
+                state.pendingAccountants = (data || []).map(p => ({ ...p, profile_id: p.id }));
+            } catch (err) {
+                console.error('loadPendingAdmins (accountant) error:', err);
+                state.pendingAccountants = [];
+            }
+            return;
+        }
         if (state.role !== 'admin') {
             state.pendingAdmins = [];
             state.pendingTeachers = [];
@@ -2118,13 +2137,13 @@ const dataManager = {
             const { data, error } = await supabaseClient
                 .from('profiles')
                 .select('id, full_name, email, role, approved, created_at')
-                .in('role', ['admin', 'teacher', 'accountant'])
+                .in('role', ['admin', 'teacher'])
                 .eq('approved', false);
             if (error) throw error;
             const rows = (data || []).map(p => ({ ...p, profile_id: p.id }));
             state.pendingAdmins = rows.filter(p => p.role === 'admin');
             state.pendingTeachers = rows.filter(p => p.role === 'teacher');
-            state.pendingAccountants = rows.filter(p => p.role === 'accountant');
+            state.pendingAccountants = [];
         } catch (err) {
             console.error('loadPendingAdmins error:', err);
             state.pendingAdmins = [];
@@ -2949,6 +2968,7 @@ const ui = {
             { id: 'screenshots',          label: 'Payment Proofs',   icon: 'fa-image' },
             { id: 'financial_report',     label: 'Financial Report', icon: 'fa-chart-pie' },
             { section: 'General' },
+            { id: 'accountant_approvals', label: 'Approvals',        icon: 'fa-user-clock' },
             { id: 'announcements',        label: 'Announcements',    icon: 'fa-bullhorn' },
         ];
 
@@ -3046,7 +3066,7 @@ const ui = {
     // them. Keeps each role on its own screens even if a stale link or button
     // asks for another one.
     allowedView(view) {
-        const FINANCE = ['finance', 'billing', 'screenshots', 'financial_report', 'financial_analytics', 'accountant_dashboard'];
+        const FINANCE = ['finance', 'billing', 'screenshots', 'financial_report', 'financial_analytics', 'accountant_dashboard', 'accountant_approvals'];
         if (state.role === 'accountant') {
             if (view === 'financial_analytics') return 'financial_report';
             return FINANCE.includes(view) || view === 'announcements' ? view : 'accountant_dashboard';
@@ -3086,6 +3106,7 @@ const ui = {
                     case 'overview':               views.renderOverview(); break;
                     case 'accountant_dashboard':   views.renderAccountantDashboard(); break;
                     case 'financial_report':       views.renderFinancialReport(); break;
+                    case 'accountant_approvals':   await dataManager.loadPendingAdmins(); views.renderAccountantApprovals(); break;
                     case 'academic':               views.renderAcademic(); break;
                     case 'classes':                views.renderClasses(); break;
                     case 'students':               views.renderStudents(); break;
@@ -4423,11 +4444,41 @@ const views = {
         if (container) container.innerHTML = html;
     },
 
+    // Accountant: approve or reject new accountant sign-ups.
+    renderAccountantApprovals() {
+        const pendingAccountants = state.pendingAccountants || [];
+        const html = `
+            <h2 class="text-2xl font-bold mb-2 text-slate-800 dark:text-white">Accountant Approvals</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">New accountants who signed up on the accounts-office screen. Approve only people you know work in the accounts office.</p>
+            <div class="space-y-4">
+                ${pendingAccountants.length === 0 ? '<div class="text-center py-12 text-slate-500 bg-white dark:bg-slate-800 rounded-2xl shadow-lg"><img src="assets/3d/all-clear.png" alt="" width="72" height="72" loading="lazy" style="width:72px;height:72px;margin:0 auto 12px;display:block;">No pending accountant requests</div>' : ''}
+                ${pendingAccountants.map(a => `
+                    <div class="glass-panel rounded-2xl p-6 flex flex-wrap gap-4 items-center justify-between bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
+                        <div class="min-w-0">
+                            <h3 class="font-bold text-lg text-slate-800 dark:text-white">${escapeHtml(a.full_name)}</h3>
+                            <p class="text-sm text-slate-500 break-all">${escapeHtml(a.email)}</p>
+                            <span class="inline-block mt-2 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">Accountant · Pending Approval</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="actions.approveAccountant('${a.profile_id}')" class="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                                <i class="fas fa-check mr-2"></i> Approve
+                            </button>
+                            <button onclick="actions.rejectAccountant('${a.profile_id}')" class="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
+                                <i class="fas fa-times mr-2"></i> Reject
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        const container = document.getElementById('view-content');
+        if (container) container.innerHTML = html;
+    },
+
     renderApprovals() {
         // Pending admins/teachers are profiles with approved=false
         const pendingAdmins = state.pendingAdmins || [];
         const pendingTeachers = state.pendingTeachers || [];
-        const pendingAccountants = state.pendingAccountants || [];
         const pendingLinks = (state.parents || []).flatMap(p =>
             (p.pending_children_ids || []).map(studentId => ({
                 parent: p,
@@ -4435,7 +4486,7 @@ const views = {
                 student: state.students.find(s => s.id === studentId)
             }))
         );
-        const nothingPending = !pendingAdmins.length && !pendingTeachers.length && !pendingAccountants.length && !pendingLinks.length;
+        const nothingPending = !pendingAdmins.length && !pendingTeachers.length && !pendingLinks.length;
         
         const html = `
             <h2 class="text-2xl font-bold mb-6 text-slate-800 dark:text-white">Pending Approvals</h2>
@@ -4454,23 +4505,6 @@ const views = {
                                 <i class="fas fa-check mr-2"></i> Approve
                             </button>
                             <button onclick="actions.rejectTeacher('${t.profile_id}')" class="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
-                                <i class="fas fa-times mr-2"></i> Reject
-                            </button>
-                        </div>
-                    </div>
-                `).join('')}
-                ${pendingAccountants.map(a => `
-                    <div class="glass-panel rounded-2xl p-6 flex flex-wrap gap-4 items-center justify-between bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700">
-                        <div class="min-w-0">
-                            <h3 class="font-bold text-lg text-slate-800 dark:text-white">${escapeHtml(a.full_name)}</h3>
-                            <p class="text-sm text-slate-500 break-all">${escapeHtml(a.email)}</p>
-                            <span class="inline-block mt-2 px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">Accountant · Pending Approval</span>
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="actions.approveAccountant('${a.profile_id}')" class="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
-                                <i class="fas fa-check mr-2"></i> Approve
-                            </button>
-                            <button onclick="actions.rejectAccountant('${a.profile_id}')" class="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">
                                 <i class="fas fa-times mr-2"></i> Reject
                             </button>
                         </div>
@@ -6499,8 +6533,7 @@ const actions = {
                 created_by: state.currentUser?.id
             }]);
             ui.showToast('Accountant approved', 'success');
-            await dataManager.loadPendingAdmins();
-            ui.route('approvals');
+            ui.route(state.role === 'accountant' ? 'accountant_approvals' : 'approvals');
         } catch (err) {
             modal.alert('Error', extractErrorMessage(err), 'error');
         } finally {
@@ -6522,8 +6555,7 @@ const actions = {
                 if (error) throw error;
                 if (!removed || removed.length === 0) throw new Error('The request could not be removed.');
                 ui.showToast('Accountant request rejected', 'success');
-                await dataManager.loadPendingAdmins();
-                ui.route('approvals');
+                ui.route(state.role === 'accountant' ? 'accountant_approvals' : 'approvals');
             } catch (err) {
                 modal.alert('Error', extractErrorMessage(err), 'error');
             } finally {
