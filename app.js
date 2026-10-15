@@ -584,6 +584,7 @@ window.addEventListener('pageshow', e => { if (e.persisted && !state.currentUser
 document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
     app.clearAuthForm();
+    app.guardAuthAutofill();
     app.initAccountantGesture();
     await initApp();
 });
@@ -915,6 +916,7 @@ const app = {
     },
 
     enterPortal() {
+        this.clearAuthForm();
         document.getElementById('landing-page')?.classList.add('hidden');
         document.getElementById('auth-container')?.classList.remove('hidden');
         this.setRole('admin');
@@ -1062,11 +1064,24 @@ const app = {
         if (state.accountantLogin) this._applyAccountantChrome();
     },
 
+    // Browsers fill saved emails/passwords into login boxes after the page loads
+    // and ignore autocomplete="off" there. The boxes start read-only (browsers
+    // skip those) and unlock the moment a person taps, clicks or tabs into them.
+    guardAuthAutofill() {
+        document.querySelectorAll('input[data-rv-noautofill]').forEach(el => {
+            const unlock = () => el.removeAttribute('readonly');
+            ['pointerdown', 'touchstart', 'mousedown', 'focus', 'keydown'].forEach(t =>
+                el.addEventListener(t, unlock, { passive: true }));
+        });
+    },
+
     // Empties the sign-in form so the next visitor gets a clean page.
     clearAuthForm() {
         ['auth-name', 'auth-email', 'auth-password', 'auth-phone', 'reset-email'].forEach(id => {
             const el = document.getElementById(id);
-            if (el) el.value = '';
+            if (!el) return;
+            el.value = '';
+            if (el.hasAttribute('data-rv-noautofill') && document.activeElement !== el) el.setAttribute('readonly', '');
         });
         const pw = document.getElementById('auth-password');
         if (pw && pw.type !== 'password') {
