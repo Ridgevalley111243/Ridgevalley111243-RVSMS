@@ -288,6 +288,9 @@
         .input-field:focus-visible { outline: none; }
 
         #auth-container .input-field { font-size: 16px; }
+        /* Press-and-hold on the background must not select text or open a menu */
+        #auth-container { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+        #auth-container input, #auth-container textarea { -webkit-user-select: text; user-select: text; }
 
         /* Faded classroom photo behind the welcome and login screens */
         .rv-bg-photo {
@@ -405,12 +408,12 @@
             <div class="text-center">
                 <img src="1.png" alt="Ridge Valley Hybrid School crest" width="72" height="72" class="w-[72px] h-[72px] object-contain mx-auto mb-5" onerror="this.style.display='none'">
                 <h2 class="text-3xl font-black tracking-tight" id="auth-title">Secure Login</h2>
-                <p class="text-sm mt-2 text-slate-500 font-medium">Ridgevalley Unified Security Gateway</p>
+                <p id="auth-subtitle" class="text-sm mt-2 text-slate-500 font-medium">Ridgevalley Unified Security Gateway</p>
             </div>
             
             <div class="glass-panel p-8 rounded-3xl shadow-2xl">
                 <!-- Role Selection -->
-                <div class="flex gap-2 mb-8 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl">
+                <div id="role-switch" class="flex gap-2 mb-8 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl">
                     <button onclick="app.setRole('teacher')" id="btn-teacher" class="role-btn flex-1 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2">
                         <i class="fas fa-chalkboard-teacher"></i> Teacher
                     </button>
@@ -466,6 +469,13 @@
                             Create Account
                         </button>
                     </div>
+                </div>
+
+                <!-- Leaves the accounts-office sign-in -->
+                <div id="accountant-exit" class="hidden text-center mt-4">
+                    <button onclick="app.exitAccountantLogin()" class="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                        <i class="fas fa-arrow-left mr-1"></i> Back to main sign in
+                    </button>
                 </div>
 
                 <!-- Admin Registration Note -->

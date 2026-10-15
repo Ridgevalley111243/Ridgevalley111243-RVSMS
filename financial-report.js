@@ -62,7 +62,7 @@ const financialReportGenerator = (() => {
                     </h2>
                     <span style="font-size:11px;font-weight:700;color:#059669;background:#d1fae5;
                                  padding:3px 10px;border-radius:20px;border:1px solid #6ee7b7;">
-                        <i class="fas fa-shield-alt" style="margin-right:4px;"></i>Admin Only
+                        <i class="fas fa-shield-alt" style="margin-right:4px;"></i>Accounts Office
                     </span>
                 </div>
                 <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:0;">
@@ -1808,6 +1808,9 @@ ${yd.worstTerm ? `<tr><td>Weakest Collection Term</td><td>${escapeHtml(yd.worstT
 
     function _tryInject() {
         if (typeof state === 'undefined') return;
+        // Finance lives with the accountant now (their own Financial Report page);
+        // the admin's Data Analysis page no longer gets the financial section.
+        if (state.role !== 'accountant') return;
         if (state.currentView !== 'data_analysis') { _lastView = state.currentView; return; }
         if (_lastView === 'data_analysis') return; // already injected for this view load
         _lastView = 'data_analysis';
