@@ -1613,7 +1613,7 @@ function updateClassPositionButton() {
     if (!btn) return;
 
     const isActive = state.calculateClassPosition;
-    btn.textContent = isActive ? '🏅 Deactivate Position' : '🏅 Activate Position';
+    btn.textContent = isActive ? 'Deactivate Position' : 'Activate Position';
     btn.className = btn.className
         .replace(/bg-\S+/g, '')
         .replace(/text-\S+/g, '')
@@ -1874,7 +1874,7 @@ function renderStudentsGrid() {
             <div onclick="openBulkEditor(${index})" class="student-card glass-panel rounded-2xl p-5 cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700 ${hasReport ? 'ring-1 ring-emerald-500/20' : ''}">
                 <div class="flex items-start justify-between mb-4">
                     <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                        <div class="w-12 h-12 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
                             ${student.name.charAt(0).toUpperCase()}
                         </div>
                         <div class="min-w-0">
@@ -2256,7 +2256,7 @@ async function renderEditorContent() {
                 onclick="toggleClassPosition()"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
                        ${isActive ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-500 hover:bg-slate-600 text-white'}">
-                🏅 ${isActive ? 'Deactivate' : 'Activate'} Class Position
+                <i class="fas fa-medal" aria-hidden="true"></i> ${isActive ? 'Deactivate' : 'Activate'} Class Position
             </button>
             ${state.isTerm3 ? '<span class="text-xs text-emerald-400 font-medium">(Auto — Term 3)</span>' : ''}
         `;
@@ -2642,8 +2642,8 @@ function renderSensesTable(fields, savedData) {
                     <span class="font-semibold text-slate-800 dark:text-slate-200">${field.label}</span>
                     <select class="input-field w-32 px-3 py-2 rounded-lg text-sm font-bold" data-field="${escHtml(field.name)}">
                         <option value="">Select</option>
-                        <option value="Yes" ${value === 'Yes' ? 'selected' : ''} class="text-emerald-600">Yes ✓</option>
-                        <option value="No" ${value === 'No' ? 'selected' : ''} class="text-red-600">No ✗</option>
+                        <option value="Yes" ${value === 'Yes' ? 'selected' : ''} class="text-emerald-600">Yes</option>
+                        <option value="No" ${value === 'No' ? 'selected' : ''} class="text-red-600">No</option>
                     </select>
                 </div>
             `;
@@ -2959,7 +2959,7 @@ function renderSummary(fields, savedData, studentId) {
     const total = calculateStudentTotal(studentId);
     const displayTotal = savedData.total_score || total || '';
     
-    return `<div class="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl p-6 border-2 border-emerald-200 dark:border-emerald-800">
+    return `<div class="bg-emerald-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl p-6 border-2 border-emerald-200 dark:border-emerald-800">
         <div class="flex items-center justify-between">
             <div>
                 <p class="text-sm font-semibold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider mb-1">Grand Total</p>

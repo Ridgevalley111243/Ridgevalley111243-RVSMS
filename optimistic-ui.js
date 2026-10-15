@@ -44,9 +44,9 @@
 
         .dark .rv-skel {
             background: linear-gradient(90deg,
-                rgba(71,85,105,0.35) 25%,
-                rgba(71,85,105,0.55) 50%,
-                rgba(71,85,105,0.35) 75%
+                rgba(255,255,255,0.05) 25%,
+                rgba(255,255,255,0.10) 50%,
+                rgba(255,255,255,0.05) 75%
             );
             background-size: 600px 100%;
         }
@@ -104,7 +104,9 @@
             position: fixed;
             bottom: 20px;
             left: 50%;
-            transform: translateX(-50%) translateY(80px);
+            transform: translateX(-50%) translateY(calc(100% + 40px));
+            opacity: 0;
+            visibility: hidden;
             background: #1e293b;
             color: #fbbf24;
             padding: 8px 18px;
@@ -115,10 +117,10 @@
             align-items: center;
             gap: 8px;
             z-index: 9999;
-            transition: transform 0.3s ease;
+            transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.2s ease, visibility 0s linear 0.3s;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
-        #rv-offline-badge.visible { transform: translateX(-50%) translateY(0); }
+        #rv-offline-badge.visible { transform: translateX(-50%) translateY(0); opacity: 1; visibility: visible; transition-delay: 0s; }
 
         /* Loading bar at the very top */
         #rv-progress-bar {
@@ -126,7 +128,7 @@
             top: 0;
             left: 0;
             height: 3px;
-            background: linear-gradient(90deg, #1a56db, #10b981);
+            background: #059669;
             z-index: 9998;
             transition: width 0.25s ease, opacity 0.4s ease;
             opacity: 0;
@@ -721,7 +723,7 @@ if (_origApproveTransaction) {
             t.id === id ? { ...t, status: 'confirmed', verified_by: state.currentUser?.id } : t
         );
         ui.route('finance');
-        ui.showToast('Payment approved ✓', 'success');
+        ui.showToast('Payment approved', 'success');
 
         await withOptimistic(async () => {
             try {
@@ -736,7 +738,7 @@ if (_origApproveTransaction) {
                 if (txn?.student_id) {
                     const student = state.students.find(s => s.id === txn.student_id);
                     notificationManager.notifyParentsOfStudent(
-                        txn.student_id, 'Payment Approved ✓',
+                        txn.student_id, 'Payment Approved',
                         `Your payment of ₵${txn?.amount || ''} for ${student?.name || 'your child'} has been approved.`,
                         'payment'
                     ).catch(() => {});
@@ -848,7 +850,7 @@ if (_origAddFee) {
 
                 // Notify parents (fire-and-forget)
                 notificationManager.notifyParents(
-                    'New Fee Published 💰',
+                    'New Fee Published',
                     `A new fee item has been published: ${desc} — ₵${amount}. Please review the payments section.`,
                     'fee_added'
                 ).catch(() => {});
@@ -1076,4 +1078,4 @@ if (_origLoadInitialData) {
     };
 }
 
-console.log('[optimistic-ui] ✓ Loaded — skeleton screens, optimistic mutations, progress bar active');
+console.log('[optimistic-ui] Loaded — skeleton screens, optimistic mutations, progress bar active');

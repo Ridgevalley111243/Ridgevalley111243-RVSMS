@@ -860,7 +860,7 @@ const promotionViews = {
                 <!-- Page header -->
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
                     <div>
-                        <h2 style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:700;color:var(--rv-navy,#0f2044);margin:0;">
+                        <h2 style="font-family:inherit;font-size:22px;font-weight:700;color:var(--rv-navy,#0f2044);margin:0;">
                             <i class="fas fa-graduation-cap" style="margin-right:10px;color:#1a56db;"></i>Promotion & Graduation
                         </h2>
                         <p style="font-size:13px;color:var(--rv-muted,#64748b);margin:4px 0 0;">
@@ -912,7 +912,7 @@ const promotionViews = {
                 <div style="width:44px;height:44px;border-radius:12px;background:${bg};display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
                     <i class="fas ${icon}" style="color:${color};font-size:18px;"></i>
                 </div>
-                <div style="font-family:'Outfit',sans-serif;font-size:28px;font-weight:700;color:var(--rv-text);line-height:1;">${value}</div>
+                <div style="font-family:inherit;font-size:28px;font-weight:700;color:var(--rv-text);line-height:1;">${value}</div>
                 <div style="font-size:11px;font-weight:700;color:var(--rv-muted);text-transform:uppercase;letter-spacing:0.8px;margin-top:4px;">${label}</div>
             </div>
         `;
@@ -921,7 +921,7 @@ const promotionViews = {
     _notAvailableView() {
         return `
             <div style="animation:rv-fade 0.22s ease;">
-                <h2 style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:700;color:var(--rv-navy,#0f2044);margin:0 0 24px;">
+                <h2 style="font-family:inherit;font-size:22px;font-weight:700;color:var(--rv-navy,#0f2044);margin:0 0 24px;">
                     <i class="fas fa-graduation-cap" style="margin-right:10px;color:#1a56db;"></i>Promotion & Graduation
                 </h2>
                 <div style="background:var(--rv-surface);border:1px solid var(--rv-border);border-radius:16px;padding:56px 24px;text-align:center;box-shadow:var(--rv-shadow);">
@@ -965,7 +965,7 @@ const promotionViews = {
                         </div>
                     </div>
                     <button onclick="promotionActions.confirmGraduateAll()"
-                        style="padding:10px 22px;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;"
+                        style="padding:10px 22px;background:#059669;color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;"
                         id="btn-graduate-all">
                         <i class="fas fa-graduation-cap"></i> Graduate All (${graduates.length})
                     </button>
@@ -982,7 +982,7 @@ const promotionViews = {
                         const classLabel = classObj ? `${classObj.level} - ${classObj.grade}` : (s.class || '—');
                         return `
                             <div style="background:#fff;border:1px solid #bbf7d0;border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px;">
-                                <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#059669,#10b981);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;flex-shrink:0;">
+                                <div style="width:38px;height:38px;border-radius:10px;background:#059669;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;flex-shrink:0;">
                                     ${(s.name || 'S').charAt(0).toUpperCase()}
                                 </div>
                                 <div>
@@ -1012,7 +1012,7 @@ const promotionViews = {
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
                         <button onclick="promotionActions.confirmPromoteAll()"
-                            style="padding:10px 20px;background:linear-gradient(135deg,#1a56db,#3b82f6);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;"
+                            style="padding:10px 20px;background:#1d4ed8;color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;"
                             id="btn-promote-all">
                             <i class="fas fa-arrow-up" style="margin-right:6px;"></i>Promote All (${promoCandidates.length})
                         </button>
@@ -1059,7 +1059,7 @@ const promotionViews = {
                                 <div id="class-group-${groupId}" style="display:none;">
                                     ${students.map(s => {
                                         const nextC = getNextClass(s);
-                                        const nextLbl = nextC ? `${nextC.level} - ${nextC.grade}` : '⚠️ Create target class first';
+                                        const nextLbl = nextC ? `${nextC.level} - ${nextC.grade}` : 'Create target class first';
                                         return `
                                             <div style="display:flex;align-items:center;padding:12px 18px;border-top:1px solid var(--rv-border);gap:12px;"
                                                 id="promo-row-${s.id}">
@@ -1126,7 +1126,7 @@ const promotionViews = {
                 <!-- Header -->
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
                     <div>
-                        <h2 style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:700;color:var(--rv-navy,#0f2044);margin:0;">
+                        <h2 style="font-family:inherit;font-size:22px;font-weight:700;color:var(--rv-navy,#0f2044);margin:0;">
                             <i class="fas fa-user-graduate" style="margin-right:10px;color:#7c3aed;"></i>Graduated Students
                         </h2>
                         <p style="font-size:13px;color:var(--rv-muted);margin:4px 0 0;">${grads.length} graduate(s) permanently archived</p>
@@ -1242,7 +1242,7 @@ const promotionViews = {
                 onmouseover="this.style.background='var(--rv-bg)'" onmouseout="this.style.background=''">
                 <td style="padding:12px 16px;">
                     <div style="display:flex;align-items:center;gap:10px;">
-                        <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7c3aed,#a78bfa);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;flex-shrink:0;">
+                        <div style="width:34px;height:34px;border-radius:9px;background:#16295a;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;flex-shrink:0;">
                             ${initial}
                         </div>
                         <div>
@@ -1796,7 +1796,7 @@ const promotionActions = {
                         </p>
                     </div>
                 </div>
-                <button onclick="ui.route('promotion')" style="padding:10px 22px;background:linear-gradient(135deg,#1a56db,#3b82f6);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">
+                <button onclick="ui.route('promotion')" style="padding:10px 22px;background:#1d4ed8;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">
                     <i class="fas fa-arrow-right" style="margin-right:6px;"></i>Open Promotion Panel
                 </button>
             </div>
@@ -1804,7 +1804,7 @@ const promotionActions = {
         container.insertAdjacentHTML('beforeend', bannerHtml);
     };
 
-    console.log('[promotion-graduation.js] Integration patches applied ✓');
+    console.log('[promotion-graduation.js] Integration patches applied');
 })();
 
 // ── Expose globally for onclick handlers ──────────────────────────────────────────

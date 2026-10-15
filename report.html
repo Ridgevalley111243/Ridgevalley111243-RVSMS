@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="1.png">
+    <link rel="stylesheet" href="dark-black.css">
     <title>Ridgevalley Report System | Teacher Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
@@ -36,18 +39,27 @@
         }
     </script>
     <style>
+        html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+        ::selection { background: rgba(5, 150, 105, 0.22); }
+        :focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
+        table { font-variant-numeric: tabular-nums; }
+        button { touch-action: manipulation; }
+        button:not(:disabled):active { transform: scale(0.97); }
+        @media (max-width: 768px) { input, select, textarea { font-size: 16px !important; } }
+        @media (prefers-reduced-motion: reduce) { .animate-bounce, .animate-pulse { animation: none !important; } button:not(:disabled):active { transform: none; } }
+
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; }
         .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(226, 232, 240, 0.8); }
-        .dark body { background: #0f172a; color: #f1f5f9; }
-        .dark .glass-panel { background: rgba(30, 41, 59, 0.95); border-color: rgba(51, 65, 85, 0.8); }
+        .dark body { background: #000000; color: #f5f5f5; }
+        .dark .glass-panel { background: #0f0f0f; border-color: #262626; }
         
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        .dark ::-webkit-scrollbar-thumb { background: #475569; }
-        .dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .dark ::-webkit-scrollbar-thumb { background: #333333; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #4a4a4a; }
         
         .input-field { 
             transition: all 0.2s; 
