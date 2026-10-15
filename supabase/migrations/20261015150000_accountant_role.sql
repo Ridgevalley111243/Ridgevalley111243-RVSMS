@@ -155,6 +155,7 @@ create policy "profiles: update own or admin" on public.profiles
     or private.is_admin()
     or (private.is_accountant() and role = 'accountant')
   );
+drop policy if exists "profiles: accountant rejects pending accountant" on public.profiles;
 create policy "profiles: accountant rejects pending accountant" on public.profiles
   for delete to authenticated
   using (
@@ -211,12 +212,15 @@ create policy "transactions: read by role" on public.transactions
   );
 
 -- People data the finance screens read (no write access) -------------------------
+drop policy if exists "students: accountant read" on public.students;
 create policy "students: accountant read" on public.students
   for select to authenticated using (private.is_accountant());
+drop policy if exists "parents: accountant read" on public.parents;
 create policy "parents: accountant read" on public.parents
   for select to authenticated using (private.is_accountant());
 
 -- Payment verification e-mail setting
+drop policy if exists "app_settings: accountant" on public.app_settings;
 create policy "app_settings: accountant" on public.app_settings
   for all to authenticated using (private.is_accountant()) with check (private.is_accountant());
 
