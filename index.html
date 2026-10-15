@@ -431,20 +431,20 @@
                     <div id="reg-fields" class="hidden space-y-4 animate-fade-in">
                         <div class="relative">
                             <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="auth-name" autocomplete="off" class="input-field w-full rounded-2xl px-12 py-4 text-sm" placeholder="Full Legal Name">
+                            <input type="text" id="auth-name" autocomplete="off" readonly data-rv-noautofill class="input-field w-full rounded-2xl px-12 py-4 text-sm" placeholder="Full Legal Name">
                         </div>
                     </div>
                     
                     <!-- Email -->
                     <div class="relative">
                         <i class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                        <input type="email" id="auth-email" autocomplete="off" autocapitalize="off" spellcheck="false" class="input-field w-full rounded-2xl px-12 py-4 text-sm" placeholder="Email Address">
+                        <input type="email" id="auth-email" autocomplete="off" autocapitalize="off" spellcheck="false" readonly data-rv-noautofill class="input-field w-full rounded-2xl px-12 py-4 text-sm" placeholder="Email Address">
                     </div>
                     
                     <!-- Password -->
                     <div class="relative">
                         <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                        <input type="password" id="auth-password" autocomplete="off" class="input-field w-full rounded-2xl px-12 py-4 text-sm" placeholder="Password">
+                        <input type="password" id="auth-password" autocomplete="off" readonly data-rv-noautofill class="input-field w-full rounded-2xl px-12 py-4 text-sm" placeholder="Password">
                         <button onclick="app.togglePassword('auth-password')" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                             <i class="fas fa-eye"></i>
                         </button>
