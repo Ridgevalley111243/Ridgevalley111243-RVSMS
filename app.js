@@ -982,9 +982,9 @@ const app = {
                             <span>I have read and agree to the Terms of Use and the Privacy Policy.</span>
                         </label>
                     </div>
-                    <div class="px-6 pb-6 flex gap-3">
-                        <button type="button" id="terms-gate-decline" class="flex-1 py-3 rounded-xl border border-slate-300 dark:border-neutral-700 font-semibold text-slate-600 dark:text-slate-300">Decline &amp; sign out</button>
-                        <button type="button" id="terms-gate-agree" disabled class="flex-[1.4] py-3 rounded-xl bg-ridge-600 hover:bg-ridge-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed">I agree</button>
+                    <div class="px-6 pb-6 flex flex-col-reverse sm:flex-row gap-3">
+                        <button type="button" id="terms-gate-decline" class="w-full sm:flex-1 py-3 rounded-xl border border-slate-300 dark:border-neutral-700 font-semibold text-slate-600 dark:text-slate-300">Decline &amp; sign out</button>
+                        <button type="button" id="terms-gate-agree" disabled class="w-full sm:flex-[1.4] py-3 rounded-xl bg-ridge-600 hover:bg-ridge-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed">I agree</button>
                     </div>
                 </div>`;
             document.body.appendChild(el);

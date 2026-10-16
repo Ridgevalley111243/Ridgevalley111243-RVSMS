@@ -290,11 +290,19 @@ body.sidebar-open {
         word-break: break-word;
     }
 
-    /* Forms — full width */
-    input, select, textarea {
+    /* Forms — full width (text fields only: checkboxes, radios, ranges and
+       file pickers keep their natural size so their labels sit beside them) */
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+    select, textarea {
         width: 100% !important;
         max-width: 100% !important;
         font-size: 16px !important; /* Prevent iOS auto-zoom on focus */
+    }
+    input[type="checkbox"], input[type="radio"] {
+        width: 18px !important;
+        height: 18px !important;
+        min-width: 18px;
+        flex: none;
     }
 
     /* Hide secondary badge text */
