@@ -460,6 +460,12 @@
                         </button>
                     </div>
 
+                    <!-- Agreement (Create Account only) -->
+                    <label id="terms-consent" class="hidden flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="auth-terms" class="mt-1 h-4 w-4 shrink-0 accent-emerald-700">
+                        <span>I have read and agree to the <a href="legal/terms.html" target="_blank" rel="noopener" class="font-semibold text-ridge-700 dark:text-ridge-400 underline">Terms of Use</a> and the <a href="legal/privacy.html" target="_blank" rel="noopener" class="font-semibold text-ridge-700 dark:text-ridge-400 underline">Privacy Policy</a>.</span>
+                    </label>
+
                     <!-- Submit Button -->
                     <button id="auth-submit-btn" onclick="auth.handleAction()" class="w-full py-3.5 bg-ridge-600 text-white rounded-xl font-semibold text-[15px] shadow-sm btn-primary flex items-center justify-center gap-2">
                         <i class="fas fa-sign-in-alt"></i> <span id="auth-submit-text">Authorize Access</span>
@@ -473,6 +479,12 @@
                         </button>
                     </div>
                 </div>
+
+                <p class="text-center text-xs text-slate-500 dark:text-slate-400 mt-5">
+                    <a href="legal/terms.html" target="_blank" rel="noopener" class="hover:underline">Terms of Use</a>
+                    <span aria-hidden="true" class="mx-1.5">·</span>
+                    <a href="legal/privacy.html" target="_blank" rel="noopener" class="hover:underline">Privacy Policy</a>
+                </p>
 
                 <!-- Leaves the accounts-office sign-in -->
                 <div id="accountant-exit" class="hidden text-center mt-4">
