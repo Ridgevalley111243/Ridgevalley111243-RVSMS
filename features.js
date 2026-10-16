@@ -1830,9 +1830,11 @@ const featureActions = {
         switch(view) {
             case 'weeks':
                 state.currentView = view;
-                document.getElementById('view-content').innerHTML =
-                    (typeof window.rvSkeletonFor === 'function' ? window.rvSkeletonFor(view) : '');
-                window.scrollTo(0, 0);
+                if (!ui._keepPlace) {
+                    document.getElementById('view-content').innerHTML =
+                        (typeof window.rvSkeletonFor === 'function' ? window.rvSkeletonFor(view) : '');
+                    window.scrollTo(0, 0);
+                }
                 document.querySelectorAll('.sidebar-item').forEach(btn => {
                     btn.classList.remove('active');
                     if (btn.getAttribute('onclick')?.includes(`'${view}'`)) btn.classList.add('active');
@@ -1842,9 +1844,11 @@ const featureActions = {
 
             case 'billing':
                 state.currentView = view;
-                document.getElementById('view-content').innerHTML =
-                    (typeof window.rvSkeletonFor === 'function' ? window.rvSkeletonFor(view) : '');
-                window.scrollTo(0, 0);
+                if (!ui._keepPlace) {
+                    document.getElementById('view-content').innerHTML =
+                        (typeof window.rvSkeletonFor === 'function' ? window.rvSkeletonFor(view) : '');
+                    window.scrollTo(0, 0);
+                }
                 document.querySelectorAll('.sidebar-item').forEach(btn => {
                     btn.classList.remove('active');
                     if (btn.getAttribute('onclick')?.includes(`'${view}'`)) btn.classList.add('active');
@@ -1860,9 +1864,11 @@ const featureActions = {
             case 'finance':
                 // Override base finance view to include billing summary
                 state.currentView = view;
-                document.getElementById('view-content').innerHTML =
-                    (typeof window.rvSkeletonFor === 'function' ? window.rvSkeletonFor(view) : '');
-                window.scrollTo(0, 0);
+                if (!ui._keepPlace) {
+                    document.getElementById('view-content').innerHTML =
+                        (typeof window.rvSkeletonFor === 'function' ? window.rvSkeletonFor(view) : '');
+                    window.scrollTo(0, 0);
+                }
                 document.querySelectorAll('.sidebar-item').forEach(btn => {
                     btn.classList.remove('active');
                     if (btn.getAttribute('onclick')?.includes(`'${view}'`)) btn.classList.add('active');

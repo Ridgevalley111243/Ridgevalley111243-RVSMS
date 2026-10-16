@@ -1560,7 +1560,7 @@ const promotionActions = {
             const dataLoaded     = classesReady && studentsReady;
             if (dataLoaded || polls >= MAX_POLLS) {
                 // Explicit navigation — show skeleton (silent: false, the default)
-                promotionViews.renderPromotion().catch(e =>
+                promotionViews.renderPromotion({ silent: !!(typeof ui !== 'undefined' && ui._keepPlace) }).catch(e =>
                     console.warn('[promotion] renderPromotion error:', e)
                 );
                 return;
@@ -1578,8 +1578,10 @@ const promotionActions = {
             state.currentView = view;
             const container = document.getElementById('view-content');
             if (container) {
-                container.innerHTML = typeof window.rvSkeletonFor === 'function' ? window.rvSkeletonFor('promotion') : '';
-                window.scrollTo(0, 0);
+                if (!ui._keepPlace) {
+                    container.innerHTML = typeof window.rvSkeletonFor === 'function' ? window.rvSkeletonFor('promotion') : '';
+                    window.scrollTo(0, 0);
+                }
             }
             document.querySelectorAll('.sidebar-item').forEach(btn => {
                 btn.classList.remove('active');
@@ -1594,8 +1596,10 @@ const promotionActions = {
             state.currentView = view;
             const container = document.getElementById('view-content');
             if (container) {
-                container.innerHTML = typeof window.rvSkeletonFor === 'function' ? window.rvSkeletonFor('graduated_students') : '';
-                window.scrollTo(0, 0);
+                if (!ui._keepPlace) {
+                    container.innerHTML = typeof window.rvSkeletonFor === 'function' ? window.rvSkeletonFor('graduated_students') : '';
+                    window.scrollTo(0, 0);
+                }
             }
             document.querySelectorAll('.sidebar-item').forEach(btn => {
                 btn.classList.remove('active');

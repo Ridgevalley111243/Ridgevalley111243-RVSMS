@@ -3038,10 +3038,13 @@ const ui = {
                     /* 16px stops iOS zooming into the field */
                     input, select, textarea, .input-field { font-size: 16px !important; }
 
-                    .overflow-x-auto, table {
-                        display: block;
+                    /* One sideways scroller per table: the wrapper scrolls, the
+                       table itself stays a table (nested scrollers made swipes
+                       stutter and catch) */
+                    .overflow-x-auto {
                         overflow-x: auto;
                         -webkit-overflow-scrolling: touch;
+                        overscroll-behavior-x: contain;
                     }
 
                     .grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
@@ -3256,8 +3259,9 @@ const ui = {
         }
         state.currentView = view;
         const container = document.getElementById('view-content');
-        if (container) {
-            // Skeleton shaped like the screen that is loading
+        // Refreshing the screen you are on (e.g. after saving) keeps your place;
+        // opening a different screen starts at the top with its skeleton.
+        if (container && !ui._keepPlace) {
             container.innerHTML = typeof window.rvSkeletonFor === 'function'
                 ? window.rvSkeletonFor(view)
                 : '<div style="height:200px"></div>';
