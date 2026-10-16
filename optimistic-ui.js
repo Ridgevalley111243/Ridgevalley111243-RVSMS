@@ -44,11 +44,38 @@
 
         .dark .rv-skel {
             background: linear-gradient(90deg,
-                rgba(255,255,255,0.05) 25%,
-                rgba(255,255,255,0.10) 50%,
-                rgba(255,255,255,0.05) 75%
+                rgba(255,255,255,0.08) 25%,
+                rgba(255,255,255,0.14) 50%,
+                rgba(255,255,255,0.08) 75%
             );
             background-size: 600px 100%;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .rv-skel { animation: none; }
+        }
+
+        /* Full-page skeleton shown while the app starts or a user signs in */
+        #rv-page-skeleton {
+            position: fixed; inset: 0; z-index: 9990;
+            background: var(--rv-bg, #f4f6fa);
+            display: flex; flex-direction: column;
+        }
+        .dark #rv-page-skeleton { background: #000; }
+        #rv-page-skeleton .rv-ps-nav {
+            height: 60px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 20px;
+            background: var(--rv-surface, #fff); border-bottom: 1px solid var(--rv-border, #e2e8f0);
+        }
+        .dark #rv-page-skeleton .rv-ps-nav { background: #000; border-color: #1f1f1f; }
+        #rv-page-skeleton .rv-ps-body { flex: 1; display: flex; min-height: 0; }
+        #rv-page-skeleton .rv-ps-side {
+            width: 264px; flex: none; padding: 24px 20px; display: flex; flex-direction: column; gap: 14px;
+            background: var(--rv-surface, #fff); border-right: 1px solid var(--rv-border, #e2e8f0);
+        }
+        .dark #rv-page-skeleton .rv-ps-side { background: #000; border-color: #1f1f1f; }
+        #rv-page-skeleton .rv-ps-main { flex: 1; padding: 32px; overflow: hidden; }
+        @media (max-width: 1023px) {
+            #rv-page-skeleton .rv-ps-side { display: none; }
+            #rv-page-skeleton .rv-ps-main { padding: 20px 16px; }
         }
 
         /* Inline button loading state */
@@ -279,10 +306,51 @@ const skeletons = {
 
     // Per-route skeletons
     overview() {
-        return this.pageHeader(false) + this.statGrid(6) + `
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
+        return this.pageHeader(false) + this.statGrid(4) + this.card(5);
+    },
+    accountantDashboard() {
+        return this.pageHeader(false) + this.statGrid(4) + `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
                 ${this.card(5)}
                 ${this.card(5)}
+            </div>`;
+    },
+    classReports() {
+        return this.pageHeader(false) + this.cardGrid(6, 3);
+    },
+    financialReport() {
+        return this.pageHeader(false) + this.cardGrid(2, 2) + `<div style="height:16px"></div>` + this.card(4);
+    },
+
+    // Whole-page skeletons (start-up and sign-in)
+    appShell() {
+        const navItem = w => `<div style="display:flex;align-items:center;gap:12px;"><div class="rv-skel" style="width:18px;height:18px;border-radius:6px;"></div><div class="rv-skel" style="height:12px;width:${w}%;"></div></div>`;
+        return `
+            <div class="rv-ps-nav">
+                <div class="rv-skel" style="width:34px;height:34px;border-radius:50%;"></div>
+                <div class="rv-skel" style="width:120px;height:16px;"></div>
+                <div style="flex:1"></div>
+                <div class="rv-skel" style="width:110px;height:28px;border-radius:999px;"></div>
+                <div class="rv-skel" style="width:36px;height:36px;border-radius:10px;"></div>
+            </div>
+            <div class="rv-ps-body">
+                <aside class="rv-ps-side">
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                        <div class="rv-skel" style="width:40px;height:40px;border-radius:10px;"></div>
+                        <div style="flex:1"><div class="rv-skel" style="height:10px;width:50%;margin-bottom:6px;"></div><div class="rv-skel" style="height:13px;width:80%;"></div></div>
+                    </div>
+                    ${[70, 55, 80, 60, 65, 50, 75].map(navItem).join('')}
+                </aside>
+                <main class="rv-ps-main">${this.dashboard()}</main>
+            </div>`;
+    },
+    welcome() {
+        return `
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;">
+                <div class="rv-skel" style="width:120px;height:120px;border-radius:50%;"></div>
+                <div class="rv-skel" style="width:260px;max-width:80vw;height:30px;"></div>
+                <div class="rv-skel" style="width:190px;max-width:60vw;height:14px;"></div>
+                <div class="rv-skel" style="width:170px;height:48px;border-radius:12px;margin-top:10px;"></div>
             </div>`;
     },
     list(cols) {
@@ -310,6 +378,13 @@ const skeletons = {
 // ── 5. Route → skeleton mapping ───────────────────────────────────────────────────
 const routeSkeletonMap = {
     overview:                () => skeletons.overview(),
+    accountant_dashboard:    () => skeletons.accountantDashboard(),
+    accountant_approvals:    () => skeletons.list(3),
+    financial_report:        () => skeletons.financialReport(),
+    billing:                 () => skeletons.finance(),
+    weeks:                   () => skeletons.list(4),
+    promotion:               () => skeletons.form(),
+    graduated_students:      () => skeletons.list(5),
     academic:                () => skeletons.list(3),
     classes:                 () => skeletons.list(3),
     students:                () => skeletons.list(5),
@@ -318,7 +393,7 @@ const routeSkeletonMap = {
     finance:                 () => skeletons.finance(),
     financial_analytics:     () => skeletons.finance(),
     attendance:              () => skeletons.list(5),
-    received_reports:        () => skeletons.list(4),
+    received_reports:        () => skeletons.classReports(),
     admin_upload_reports:    () => skeletons.list(3),
     screenshots:             () => skeletons.cardGrid(4, 3),
     approvals:               () => skeletons.list(4),
@@ -333,6 +408,20 @@ const routeSkeletonMap = {
     parent_children:         () => skeletons.cardGrid(3, 3),
     parent_finance:          () => skeletons.finance(),
     parent_reports:          () => skeletons.list(3),
+};
+
+// Shared lookup used by every screen switch (app.js, features.js,
+// promotion-graduation.js): the skeleton that matches the screen being opened.
+window.rvSkeletonFor = function(view) {
+    const build = routeSkeletonMap[view] || (() => skeletons.list(4));
+    return `<div class="rv-page-skeleton" role="status" aria-live="polite" aria-busy="true" style="animation:rv-fade 0.18s ease">
+        <span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Loading…</span>${build()}</div>`;
+};
+
+// Whole-page skeleton for start-up and sign-in ('app' or 'welcome').
+window.rvPageSkeleton = function(kind) {
+    return `<span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Loading…</span>` +
+        (kind === 'welcome' ? skeletons.welcome() : skeletons.appShell());
 };
 
 // ── 6. Patch ui.route for instant skeleton + background revalidation ──────────────

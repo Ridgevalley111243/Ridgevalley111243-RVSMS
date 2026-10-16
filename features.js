@@ -1831,7 +1831,7 @@ const featureActions = {
             case 'weeks':
                 state.currentView = view;
                 document.getElementById('view-content').innerHTML =
-                    '<div style="display:flex;align-items:center;justify-content:center;height:200px;"><div style="width:36px;height:36px;border:3px solid #1a56db;border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;"></div></div>';
+                    (typeof window.rvSkeletonFor === 'function' ? window.rvSkeletonFor(view) : '');
                 window.scrollTo(0, 0);
                 document.querySelectorAll('.sidebar-item').forEach(btn => {
                     btn.classList.remove('active');
@@ -1843,7 +1843,7 @@ const featureActions = {
             case 'billing':
                 state.currentView = view;
                 document.getElementById('view-content').innerHTML =
-                    '<div style="display:flex;align-items:center;justify-content:center;height:200px;"><div style="width:36px;height:36px;border:3px solid #1a56db;border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;"></div></div>';
+                    (typeof window.rvSkeletonFor === 'function' ? window.rvSkeletonFor(view) : '');
                 window.scrollTo(0, 0);
                 document.querySelectorAll('.sidebar-item').forEach(btn => {
                     btn.classList.remove('active');
@@ -1861,7 +1861,7 @@ const featureActions = {
                 // Override base finance view to include billing summary
                 state.currentView = view;
                 document.getElementById('view-content').innerHTML =
-                    '<div style="display:flex;align-items:center;justify-content:center;height:200px;"><div style="width:36px;height:36px;border:3px solid #1a56db;border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;"></div></div>';
+                    (typeof window.rvSkeletonFor === 'function' ? window.rvSkeletonFor(view) : '');
                 window.scrollTo(0, 0);
                 document.querySelectorAll('.sidebar-item').forEach(btn => {
                     btn.classList.remove('active');

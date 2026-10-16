@@ -603,7 +603,10 @@ function initTheme() {
 }
 
 async function initApp() {
-    app.showLoading('Initializing...');
+    // A saved sign-in means the dashboard is coming; otherwise the welcome page
+    let hasSession = false;
+    try { hasSession = Object.keys(localStorage).some(k => /^sb-.+-auth-token$/.test(k)); } catch (_) {}
+    app.showPageSkeleton(hasSession ? 'app' : 'welcome');
     try {
         // ── Password-reset redirect detection ────────────────────────────────
         // Supabase appends #access_token=...&type=recovery (implicit flow)
@@ -704,7 +707,7 @@ function showNetworkErrorUI() {
 const app = {
     async checkInitialAdmin(retryCount = 0) {
         try {
-            if (retryCount === 0) app.showLoading('Checking system...');
+            if (retryCount === 0 && !document.getElementById('rv-page-skeleton')) app.showPageSkeleton('welcome');
             
             // profiles is not readable before sign-in; ask the server instead
             const { data: adminExists, error } = await supabaseClient.rpc('admin_exists');
@@ -800,7 +803,9 @@ const app = {
     },
 
     async loadUserData(user) {
-        app.showLoading('Loading profile...');
+        state.isLoading = true;
+        document.getElementById('loading-overlay')?.classList.add('hidden');
+        app.showPageSkeleton('app');
         try {
             const { data: profile, error } = await supabaseClient
                 .from('profiles')
@@ -937,7 +942,7 @@ const app = {
         app.hideLoading();
         const agreed = await this.showTermsGate(profile);
         if (agreed) {
-            app.showLoading('Loading profile...');
+            app.showPageSkeleton('app');
             await record();
         }
         return agreed;
@@ -1485,8 +1490,29 @@ const app = {
         }
     },
 
+    // Full-page skeleton while the app starts ('welcome' or 'app') or a user
+    // signs in ('app'). Removed by hideLoading().
+    showPageSkeleton(kind = 'app') {
+        if (typeof window.rvPageSkeleton !== 'function') { this.showLoading('Loading...'); return; }
+        let el = document.getElementById('rv-page-skeleton');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'rv-page-skeleton';
+            el.setAttribute('role', 'status');
+            el.setAttribute('aria-busy', 'true');
+            document.body.appendChild(el);
+        }
+        el.dataset.kind = kind;
+        el.innerHTML = window.rvPageSkeleton(kind);
+    },
+
+    hidePageSkeleton() {
+        document.getElementById('rv-page-skeleton')?.remove();
+    },
+
     hideLoading() {
         state.isLoading = false;
+        this.hidePageSkeleton?.();
         const overlay = document.getElementById('loading-overlay');
         if (overlay) {
             overlay.classList.add('hidden');
@@ -3231,12 +3257,10 @@ const ui = {
         state.currentView = view;
         const container = document.getElementById('view-content');
         if (container) {
-            container.innerHTML = `
-                <div style="display:flex;align-items:center;justify-content:center;height:200px;">
-                    <div style="width:36px;height:36px;border:3px solid var(--rv-blue,#1a56db);border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;"></div>
-                </div>
-                <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
-            `;
+            // Skeleton shaped like the screen that is loading
+            container.innerHTML = typeof window.rvSkeletonFor === 'function'
+                ? window.rvSkeletonFor(view)
+                : '<div style="height:200px"></div>';
             window.scrollTo(0, 0);
         }
 
