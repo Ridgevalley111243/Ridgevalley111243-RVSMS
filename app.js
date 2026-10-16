@@ -583,6 +583,7 @@ window.addEventListener('pageshow', e => { if (e.persisted && !state.currentUser
 
 document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
+    notificationManager.registerServiceWorker();
     app.clearAuthForm();
     app.guardAuthAutofill();
     app.initAccountantGesture();
@@ -1665,6 +1666,7 @@ const auth = {
     },
 
     async logout() {
+        await notificationManager.disablePush();
         await supabaseClient.auth.signOut();
         state.currentUser = null;
         state.role = 'admin';
@@ -7717,7 +7719,12 @@ const actions = {
 };
 
 // ==================== NOTIFICATION MANAGER ====================
+// Public half of the web-push (VAPID) key pair; the private half lives only
+// in the database, readable by the send-push Edge Function.
+const VAPID_PUBLIC_KEY = 'BDqaOM0WhcGdrt3Sb9wFHmbpZKBeurI-JSefr9OU08bee6Hkri2e_g9ZnHCVBWwgKFkqtfc35sgn40iv6BP8pbU';
+
 const notificationManager = {
+    _pushActive: false,
     _audioCtx: null,
     _lastNotifCount: 0,
     _pollingInterval: null,
@@ -7816,9 +7823,10 @@ const notificationManager = {
             // New notification arrived — play bell, show in-app prompt, send push
             this.playBell();
             this.showPrompt();
-            // Fire browser push for the latest new notification
+            // Fire browser push for the latest new notification (unless real
+            // web push is on: the service worker already showed it)
             const latest = state.notifications.filter(n => this._isMine(n) && this.isUnread(n))[0];
-            if (latest) {
+            if (latest && !this._pushActive) {
                 this.sendPush(latest.title, latest.message?.substring(0, 100) || '', 'info');
             }
         }
@@ -7926,7 +7934,7 @@ const notificationManager = {
     // ── FIX 4: Request browser notification permission on login ──
     async requestPermission() {
         if (!('Notification' in window)) return; // Browser doesn't support it
-        if (Notification.permission === 'granted') return; // Already granted
+        if (Notification.permission === 'granted') { await this.enablePush(); return; } // Already granted
         if (Notification.permission === 'denied') return;  // User already blocked
 
         // Show a friendly in-app prompt first (better UX than raw browser dialog)
@@ -7969,6 +7977,7 @@ const notificationManager = {
             try {
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
+                    await this.enablePush();
                     // Send a welcome test notification
                     this.sendPush('Notifications Enabled', 'You will now receive Ridgevalley SMS alerts on this device.', 'success');
                     ui.showToast('Browser notifications enabled!', 'success');
@@ -8000,6 +8009,72 @@ const notificationManager = {
             setTimeout(() => notif.close(), 8000);
         } catch (e) {
             console.warn('Push notification error:', e);
+        }
+    },
+
+    // ── Web push: alerts arrive even when the site is closed ──────────────
+    _swRegistration: null,
+
+    async registerServiceWorker() {
+        if (!('serviceWorker' in navigator)) return null;
+        try {
+            this._swRegistration = await navigator.serviceWorker.register('sw.js');
+            navigator.serviceWorker.addEventListener('message', e => {
+                if (e.data?.type === 'open-notifications' && state.currentUser) this.openPanel();
+            });
+            return this._swRegistration;
+        } catch (e) {
+            console.warn('Service worker registration failed:', e);
+            return null;
+        }
+    },
+
+    _urlBase64ToUint8Array(base64) {
+        const padded = (base64 + '='.repeat((4 - base64.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/');
+        const raw = atob(padded);
+        return Uint8Array.from(raw, c => c.charCodeAt(0));
+    },
+
+    // Subscribe this device and save it for the signed-in user.
+    async enablePush() {
+        if (!state.currentUser || !('PushManager' in window) || Notification.permission !== 'granted') return;
+        try {
+            const reg = this._swRegistration || await navigator.serviceWorker?.ready;
+            if (!reg?.pushManager) return;
+            let sub = await reg.pushManager.getSubscription();
+            if (!sub) {
+                sub = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: this._urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                });
+            }
+            const json = sub.toJSON();
+            const { error } = await supabaseClient.rpc('save_push_subscription', {
+                p_endpoint: json.endpoint,
+                p_p256dh: json.keys?.p256dh,
+                p_auth: json.keys?.auth,
+                p_user_agent: navigator.userAgent.slice(0, 300)
+            });
+            if (error) throw error;
+            this._pushActive = true;
+        } catch (e) {
+            this._pushActive = false;
+            console.warn('Web push not enabled:', e);
+        }
+    },
+
+    // On sign-out: stop this device receiving the previous user's alerts.
+    async disablePush() {
+        try {
+            const reg = this._swRegistration || await navigator.serviceWorker?.getRegistration?.();
+            const sub = await reg?.pushManager?.getSubscription();
+            if (!sub) return;
+            await supabaseClient.rpc('remove_push_subscription', { p_endpoint: sub.endpoint });
+            await sub.unsubscribe();
+        } catch (e) {
+            console.warn('disablePush error:', e);
+        } finally {
+            this._pushActive = false;
         }
     },
 
