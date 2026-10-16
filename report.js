@@ -660,7 +660,7 @@ function applyFieldPermissions(container) {
 
 // ==================== INITIALIZATION ====================
 async function initializeSupabase() {
-    showGlobalLoading('Connecting to database...', 'Initializing report system');
+    // The page's skeleton cards show while it connects (no full-screen overlay)
     
     try {
         // Initialize Supabase client with error handling
@@ -2338,9 +2338,9 @@ async function renderEditorContent() {
     const config    = TEMPLATE_CONFIG[state.classLevel];
 
     // Show a brief loading skeleton while building the form
-    container.innerHTML = '<div class="flex items-center justify-center py-16"><div class="flex flex-col items-center gap-3"><div class="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div><p class="text-sm text-slate-500 dark:text-slate-400">Loading report data...</p></div></div>';
+    container.innerHTML = reportFormSkeleton();
 
-    // Small yield so the spinner actually paints before the synchronous HTML build
+    // Small yield so the skeleton actually paints before the synchronous HTML build
     await new Promise(resolve => setTimeout(resolve, 0));
 
     container.innerHTML = config.sections.map(section => `
@@ -4224,6 +4224,17 @@ async function goToAdjacentStudent(step) {
 }
 
 // ==================== UI UTILITIES ====================
+// Skeleton shaped like the report form, shown while a student's report opens.
+function reportFormSkeleton() {
+    const field = w => `<div class="space-y-2"><div class="skeleton rounded" style="height:11px;width:${w}px"></div><div class="skeleton rounded-xl" style="height:44px"></div></div>`;
+    const section = (rows) => `
+        <div class="glass-panel rounded-2xl overflow-hidden border border-slate-200 dark:border-neutral-800">
+            <div class="px-6 py-4 border-b border-slate-200 dark:border-neutral-800"><div class="skeleton rounded" style="height:16px;width:180px"></div></div>
+            <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">${Array.from({ length: rows }, (_, i) => field(70 + (i % 3) * 20)).join('')}</div>
+        </div>`;
+    return `<div role="status" aria-busy="true" class="space-y-6"><span class="sr-only">Loading report…</span>${section(6)}${section(9)}${section(3)}</div>`;
+}
+
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');

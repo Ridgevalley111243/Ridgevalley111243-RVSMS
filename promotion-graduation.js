@@ -1578,12 +1578,7 @@ const promotionActions = {
             state.currentView = view;
             const container = document.getElementById('view-content');
             if (container) {
-                container.innerHTML = `
-                    <div style="display:flex;align-items:center;justify-content:center;height:200px;">
-                        <div style="width:36px;height:36px;border:3px solid var(--rv-blue,#1a56db);border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;"></div>
-                    </div>
-                    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
-                `;
+                container.innerHTML = typeof window.rvSkeletonFor === 'function' ? window.rvSkeletonFor('promotion') : '';
                 window.scrollTo(0, 0);
             }
             document.querySelectorAll('.sidebar-item').forEach(btn => {
@@ -1599,11 +1594,7 @@ const promotionActions = {
             state.currentView = view;
             const container = document.getElementById('view-content');
             if (container) {
-                container.innerHTML = `
-                    <div style="display:flex;align-items:center;justify-content:center;height:200px;">
-                        <div style="width:36px;height:36px;border:3px solid #7c3aed;border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;"></div>
-                    </div>
-                `;
+                container.innerHTML = typeof window.rvSkeletonFor === 'function' ? window.rvSkeletonFor('graduated_students') : '';
                 window.scrollTo(0, 0);
             }
             document.querySelectorAll('.sidebar-item').forEach(btn => {
