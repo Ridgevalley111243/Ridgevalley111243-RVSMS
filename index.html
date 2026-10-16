@@ -359,7 +359,7 @@
             <p class="text-slate-300 mb-6">The system requires initial setup. Please contact the super administrator to activate this instance.</p>
             <div class="text-sm text-slate-500 font-mono bg-slate-800 p-4 rounded-lg">
                 Status: ADMIN_NOT_FOUND<br>
-                Contact: support@ridgevalley.edu.gh
+                Contact: hybridridgevalley@gmail.com
             </div>
         </div>
     </div>
@@ -460,6 +460,12 @@
                         </button>
                     </div>
 
+                    <!-- Agreement (Create Account only) -->
+                    <label id="terms-consent" class="hidden flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="auth-terms" class="mt-1 h-4 w-4 shrink-0 accent-emerald-700">
+                        <span>I have read and agree to the <a href="legal/terms.html" target="_blank" rel="noopener" class="font-semibold text-ridge-700 dark:text-ridge-400 underline">Terms of Use</a> and the <a href="legal/privacy.html" target="_blank" rel="noopener" class="font-semibold text-ridge-700 dark:text-ridge-400 underline">Privacy Policy</a>.</span>
+                    </label>
+
                     <!-- Submit Button -->
                     <button id="auth-submit-btn" onclick="auth.handleAction()" class="w-full py-3.5 bg-ridge-600 text-white rounded-xl font-semibold text-[15px] shadow-sm btn-primary flex items-center justify-center gap-2">
                         <i class="fas fa-sign-in-alt"></i> <span id="auth-submit-text">Authorize Access</span>
@@ -473,6 +479,12 @@
                         </button>
                     </div>
                 </div>
+
+                <p class="text-center text-xs text-slate-500 dark:text-slate-400 mt-5">
+                    <a href="legal/terms.html" target="_blank" rel="noopener" class="hover:underline">Terms of Use</a>
+                    <span aria-hidden="true" class="mx-1.5">·</span>
+                    <a href="legal/privacy.html" target="_blank" rel="noopener" class="hover:underline">Privacy Policy</a>
+                </p>
 
                 <!-- Leaves the accounts-office sign-in -->
                 <div id="accountant-exit" class="hidden text-center mt-4">
@@ -636,7 +648,7 @@
         <div id="receipt-details"></div>
         <div class="mt-8 text-center text-xs text-slate-500 border-t pt-4 border-slate-200">
             <p class="mb-1"><i class="fas fa-shield-alt text-ridge-500 mr-1"></i>Verified Transaction</p>
-            <p>For inquiries: accounts@ridgevalley.edu.gh</p>
+            <p>For inquiries: hybridridgevalley@gmail.com</p>
         </div>
     </div>
 

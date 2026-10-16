@@ -826,6 +826,12 @@ const app = {
                 return;
             }
 
+            // Everyone must have agreed to the current Terms and Privacy Policy
+            if (!(await this.ensureTermsAccepted(user, profile))) {
+                await auth.logout();
+                return;
+            }
+
             state.currentUser = { ...user, ...profile };
             state.role = profile.role;
             app.clearAuthForm();
@@ -914,6 +920,77 @@ const app = {
             console.error('Error loading initial data:', err);
             ui.showToast('Some data failed to load', 'warning');
         }
+    },
+
+    // Returns true once the user has agreed to the current terms version.
+    // People who ticked the box when signing up are recorded silently.
+    async ensureTermsAccepted(user, profile) {
+        if (profile.terms_version === TERMS_VERSION) return true;
+        const record = async () => {
+            const { error } = await supabaseClient.rpc('accept_terms', { p_version: TERMS_VERSION });
+            if (error) console.warn('Could not record terms agreement:', error);
+        };
+        if (user?.user_metadata?.terms_version === TERMS_VERSION) {
+            await record();
+            return true;
+        }
+        app.hideLoading();
+        const agreed = await this.showTermsGate(profile);
+        if (agreed) {
+            app.showLoading('Loading profile...');
+            await record();
+        }
+        return agreed;
+    },
+
+    showTermsGate(profile) {
+        return new Promise(resolve => {
+            const isUpdate = !!profile.terms_version;
+            const el = document.createElement('div');
+            el.id = 'terms-gate';
+            el.setAttribute('role', 'dialog');
+            el.setAttribute('aria-modal', 'true');
+            el.setAttribute('aria-labelledby', 'terms-gate-title');
+            el.className = 'fixed inset-0 z-[10001] bg-black/70 flex items-center justify-center p-4 overflow-y-auto';
+            el.innerHTML = `
+                <div class="w-full max-w-lg my-auto rounded-2xl bg-white dark:bg-[#0f0f0f] border border-slate-200 dark:border-neutral-800 shadow-2xl">
+                    <div class="px-6 pt-6">
+                        <img src="1.png" alt="" width="48" height="48" class="w-12 h-12 object-contain mb-3">
+                        <h2 id="terms-gate-title" class="text-xl font-bold text-slate-800 dark:text-white">${isUpdate ? 'We have updated our terms' : 'Before you continue'}</h2>
+                        <p class="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                            ${isUpdate ? 'Please review the updated documents.' : 'To use the Ridge Valley Hybrid School portal, please read and agree to:'}
+                        </p>
+                    </div>
+                    <div class="px-6 py-4 space-y-2">
+                        <a href="legal/terms.html" target="_blank" rel="noopener" class="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 hover:bg-slate-50 dark:hover:bg-white/5">
+                            <i class="fas fa-file-contract text-ridge-600"></i>
+                            <span class="flex-1"><span class="block font-semibold text-slate-800 dark:text-white">Terms of Use</span><span class="block text-xs text-slate-500">Accounts, fees and payments, reports, acceptable use</span></span>
+                            <i class="fas fa-arrow-up-right-from-square text-xs text-slate-400"></i>
+                        </a>
+                        <a href="legal/privacy.html" target="_blank" rel="noopener" class="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 hover:bg-slate-50 dark:hover:bg-white/5">
+                            <i class="fas fa-user-shield text-ridge-600"></i>
+                            <span class="flex-1"><span class="block font-semibold text-slate-800 dark:text-white">Privacy Policy</span><span class="block text-xs text-slate-500">What we hold, who can see it, where it is stored, your rights</span></span>
+                            <i class="fas fa-arrow-up-right-from-square text-xs text-slate-400"></i>
+                        </a>
+                        <label class="flex items-start gap-3 pt-3 text-sm text-slate-700 dark:text-slate-200 cursor-pointer">
+                            <input type="checkbox" id="terms-gate-check" class="mt-1 h-4 w-4 shrink-0 accent-emerald-700">
+                            <span>I have read and agree to the Terms of Use and the Privacy Policy.</span>
+                        </label>
+                    </div>
+                    <div class="px-6 pb-6 flex gap-3">
+                        <button type="button" id="terms-gate-decline" class="flex-1 py-3 rounded-xl border border-slate-300 dark:border-neutral-700 font-semibold text-slate-600 dark:text-slate-300">Decline &amp; sign out</button>
+                        <button type="button" id="terms-gate-agree" disabled class="flex-[1.4] py-3 rounded-xl bg-ridge-600 hover:bg-ridge-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed">I agree</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(el);
+            const check = el.querySelector('#terms-gate-check');
+            const agree = el.querySelector('#terms-gate-agree');
+            check.addEventListener('change', () => { agree.disabled = !check.checked; });
+            const done = ok => { el.remove(); resolve(ok); };
+            agree.addEventListener('click', () => { if (check.checked) done(true); });
+            el.querySelector('#terms-gate-decline').addEventListener('click', () => done(false));
+            check.focus();
+        });
     },
 
     enterPortal() {
@@ -1033,6 +1110,7 @@ const app = {
         if (state.authMode === 'register') {
             // ── Show registration fields ──────────────────────────────────────
             if (regFields)  regFields.classList.remove('hidden');
+            document.getElementById('terms-consent')?.classList.remove('hidden');
             if (authTitle)  authTitle.textContent = state.role === 'admin' ? 'Admin Registration' : 'Create Account';
             if (submitText) submitText.textContent = 'Create Account';
             if (toggleBtn)  toggleBtn.textContent  = 'Already have an account? Sign In';
@@ -1052,6 +1130,9 @@ const app = {
         } else {
             // ── Back to login ─────────────────────────────────────────────────
             if (regFields)  regFields.classList.add('hidden');
+            document.getElementById('terms-consent')?.classList.add('hidden');
+            const consent = document.getElementById('auth-terms');
+            if (consent) consent.checked = false;
             if (authTitle)  authTitle.textContent = 'Secure Login';
             if (submitText) submitText.textContent = 'Authorize Access';
             if (toggleBtn)  toggleBtn.textContent  = 'Create Account';
@@ -1519,6 +1600,10 @@ const auth = {
                 modal.alert('Validation Error', 'Please enter your full name', 'warning');
                 return;
             }
+            if (!document.getElementById('auth-terms')?.checked) {
+                modal.alert('Agreement Required', 'Please read and agree to the Terms of Use and Privacy Policy to create an account.', 'warning');
+                return;
+            }
             // Validate Ghana phone number for parent registration
             if (state.role === 'parent') {
                 const phoneInputEl = document.getElementById('auth-phone');
@@ -1617,7 +1702,10 @@ const auth = {
                 // on_auth_user_created database trigger from this metadata.
                 // Role, approval and super-admin status are decided server-side.
                 options: {
-                    data: { full_name: name, role: state.role, phone: phoneInput || null }
+                    data: {
+                        full_name: name, role: state.role, phone: phoneInput || null,
+                        terms_version: TERMS_VERSION, terms_agreed_at: new Date().toISOString()
+                    }
                 }
             });
 
@@ -3049,6 +3137,11 @@ const ui = {
                 `;
             }).join('') + `
                 <div style="flex:1"></div>
+                <p style="margin:8px 24px 0;font-size:11px;color:var(--rv-muted,#94a3b8);">
+                    <a href="legal/terms.html" target="_blank" rel="noopener" style="color:inherit;">Terms</a>
+                    &nbsp;·&nbsp;
+                    <a href="legal/privacy.html" target="_blank" rel="noopener" style="color:inherit;">Privacy</a>
+                </p>
                 <button onclick="auth.logout()" class="rv-logout">
                     <i class="fas fa-sign-out-alt"></i> Sign Out
                 </button>
@@ -7751,6 +7844,10 @@ const actions = {
 };
 
 // ==================== NOTIFICATION MANAGER ====================
+// Current version of legal/terms.html and legal/privacy.html. Bump it when
+// either document changes and everyone is asked to agree again.
+const TERMS_VERSION = '2026-10-16';
+
 // Public half of the web-push (VAPID) key pair; the private half lives only
 // in the database, readable by the send-push Edge Function.
 const VAPID_PUBLIC_KEY = 'BDqaOM0WhcGdrt3Sb9wFHmbpZKBeurI-JSefr9OU08bee6Hkri2e_g9ZnHCVBWwgKFkqtfc35sgn40iv6BP8pbU';
