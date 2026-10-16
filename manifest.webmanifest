@@ -1,0 +1,12 @@
+{
+  "name": "Ridgevalley School Management System",
+  "short_name": "Ridgevalley SMS",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f6fa",
+  "theme_color": "#047857",
+  "icons": [
+    { "src": "1.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" }
+  ]
+}
