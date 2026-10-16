@@ -850,7 +850,7 @@ const app = {
                 await notificationManager.requestPermission();
 
                 // Show in-app entry prompt for unread notifications
-                if (state.role === 'teacher' || state.role === 'parent') {
+                if (state.role === 'teacher' || state.role === 'parent' || state.role === 'accountant') {
                     const unreadCount = notificationManager.countUnread();
                     if (unreadCount > 0) {
                         setTimeout(() => {
@@ -1850,6 +1850,21 @@ const dataManager = {
                     .from('parents')
                     .select('id, profile_id, children_ids, pending_children_ids, email, full_name, phone');
                 finalParentRows = refreshed || [];
+            }
+
+            // Accountants cannot read parent profiles, only the parents table, so
+            // build their list from those rows (needed to notify parents).
+            if (state.role === 'accountant') {
+                state.parents = finalParentRows.map(r => ({
+                    ...r,
+                    profile_id: r.profile_id,
+                    children_ids: r.children_ids || [],
+                    pending_children_ids: r.pending_children_ids || [],
+                    full_name: r.full_name || 'Unknown',
+                    email: r.email || '',
+                    phone: r.phone || null
+                }));
+                return;
             }
 
             // Merge profiles with parent rows — phone comes from parents table first, then profiles
@@ -7726,9 +7741,52 @@ const notificationManager = {
         } catch (e) { /* audio not supported */ }
     },
 
+    // Broadcast announcements are shared rows, so "read" is remembered per
+    // user on this device; personal notifications use the database flag.
+    _seenKey() { return 'rv_seen_announcements_' + (state.currentUser?.id || ''); },
+    _seen() {
+        try { return new Set(JSON.parse(localStorage.getItem(this._seenKey()) || '[]')); }
+        catch (_) { return new Set(); }
+    },
+
+    _isMine(n) {
+        return n.user_id === state.currentUser?.id ||
+            (n.type === 'announcement' && (!n.target || n.target === 'all' || n.target === state.role || n.target === state.role + 's'));
+    },
+
+    isUnread(n, seen = this._seen()) {
+        if (n.user_id === state.currentUser?.id) return !n.read;
+        return n.type === 'announcement' && !seen.has(n.id);
+    },
+
     // Count unread notifications for current user
     countUnread() {
-        return state.notifications.filter(n => !n.read && (n.user_id === state.currentUser?.id || (n.type === 'announcement' && (!n.target || n.target === 'all' || n.target === state.role || n.target === state.role + 's')))).length;
+        const seen = this._seen();
+        return state.notifications.filter(n => this._isMine(n) && this.isUnread(n, seen)).length;
+    },
+
+    // Called when the panel is opened: everything shown counts as read.
+    async markAllRead() {
+        const me = state.currentUser?.id;
+        if (!me) return;
+        const seen = this._seen();
+        const personal = [];
+        state.notifications.forEach(n => {
+            if (!this._isMine(n) || !this.isUnread(n, seen)) return;
+            if (n.user_id === me) { personal.push(n.id); n.read = true; }
+            else seen.add(n.id);
+        });
+        try { localStorage.setItem(this._seenKey(), JSON.stringify([...seen].slice(-300))); } catch (_) {}
+        this._lastNotifCount = 0;
+        this.updateBell();
+        if (personal.length) {
+            const { error } = await supabaseClient
+                .from('notifications')
+                .update({ read: true })
+                .in('id', personal)
+                .eq('user_id', me);
+            if (error) console.warn('markAllRead error:', error);
+        }
     },
 
     // Update bell badge in the nav
@@ -7754,12 +7812,12 @@ const notificationManager = {
         await dataManager.loadNotifications();
         const newCount = this.countUnread();
         this.updateBell();
-        if (newCount > prevCount && prevCount !== 0) {
+        if (newCount > prevCount) {
             // New notification arrived — play bell, show in-app prompt, send push
             this.playBell();
             this.showPrompt();
             // Fire browser push for the latest new notification
-            const latest = state.notifications.filter(n => !n.read)[0];
+            const latest = state.notifications.filter(n => this._isMine(n) && this.isUnread(n))[0];
             if (latest) {
                 this.sendPush(latest.title, latest.message?.substring(0, 100) || '', 'info');
             }
@@ -7771,7 +7829,7 @@ const notificationManager = {
     showPrompt() {
         const existing = document.getElementById('notif-prompt-banner');
         if (existing) existing.remove();
-        const unread = state.notifications.filter(n => !n.read).slice(0, 3);
+        const unread = state.notifications.filter(n => this._isMine(n) && this.isUnread(n)).slice(0, 3);
         if (unread.length === 0) return;
         const latest = unread[0];
         const banner = document.createElement('div');
@@ -7811,9 +7869,11 @@ const notificationManager = {
     openPanel() {
         const existing = document.getElementById('notif-panel');
         if (existing) { existing.remove(); return; }
+        const seenBefore = this._seen();
         const myNotifs = state.notifications
-            .filter(n => n.user_id === state.currentUser?.id || (n.type === 'announcement' && (!n.target || n.target === 'all' || n.target === state.role || n.target === state.role + 's')))
-            .slice(0, 20);
+            .filter(n => this._isMine(n))
+            .slice(0, 20)
+            .map(n => ({ ...n, read: !this.isUnread(n, seenBefore) }));
         const panel = document.createElement('div');
         panel.id = 'notif-panel';
         panel.style.cssText = `
@@ -7850,6 +7910,8 @@ const notificationManager = {
             </div>
         `;
         document.body.appendChild(panel);
+        // Opening the panel counts as reading what is in it
+        this.markAllRead();
         // Close when clicking outside
         setTimeout(() => {
             document.addEventListener('click', function handler(e) {
