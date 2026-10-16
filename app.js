@@ -4675,6 +4675,9 @@ const views = {
                                                 ${targetLabel[n.target] || 'All Users'}
                                             </span>
                                             <p class="text-xs text-slate-400 mt-1">${new Date(n.created_at).toLocaleString()}</p>
+                                            <button onclick="actions.deleteAnnouncement('${n.id}')" class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10" aria-label="Delete announcement: ${escapeHtml(n.title)}">
+                                                <i class="fas fa-trash-alt"></i> Delete
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -6710,6 +6713,35 @@ const actions = {
         }
     },
 
+    // Deleting the one broadcast row removes it for every recipient: their
+    // bell and Announcements page drop it on their next refresh (<= 30 s).
+    async deleteAnnouncement(id) {
+        const ann = (state.sentAnnouncements || []).find(n => n.id === id);
+        if (!ann) return;
+        modal.confirmDelete(`the announcement "${ann.title}"`, async () => {
+            try {
+                app.showLoading('Deleting announcement...');
+                const { data: removed, error } = await supabaseClient
+                    .from('notifications')
+                    .delete()
+                    .eq('id', id)
+                    .eq('type', 'announcement')
+                    .select('id');
+                if (error) throw error;
+                if (!removed || removed.length === 0) throw new Error('The announcement could not be deleted.');
+                state.sentAnnouncements = (state.sentAnnouncements || []).filter(n => n.id !== id);
+                state.notifications = (state.notifications || []).filter(n => n.id !== id);
+                notificationManager.updateBell();
+                ui.showToast('Announcement deleted for everyone', 'success');
+                ui.route('announcements');
+            } catch (err) {
+                modal.alert('Error', extractErrorMessage(err), 'error');
+            } finally {
+                app.hideLoading();
+            }
+        });
+    },
+
     async sendAnnouncement() {
         const title = document.getElementById('announcement-title')?.value;
         const message = document.getElementById('announcement-message')?.value;
@@ -7816,7 +7848,13 @@ const notificationManager = {
     async checkForNew() {
         if (!state.currentUser) return;
         const prevCount = this._lastNotifCount;
+        const annKey = () => state.notifications.filter(n => n.type === 'announcement').map(n => n.id).join(',');
+        const annBefore = annKey();
         await dataManager.loadNotifications();
+        // An announcement was added or deleted: keep an open Announcements page current
+        if (state.currentView === 'announcements' && state.role !== 'admin' && annKey() !== annBefore) {
+            try { views.renderAnnouncements(); } catch (_) {}
+        }
         const newCount = this.countUnread();
         this.updateBell();
         if (newCount > prevCount) {
@@ -7895,6 +7933,7 @@ const notificationManager = {
                 <div style="font-weight:700;color:#e2e8f0;font-size:15px;"><i class="fas fa-bell mr-2" style="color:#f59e0b;"></i>Notifications</div>
                 <button onclick="document.getElementById('notif-panel').remove()" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:18px;">×</button>
             </div>
+            ${this._alertsStatusHtml()}
             <div style="overflow-y:auto;flex:1;">
                 ${myNotifs.length === 0 ? `<div style="text-align:center;padding:40px 20px;color:#64748b;"><i class="fas fa-inbox" style="font-size:32px;margin-bottom:10px;display:block;"></i>No notifications yet</div>` : myNotifs.map(n => {
                     const typeIcons = { announcement:'fa-bullhorn', report_uploaded:'fa-file-alt', payment:'fa-credit-card', report_correction:'fa-exclamation-triangle', student_added:'fa-user-plus', fee_added:'fa-money-bill', system:'fa-info-circle' };
@@ -8010,6 +8049,47 @@ const notificationManager = {
         } catch (e) {
             console.warn('Push notification error:', e);
         }
+    },
+
+    // Small status strip at the top of the bell panel: are alerts on for
+    // this device, and if not, what to do about it.
+    _alertsStatusHtml() {
+        const wrap = (icon, color, text, button = '') => `
+            <div id="notif-alerts-status" style="padding:10px 20px;border-bottom:1px solid #334155;display:flex;align-items:center;gap:10px;font-size:12px;color:#cbd5e1;">
+                <i class="fas ${icon}" style="color:${color};width:14px;text-align:center;"></i>
+                <span style="flex:1;line-height:1.4;">${text}</span>${button}
+            </div>`;
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const installed = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
+        if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+            return isIOS && !installed
+                ? wrap('fa-mobile-alt', '#f59e0b', 'To get alerts on iPhone/iPad: tap <b>Share</b> &rarr; <b>Add to Home Screen</b>, open the app from that icon, then turn alerts on here.')
+                : wrap('fa-ban', '#94a3b8', 'This browser cannot show alerts.');
+        }
+        if (Notification.permission === 'denied') {
+            return wrap('fa-bell-slash', '#ef4444', 'Alerts are blocked in this browser. Click the <b>padlock</b> next to the web address &rarr; <b>Notifications</b> &rarr; <b>Allow</b>, then reload the page.');
+        }
+        if (Notification.permission === 'granted' && this._pushActive) {
+            return wrap('fa-check-circle', '#10b981', 'Alerts are on for this device, even when the site is closed.');
+        }
+        return wrap('fa-bell', '#f59e0b', 'Get an alert on this device when something new arrives.',
+            `<button onclick="event.stopPropagation();notificationManager.turnOnAlerts()" style="padding:6px 12px;border-radius:8px;border:none;background:#d97706;color:#fff;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;">Turn on alerts</button>`);
+    },
+
+    async turnOnAlerts() {
+        try {
+            const permission = Notification.permission === 'granted'
+                ? 'granted'
+                : await Notification.requestPermission();
+            if (permission === 'granted') {
+                await this.enablePush();
+                ui.showToast(this._pushActive ? 'Alerts turned on for this device' : 'Alerts allowed; background alerts could not be set up on this browser', this._pushActive ? 'success' : 'warning');
+            }
+        } catch (e) {
+            console.warn('turnOnAlerts error:', e);
+        }
+        const strip = document.getElementById('notif-alerts-status');
+        if (strip) strip.outerHTML = this._alertsStatusHtml();
     },
 
     // ── Web push: alerts arrive even when the site is closed ──────────────
