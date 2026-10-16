@@ -4382,3 +4382,58 @@ document.addEventListener('DOMContentLoaded', () => {
     
     initializeSupabase();
 });
+
+// ==================== KEYBOARD ====================
+//   Ctrl/⌘ + S          save this student's report
+//   Alt + → / Alt + ←   next / previous student
+//   Enter / Shift+Enter move to the next / previous box (Ctrl/⌘ + Enter in a remark box)
+//   Esc                 close the open question, or close the report
+document.addEventListener('keydown', (e) => {
+    if (e.isComposing || e.defaultPrevented) return;
+    const editor = document.getElementById('report-editor');
+    const editorOpen = !!editor && editor.classList.contains('active');
+    const confirm = document.getElementById('confirm-modal');
+    const confirmOpen = !!confirm && confirm.classList.contains('active');
+    const mod = e.ctrlKey || e.metaKey;
+
+    if (confirmOpen) {
+        if (e.key === 'Escape') { e.preventDefault(); closeModal(); }
+        else if (e.key === 'Enter' && e.target.tagName !== 'BUTTON') {
+            e.preventDefault();
+            document.getElementById('modal-confirm-btn')?.click();
+        }
+        return;
+    }
+    if (!editorOpen) return;
+
+    if (mod && !e.altKey && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        saveCurrentReport();
+        return;
+    }
+    if (e.altKey && !mod && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+        e.preventDefault();
+        goToAdjacentStudent(e.key === 'ArrowRight' ? 1 : -1);
+        return;
+    }
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) e.target.blur();
+        else closeReportEditor();
+        return;
+    }
+    if (e.key === 'Enter' && editor.contains(e.target)) {
+        const t = e.target;
+        const isText = t.tagName === 'TEXTAREA';
+        if (t.tagName === 'BUTTON' || t.tagName === 'SELECT' || t.tagName === 'A') return;
+        if (t.tagName !== 'INPUT' && !isText) return;
+        if (t.type === 'checkbox' || t.type === 'radio') return;
+        if (isText && !mod) return;                 // new line in a remark box
+        const fields = Array.from(editor.querySelectorAll('input, select, textarea'))
+            .filter(f => !f.disabled && !f.readOnly && f.type !== 'hidden' && f.offsetParent !== null);
+        const i = fields.indexOf(t);
+        const next = fields[i + (e.shiftKey ? -1 : 1)];
+        e.preventDefault();
+        if (next) { next.focus(); next.select?.(); }
+    }
+});

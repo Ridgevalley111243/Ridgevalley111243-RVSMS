@@ -1175,6 +1175,53 @@ console.log('[optimistic-ui] Loaded — skeleton screens, optimistic mutations, 
     if (typeof ui === 'undefined' || typeof ui.route !== 'function' || typeof ui.allowedView !== 'function') return;
     const _route = ui.route.bind(ui);
     ui.route = function(view) {
-        return _route(ui.allowedView(view));
+        const target = ui.allowedView(view);
+        const container = document.getElementById('view-content');
+        const sameScreen = target === state.currentView && !!container?.firstElementChild
+            && !container.querySelector('.rv-page-skeleton');
+        ui._keepPlace = sameScreen ? rvCapturePlace(container) : null;
+        const result = _route(target);
+        if (ui._keepPlace) rvRestorePlace(container, ui._keepPlace);
+        return result;
     };
 })();
+
+// ── Keep your place when a screen refreshes itself ────────────────────────────
+// Records the page scroll and every scrolled box inside the screen (wide
+// tables, long lists), then puts them back once the screen has re-rendered.
+function rvCapturePlace(container) {
+    const all = Array.from(container.querySelectorAll('*'));
+    const inner = [];
+    all.forEach((el, index) => {
+        if (el.scrollLeft > 0 || el.scrollTop > 0) inner.push({ index, left: el.scrollLeft, top: el.scrollTop });
+    });
+    return { y: window.scrollY, x: window.scrollX, inner, at: Date.now() };
+}
+
+function rvRestorePlace(container, place) {
+    let timer = null, done = false;
+    const apply = () => {
+        const all = container.querySelectorAll('*');
+        place.inner.forEach(p => {
+            const el = all[p.index];
+            if (el) { el.scrollLeft = p.left; el.scrollTop = p.top; }
+        });
+        window.scrollTo({ left: place.x, top: place.y, behavior: "instant" });
+    };
+    const finish = () => {
+        if (done) return;
+        done = true;
+        observer.disconnect();
+        apply();
+        if (ui._keepPlace === place) ui._keepPlace = null;
+    };
+    // Re-apply as content arrives; finish once the screen has been quiet briefly
+    const observer = new MutationObserver(() => {
+        apply();
+        clearTimeout(timer);
+        timer = setTimeout(finish, 250);
+    });
+    observer.observe(container, { childList: true, subtree: true });
+    timer = setTimeout(finish, 2500);   // nothing re-rendered: release anyway
+    setTimeout(finish, 6000);           // hard stop
+}
