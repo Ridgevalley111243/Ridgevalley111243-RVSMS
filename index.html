@@ -10,9 +10,12 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="apple-touch-icon" href="1.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+    <!-- Fonts are self-hosted in /fonts so they load from this site, not Google.
+         The two most-needed files are fetched first; until they arrive, text shows in
+         a size-matched system font and then swaps to the real one. -->
+    <link rel="preload" href="fonts/plus-jakarta-sans/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/fontawesome/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="fonts/fonts.css">
     <!-- Mobile Responsiveness Fix -->
     <link rel="stylesheet" href="mobile-fix.css">
     <link rel="stylesheet" href="dark-black.css">
@@ -28,7 +31,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="fonts/fontawesome/css/all.min.css">
     
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
@@ -55,7 +58,7 @@
             theme: {
                 extend: {
                     fontFamily: { 
-                        sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'] 
+                        sans: ['Plus Jakarta Sans', 'Plus Jakarta Sans Fallback', 'Plus Jakarta Sans Fallback Android', 'system-ui', 'sans-serif'] 
                     },
                     colors: {
                         ridge: {
@@ -110,7 +113,7 @@
         }
 
         body {
-            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            font-family: 'Plus Jakarta Sans', 'Plus Jakarta Sans Fallback', 'Plus Jakarta Sans Fallback Android', system-ui, sans-serif;
             background-color: var(--bg-primary);
             color: var(--text-primary);
             transition: background-color 0.3s ease, color 0.3s ease;
@@ -268,7 +271,7 @@
             width: 400px;
             min-height: 600px;
             background: white;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', 'Inter Fallback', 'Inter Fallback Android', sans-serif;
             color: #000;
         }
 
