@@ -2549,7 +2549,7 @@ const ui = {
                 }
 
                 body {
-                    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+                    font-family: 'Plus Jakarta Sans', 'Plus Jakarta Sans Fallback', 'Plus Jakarta Sans Fallback Android', system-ui, sans-serif;
                     background: var(--rv-bg);
                     color: var(--rv-text);
                     font-feature-settings: 'cv11', 'ss01';
@@ -6925,13 +6925,13 @@ const actions = {
             <head>
                 <title>Payment Receipt - ${escapeHtml(student?.name || 'Student')}</title>
                 <style>
-                    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap');
+                    @import url('${new URL('fonts/fonts.css', location.href).href}');
                     @page { size: A5; margin: 0; }
 
                     * { box-sizing: border-box; margin: 0; padding: 0; }
 
                     body {
-                        font-family: 'DM Sans', sans-serif;
+                        font-family: 'DM Sans', 'DM Sans Fallback', 'DM Sans Fallback Android', sans-serif;
                         background: #f0f4f8;
                         display: flex;
                         align-items: center;
@@ -6991,7 +6991,7 @@ const actions = {
                     .school-info { flex: 1; }
 
                     .school-name {
-                        font-family: 'Playfair Display', serif;
+                        font-family: 'Playfair Display', 'Playfair Display Fallback', Georgia, serif;
                         font-size: 20px;
                         color: #1e3a5f;
                         line-height: 1.2;
@@ -7049,7 +7049,7 @@ const actions = {
                     }
 
                     .amount-value {
-                        font-family: 'Playfair Display', serif;
+                        font-family: 'Playfair Display', 'Playfair Display Fallback', Georgia, serif;
                         font-size: 38px;
                         font-weight: 700;
                         letter-spacing: -1px;

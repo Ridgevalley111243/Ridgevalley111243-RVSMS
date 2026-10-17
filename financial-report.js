@@ -1498,10 +1498,10 @@ ${finalBodyXml}
 <meta charset="UTF-8"/>
 <title>${title}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+  @import url('${new URL('fonts/fonts.css', location.href).href}');
   @page { size: A4; margin: 18mm 16mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; color: #374151; background: #fff; }
+  body { font-family: 'Inter', 'Inter Fallback', 'Inter Fallback Android', Arial, sans-serif; font-size: 10pt; color: #374151; background: #fff; }
   h1 { font-size: 22pt; font-weight: 800; color: #0f2044; }
   h2 { font-size: 13pt; font-weight: 700; color: #0f2044; margin: 16pt 0 6pt; padding-bottom: 4pt; border-bottom: 2pt solid #1a56db; page-break-after: avoid; }
   h3 { font-size: 11pt; font-weight: 700; color: #1a56db; margin: 12pt 0 4pt; page-break-after: avoid; }

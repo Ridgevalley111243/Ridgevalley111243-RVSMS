@@ -11,15 +11,20 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Fonts are self-hosted in /fonts so they load from this site, not Google.
+         The two most-needed files are fetched first; until they arrive, text shows in
+         a size-matched system font and then swaps to the real one. -->
+    <link rel="preload" href="fonts/plus-jakarta-sans/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/fontawesome/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="fonts/fonts.css">
+    <link rel="stylesheet" href="fonts/fontawesome/css/all.min.css">
     
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] },
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'Plus Jakarta Sans Fallback', 'Plus Jakarta Sans Fallback Android', 'system-ui', 'sans-serif'] },
                     colors: {
                         primary: { 50: '#ecfdf5', 100: '#d1fae5', 500: '#10b981', 600: '#059669', 700: '#047857', 900: '#064e3b' },
                         secondary: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' },
@@ -48,7 +53,7 @@
         @media (max-width: 768px) { input, select, textarea { font-size: 16px !important; } }
         @media (prefers-reduced-motion: reduce) { .animate-bounce, .animate-pulse { animation: none !important; } button:not(:disabled):active { transform: none; } }
 
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; }
+        body { font-family: 'Plus Jakarta Sans', 'Plus Jakarta Sans Fallback', 'Plus Jakarta Sans Fallback Android', system-ui, sans-serif; background: #f8fafc; }
         .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(226, 232, 240, 0.8); }
         .dark body { background: #000000; color: #f5f5f5; }
         .dark .glass-panel { background: #0f0f0f; border-color: #262626; }
