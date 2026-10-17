@@ -4,7 +4,10 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 let supabaseClient;
 try {
-    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Passkey support is opt-in in supabase-js (experimental); see passkeys.js.
+    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { experimental: { passkey: true } }
+    });
 } catch (err) {
     console.error('Failed to initialize Supabase:', err);
     modal.createModal('Connection Error', 'Failed to initialize database connection.', null, null, 'OK', 'Cancel', 'error');
