@@ -21,6 +21,11 @@
 // ==================================================================================
 // SECTION 0 — GLOBAL FEATURE STATE
 // ==================================================================================
+// Today's date (YYYY-MM-DD) on the device's own calendar, not UTC
+function localDateISO(d = new Date()) {
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
 const featureState = {
     weeks: [],
     bills: [],
@@ -42,8 +47,9 @@ const featureDB = {
             .order('start_date', { ascending: true });
         if (!error) {
             featureState.weeks = data || [];
-            // Auto-activate the week whose date range covers today
+            // Move the active week on if a new week has started
             await this._autoActivateCurrentWeek();
+            this._watchForNewDay();
         }
         // Refresh the period display in the top nav to show active week
         if (typeof ui !== 'undefined' && ui.updatePeriodDisplay) {
@@ -52,39 +58,64 @@ const featureDB = {
         return featureState.weeks;
     },
 
-    // Automatically sets a week as active when its date range covers today,
-    // but ONLY if no week is currently manually active for that AY/term.
-    // Manual toggles via the UI are respected and never overridden here.
+    // Moves the active week forward by itself: as soon as a new week's start
+    // date arrives, that week becomes active and the finished one is switched off.
+    //
+    // A week the admin activates by hand stays active until its own dates have
+    // passed (so activating next week early is respected). Previously this only
+    // ran when NO week was active, so once Week 1 was on, Week 2 never took over.
     async _autoActivateCurrentWeek() {
-        const today = new Date().toISOString().split('T')[0];
         if (!state.currentAY || !state.currentTerm) return;
+        const today = localDateISO();
+        this._weekCheckedOn = today;
 
         const ayId   = state.currentAY.id;
         const termId = state.currentTerm.id;
-
         const termWeeks = featureState.weeks.filter(w =>
             w.academic_year_id === ayId && w.term_id === termId
         );
+        const active = termWeeks.filter(w => w.status === 'active');
 
-        // If any week in this term is already marked active, respect that — don't override
-        const alreadyActive = termWeeks.find(w => w.status === 'active');
-        if (alreadyActive) return;
+        // An active week whose dates haven't finished yet stays as it is
+        if (active.some(w => w.end_date >= today)) return;
 
-        // No active week — find the one that covers today and activate it
-        const todayWeek = termWeeks.find(w =>
-            w.start_date <= today && w.end_date >= today
-        );
+        // Otherwise switch to the week that covers today (none during a holiday gap)
+        const todayWeek = termWeeks.find(w => w.start_date <= today && w.end_date >= today);
         if (!todayWeek) return;
 
+        const turnOff = active.filter(w => w.id !== todayWeek.id).map(w => w.id);
+        featureState.weeks = featureState.weeks.map(w =>
+            w.id === todayWeek.id ? { ...w, status: 'active' }
+            : turnOff.includes(w.id) ? { ...w, status: 'inactive' } : w
+        );
+
+        // Only admins may change weeks in the database. For everyone else the
+        // switch is applied on screen, and saved the next time an admin opens
+        // the portal (the live update then refreshes everyone).
+        if (state.role !== 'admin') return;
         try {
-            await supabaseClient.from('weeks').update({ status: 'active' }).eq('id', todayWeek.id);
-            featureState.weeks = featureState.weeks.map(w => ({
-                ...w,
-                status: w.id === todayWeek.id ? 'active' : w.status
-            }));
+            if (turnOff.length) {
+                const { error: offErr } = await supabaseClient.from('weeks').update({ status: 'inactive' }).in('id', turnOff);
+                if (offErr) throw offErr;
+            }
+            const { error } = await supabaseClient.from('weeks').update({ status: 'active' }).eq('id', todayWeek.id);
+            if (error) throw error;
         } catch (err) {
             console.warn('[autoActivateWeek] Non-critical error:', err);
         }
+    },
+
+    // The portal is often left open for days: re-check when the date changes
+    // (checked every few minutes, and whenever the tab comes back into view).
+    _watchForNewDay() {
+        if (this._newDayWatch) return;
+        const check = () => {
+            if (this._weekCheckedOn && this._weekCheckedOn !== localDateISO() && state.currentUser) {
+                this.loadWeeks().catch(() => {});
+            }
+        };
+        this._newDayWatch = setInterval(check, 5 * 60 * 1000);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
     },
 
     async saveWeek(week) {
@@ -1627,6 +1658,16 @@ const featureActions = {
         try {
             app.showLoading('Updating...');
             const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+            // Only one week is active per term: activating one switches the others off
+            if (newStatus === 'active') {
+                const wk = featureState.weeks.find(w => w.id === id);
+                const others = featureState.weeks.filter(w => w.id !== id && w.status === 'active' &&
+                    w.academic_year_id === wk?.academic_year_id && w.term_id === wk?.term_id).map(w => w.id);
+                if (others.length) {
+                    const { error: offErr } = await supabaseClient.from('weeks').update({ status: 'inactive' }).in('id', others);
+                    if (offErr) throw offErr;
+                }
+            }
             // saveWeek internally calls loadWeeks() which updates period display
             await featureDB.saveWeek({ id, status: newStatus });
             app.hideLoading();
