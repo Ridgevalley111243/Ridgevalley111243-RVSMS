@@ -450,9 +450,9 @@ async function initializeSupabase() {
                 assignedClass:   state.assignedClass
             });
             renderEmptyState(
-                'No Students Found',
-                `No students found in class "${state.assignedClass}" (ID: ${state.assignedClassId || 'none'}). ` +
-                `If this class was recently reassigned, ensure students have been enrolled in the new class.`
+                'No Students in This Class',
+                `${String(state.assignedClass || 'This class').replace(/[<>&]/g, '')} has no current students, so there are no reports to fill in. ` +
+                `Graduated students are not included. Students appear here once they are added or promoted into this class.`
             );
             hideGlobalLoading();
             return;
@@ -636,7 +636,7 @@ async function loadStudents() {
         // the name constructed from classes.level+grade and the value stored in
         // students.class (e.g. "PRE-SCHOOL - BASIC KINDERGARTEN 2" matches
         // "PRE - SCHOOL - KINDERGARTEN 2" after normalization).
-        const FIELDS = 'id, name, class, grade, class_id, student_id, gender, date_of_birth';
+        const FIELDS = 'id, name, class, grade, class_id, student_id, gender, date_of_birth, status';
 
         const { data: allStudents, error: fetchError } = await state.supabaseClient
             .from('students')
@@ -654,7 +654,9 @@ async function loadStudents() {
         let matched = 0;
         let rejected = 0;
 
-        const filtered = (allStudents || []).filter(s => {
+        // Graduated students keep their last class but no longer get reports
+        // (the portal hides them the same way, in promotion-graduation.js)
+        const filtered = (allStudents || []).filter(s => s.status !== 'graduated').filter(s => {
             const normalizedStudentClass = normalizeClassName(s.class);
 
             console.log(`[Student Loading] Comparing: "${normalizedStudentClass}" === "${normalizedExpectedClass}"`);

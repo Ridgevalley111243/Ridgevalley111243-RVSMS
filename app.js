@@ -4264,10 +4264,12 @@ const views = {
                 let complete = 0, remarked = 0, fieldsDone = 0, fieldsTotal = 0;
                 students.forEach(s => {
                     const r = latest[s.id];
-                    const p = level ? reportProgress(level, term, r?.data || {}) : { complete: !!r?.completed, done: r ? 1 : 0, total: 1 };
+                    const p = level ? reportProgress(level, term, r?.data || {}) : { complete: String(r?.completed) === 'true', done: r ? 1 : 0, total: 1 };
                     fieldsDone += p.done; fieldsTotal += p.total;
                     if (p.complete) complete++;
-                    if (p.complete && r?.data?.head_teacher_remarks) remarked++;
+                    let data = r?.data;
+                    if (typeof data === 'string') { try { data = JSON.parse(data); } catch (_) { data = null; } }
+                    if (p.complete && String(data?.head_teacher_remarks || '').trim()) remarked++;
                 });
                 const teacher = state.teachers.find(t => t.assigned_class === c.id);
                 return { c, name: buildClassName(c), total: students.length, saved: complete, remarked,
@@ -4287,7 +4289,9 @@ const views = {
                     const pct = r.pct;
                     const ready = r.total > 0 && r.saved === r.total;
                     const done = ready && r.remarked === r.total;
-                    const badge = done
+                    const badge = !r.total
+                        ? '<span class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"><i class="fas fa-user-slash"></i> No students</span>'
+                        : done
                         ? '<span class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"><i class="fas fa-circle-check"></i> Ready to download</span>'
                         : ready
                         ? '<span class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><i class="fas fa-pen"></i> Teacher done · add remarks</span>'
@@ -4301,7 +4305,7 @@ const views = {
                             </div>
                             ${badge}
                         </div>
-                        <div>
+                        ${!r.total ? `<p class="text-sm text-slate-500 dark:text-slate-400">No current students in this class, so there are no reports to fill in. Graduated students are not counted.</p>` : `<div>
                             <div class="flex justify-between text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">
                                 <span>Completed by teacher</span><span class="tabular-nums">${r.saved} / ${r.total} · ${pct}%</span>
                             </div>
@@ -4309,7 +4313,7 @@ const views = {
                                 <div class="${ready ? 'bg-emerald-600' : 'bg-ridge-600'} h-2 rounded-full" style="width:${pct}%"></div>
                             </div>
                             ${ready ? `<p class="text-xs text-slate-500 dark:text-slate-400 mt-1.5">Head teacher's remarks: ${r.remarked} / ${r.total}</p>` : ''}
-                        </div>
+                        </div>`}
                         <button onclick="actions.downloadBulkReports(${escapeHtml(JSON.stringify(r.name))}, ${escapeHtml(JSON.stringify(term))}, '${r.c.id}')" class="mt-auto w-full px-4 py-2.5 bg-ridge-600 hover:bg-ridge-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2">
                             <i class="fas fa-folder-open"></i> Open Class Reports
                         </button>
@@ -4971,13 +4975,21 @@ const views = {
 
         const myStudents = dataManager.getTeacherStudents();
 
-        // Report progress: saved reports for this term's students
+        // Report progress: reports the teacher has completed this term, by the
+        // same rules as the report page and the admin's Class Reports
         const myIds = new Set(myStudents.map(s => s.id));
-        const savedReportCount = new Set(state.reports
-            .filter(r => myIds.has(r.student_id) && r.completed
-                && (!state.currentTerm?.name || r.term === state.currentTerm.name)
+        const termName = state.currentTerm?.name || '';
+        const myClass = myStudents[0] ? (myStudents[0].class || '') : '';
+        const level = typeof reportLevelForClass === 'function' ? reportLevelForClass(myClass) : null;
+        const latest = {};
+        state.reports
+            .filter(r => myIds.has(r.student_id)
+                && (!termName || r.term === termName)
                 && (!state.currentAY?.year || String(r.academic_year) === String(state.currentAY.year)))
-            .map(r => r.student_id)).size;
+            .forEach(r => { if (!latest[r.student_id] || (r.last_modified || '') > (latest[r.student_id].last_modified || '')) latest[r.student_id] = r; });
+        const savedReportCount = Object.values(latest).filter(r => level
+            ? reportProgress(level, termName, r.data).complete
+            : String(r.completed) === 'true').length;
 
         const html = `
             <div class="mb-6">
@@ -5009,7 +5021,7 @@ const views = {
                     <img src="assets/3d/outbox.png" alt="" width="44" height="44" loading="lazy" decoding="async" style="width:44px;height:44px;object-fit:contain;flex:none;">
                     <div class="flex-1 min-w-0">
                         <h3 class="font-bold text-lg text-slate-800 dark:text-white">Report Progress</h3>
-                        <p class="text-sm text-slate-500">${savedReportCount} of ${myStudents.length} reports saved for ${escapeHtml(state.currentTerm?.name || 'this term')}. The admin reviews them and adds the head teacher's remark.</p>
+                        <p class="text-sm text-slate-500">${myStudents.length ? `${savedReportCount} of ${myStudents.length} reports complete for ${escapeHtml(state.currentTerm?.name || 'this term')}.` : 'There are no students in your class, so there are no reports to fill in.'} The admin reviews them and adds the head teacher's remark.</p>
                         <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 mt-3">
                             <div class="bg-ridge-600 h-2 rounded-full" style="width:${myStudents.length ? Math.round(savedReportCount / myStudents.length * 100) : 0}%"></div>
                         </div>

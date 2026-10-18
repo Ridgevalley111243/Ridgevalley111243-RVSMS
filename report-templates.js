@@ -365,7 +365,9 @@ function isFinalTerm(term) {
 
 function reportProgress(level, term, data) {
     const config = TEMPLATE_CONFIG[level];
-    const d = data || {};
+    // reports.data is stored as JSON text; the portal passes it as loaded
+    let d = data || {};
+    if (typeof d === 'string') { try { d = JSON.parse(d) || {}; } catch (_) { d = {}; } }
     const filled = v => v !== undefined && v !== null && String(v).trim() !== '';
     const items = []; // { label, done }
     if (!config) return { done: 0, total: 0, percent: 0, complete: false, missing: [] };
