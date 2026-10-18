@@ -205,8 +205,7 @@ exception when others then
 end;
 $fn$;
 
-drop trigger if exists sms_on_notification on public.notifications;
-create trigger sms_on_notification after insert on public.notifications
+create or replace trigger sms_on_notification after insert on public.notifications
   for each row execute function private.sms_on_notification();
 
 -- Payments: submitted, approved, rejected, or recorded by the office
@@ -265,8 +264,7 @@ exception when others then
 end;
 $fn$;
 
-drop trigger if exists sms_on_transaction on public.transactions;
-create trigger sms_on_transaction after insert or update of status on public.transactions
+create or replace trigger sms_on_transaction after insert or update of status on public.transactions
   for each row execute function private.sms_on_transaction();
 
 -- Report file uploaded by the admin
@@ -286,8 +284,7 @@ exception when others then
 end;
 $fn$;
 
-drop trigger if exists sms_on_report on public.reports;
-create trigger sms_on_report after insert or update of file_url on public.reports
+create or replace trigger sms_on_report after insert or update of file_url on public.reports
   for each row execute function private.sms_on_report();
 
 -- Student marked absent (today's register only, once per student per day)
@@ -308,8 +305,7 @@ exception when others then
 end;
 $fn$;
 
-drop trigger if exists sms_on_attendance on public.attendance;
-create trigger sms_on_attendance after insert or update of status on public.attendance
+create or replace trigger sms_on_attendance after insert or update of status on public.attendance
   for each row execute function private.sms_on_attendance();
 
 -- New bill assigned to a student by the accounts office
@@ -333,8 +329,7 @@ exception when others then
 end;
 $fn$;
 
-drop trigger if exists sms_on_bill on public.bill_assignments;
-create trigger sms_on_bill after insert on public.bill_assignments
+create or replace trigger sms_on_bill after insert on public.bill_assignments
   for each row execute function private.sms_on_bill();
 
 revoke all on function private.sms_event_on(text), private.sms_user_phones(uuid), private.sms_parent_phones(text),

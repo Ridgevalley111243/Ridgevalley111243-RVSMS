@@ -171,7 +171,7 @@
         ['absent',             'Student absent',                 "To the student's parents as soon as the teacher saves today's register. Needs Teacher attendance marking switched on."],
         ['new_bill',           'New bill',                       "To the student's parents for each bill the accounts office assigns. A bill for a whole class texts every family in it."],
     ];
-    const EVENT_LABEL = Object.fromEntries(EVENTS.map(([k, label]) => [k, label]));
+    const EVENT_LABEL = { ...Object.fromEntries(EVENTS.map(([k, label]) => [k, label])), pipeline_check: 'System check (no text sent)' };
 
     function recentHtml(rows) {
         if (!rows) return '';
