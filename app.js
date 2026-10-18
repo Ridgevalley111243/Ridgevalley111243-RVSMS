@@ -840,6 +840,12 @@ const app = {
                 return;
             }
 
+            // Staff must give an active phone number before using the portal (staff-phone.js)
+            if (window.rvStaffPhone && !(await rvStaffPhone.ensure(profile))) {
+                await auth.logout();
+                return;
+            }
+
             state.currentUser = { ...user, ...profile };
             state.role = profile.role;
             app.clearAuthForm();

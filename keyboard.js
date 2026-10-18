@@ -19,7 +19,7 @@
 
     // Overlays that are not dialogs, or that must not be dismissed with Esc
     const NOT_DIALOGS = new Set(['loading-overlay', 'rv-page-skeleton', 'landing-page', 'sidebar-overlay',
-        'notif-prompt-banner', 'toast-container', 'rv-offline-badge', 'terms-gate']);
+        'notif-prompt-banner', 'toast-container', 'rv-offline-badge', 'terms-gate', 'staff-phone-gate']);
 
     const isTyping = el => !!el && (el.isContentEditable ||
         /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
