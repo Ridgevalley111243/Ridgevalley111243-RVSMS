@@ -46,6 +46,10 @@
                   who: 'Teachers',
                   desc: 'Teachers choose how their students’ names are shown (for example surname first, or first name first). My Students and the report page then list students alphabetically in that order.',
                   views: [] },
+                { id: 'sms', label: 'SMS to parents (httpSMS)', default: false,
+                  who: 'Admin, Parents',
+                  desc: "Sends text messages to parents' phones through an Android phone running the httpSMS app. After switching it on, add the httpSMS API key and the phone's number, then send a test message.",
+                  views: [] },
             ],
         },
         finance: {
