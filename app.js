@@ -1893,17 +1893,29 @@ const dataManager = {
             // (teachers may only be able to read their own row via RLS, which would
             // make every other teacher look "missing" and trigger spurious inserts).
             let finalTeacherRows = teacherRows || [];
-            if (state.role === 'admin') {
+            // Two overlapping loads used to both see a teacher as "missing" and
+            // both insert, leaving two records for one teacher. Only one backfill
+            // runs at a time, and a record that already exists is left alone.
+            if (state.role === 'admin' && !this._teacherBackfillRunning) {
                 const missingRows = (profiles || []).filter(p =>
                     !(teacherRows || []).some(t => t.profile_id === p.id)
                 );
-                for (const p of missingRows) {
-                    await supabaseClient.from('teachers').insert([{
-                        profile_id: p.id,
-                        email: p.email,
-                        full_name: p.full_name,
-                        assigned_class: null
-                    }]);
+                this._teacherBackfillRunning = true;
+                try {
+                    for (const p of missingRows) {
+                        const { data: exists } = await supabaseClient
+                            .from('teachers').select('id').eq('profile_id', p.id).limit(1);
+                        if (exists && exists.length) continue;
+                        const { error: insErr } = await supabaseClient.from('teachers').insert([{
+                            profile_id: p.id,
+                            email: p.email,
+                            full_name: p.full_name,
+                            assigned_class: null
+                        }]);
+                        if (insErr && insErr.code !== '23505') console.warn('teacher backfill failed:', insErr);
+                    }
+                } finally {
+                    this._teacherBackfillRunning = false;
                 }
                 if (missingRows.length > 0) {
                     const { data: refreshed } = await supabaseClient
@@ -1915,7 +1927,9 @@ const dataManager = {
 
             // Merge: always use profile_id as the stable identifier
             state.teachers = (profiles || []).map(p => {
-                const tRow = finalTeacherRows.find(t => t.profile_id === p.id);
+                // If a teacher ever has more than one record, show the one holding a class
+                const rows = finalTeacherRows.filter(t => t.profile_id === p.id);
+                const tRow = rows.find(t => t.assigned_class) || rows[0];
                 return {
                     ...p,
                     id: tRow?.id || null,          // teachers table row id (for DB ops)
@@ -2374,6 +2388,7 @@ const dataManager = {
                     .from('teachers')
                     .select('id, profile_id, assigned_class, email, full_name')
                     .eq('profile_id', userId)
+                    .order('assigned_class', { ascending: true, nullsFirst: false })
                     .limit(1);
                 if (byProfile && byProfile.length > 0) data = byProfile[0];
             }
@@ -6023,16 +6038,11 @@ const actions = {
 
             // If no teachers row exists yet, create one first
             if (!teacher?.id) {
-                const { data: inserted, error: insertErr } = await supabaseClient
+                const { error: insertErr } = await supabaseClient
                     .from('teachers')
-                    .insert([{ profile_id: profileId, email: teacher?.email || '', full_name: teacher?.full_name || '', assigned_class: null }])
-                    .select()
-                    .single();
-                if (insertErr) throw insertErr;
-                teacher.id = inserted.id;
+                    .insert([{ profile_id: profileId, email: teacher?.email || '', full_name: teacher?.full_name || '', assigned_class: null }]);
+                if (insertErr && insertErr.code !== '23505') throw insertErr; // 23505: already exists
             }
-
-            const teachersRowId = teacher.id;
 
             if (classId) {
                 // Unassign any other teacher currently holding this class UUID
@@ -6041,7 +6051,7 @@ const actions = {
                     .from('teachers')
                     .select('id')
                     .eq('assigned_class', classId)
-                    .neq('id', teachersRowId);
+                    .neq('profile_id', profileId);
 
                 if (existing && existing.length > 0) {
                     const { error: clearErr } = await supabaseClient
@@ -6053,12 +6063,19 @@ const actions = {
             }
 
             app.showLoading('Updating assignment...');
-            const { error } = await supabaseClient
+            // Update every record for this teacher (there should only be one), and
+            // check something was really saved: a blocked update returns no error,
+            // which used to show "Assignment updated" when nothing had changed.
+            const { data: saved, error } = await supabaseClient
                 .from('teachers')
                 .update({ assigned_class: classId || null })
-                .eq('id', teachersRowId);
+                .eq('profile_id', profileId)
+                .select('id, assigned_class');
 
             if (error) throw error;
+            if (!saved || saved.length === 0) {
+                throw new Error('The assignment was not saved. Please refresh the page and try again.');
+            }
 
             ui.showToast('Assignment updated', 'success');
             // FIX 7: Load classes first, then teachers and students so the
@@ -6083,7 +6100,7 @@ const actions = {
                 app.showLoading('Deleting...');
                 // Delete from teachers table if a row exists
                 if (teacher?.id) {
-                    const { error } = await supabaseClient.from('teachers').delete().eq('id', teacher.id);
+                    const { error } = await supabaseClient.from('teachers').delete().eq('profile_id', profileId);
                     if (error) throw error;
                 }
                 // Always delete from profiles table to fully remove the account

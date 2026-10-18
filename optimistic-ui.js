@@ -1045,7 +1045,7 @@ if (_origDeleteTeacher) {
                 try {
                     const teacher = backup.find(t => t.profile_id === profileId);
                     if (teacher?.id) {
-                        await supabaseClient.from('teachers').delete().eq('id', teacher.id);
+                        await supabaseClient.from('teachers').delete().eq('profile_id', profileId);
                     }
                     if (profileId) {
                         await supabaseClient.from('profiles').delete().eq('id', profileId);

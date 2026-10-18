@@ -481,7 +481,11 @@ async function refreshTeacherAssignment() {
             query = query.or(`profile_id.eq.${state.teacherId},id.eq.${state.teacherId}`);
         }
 
-        const { data: teacher, error: teacherError } = await query.maybeSingle();
+        // A teacher should have one record; if there are ever two, use the one holding a class
+        const { data: teacherRows, error: teacherError } = await query
+            .order('assigned_class', { ascending: true, nullsFirst: false })
+            .limit(1);
+        const teacher = teacherRows?.[0] || null;
 
         if (teacherError) {
             console.error('[refreshTeacherAssignment] Supabase error fetching teacher:', {
