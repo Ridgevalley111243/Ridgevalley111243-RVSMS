@@ -4318,3 +4318,239 @@ document.addEventListener('keydown', (e) => {
         return _closeEditor.apply(this, arguments);
     };
 }
+
+// ==================== REPORT DATES (whole class) ====================
+// The class teacher sets the date of vacation (the report's "Date") and the
+// date of reopening ("Next Term Begins") once for the class and term; they go
+// on every student's report. Saved by set_report_term_dates (see
+// supabase/migrations/20261020140000_report_term_dates.sql), which also writes
+// them into every saved report of the class, so a change updates everyone.
+// While a date is not known yet, the teacher sees the dates screen each time
+// the page opens so it can be added.
+const TERM_DATE_FIELDS = [
+    { key: 'vacation',  field: 'date',             label: 'Date of vacation',  hint: 'Printed as the report\'s Date.',   unknown: 'The date of vacation is not yet known' },
+    { key: 'reopening', field: 'next_term_begins', label: 'Date of reopening', hint: 'Printed as Next Term Begins.',     unknown: 'The date of reopening is not yet known' },
+];
+state.termDates = null; // { vacation, reopening, saved } once loaded; null when unavailable
+
+// The dates this class's report template uses (crèche reports have no reopening date)
+function termDateFields() {
+    const names = new Set();
+    (TEMPLATE_CONFIG[state.classLevel]?.sections || []).forEach(s => (s.fields || []).forEach(f => names.add(f.name)));
+    return TERM_DATE_FIELDS.filter(d => names.has(d.field));
+}
+
+function termDatesMissing() {
+    return !!state.termDates && termDateFields().some(d => !state.termDates[d.key]);
+}
+
+async function loadTermDates() {
+    state.termDates = null;
+    if (!state.assignedClassId || !state.academicYear || !state.term) return null;
+    const { data, error } = await state.supabaseClient.from('report_term_dates')
+        .select('vacation_date, reopening_date')
+        .eq('class_id', state.assignedClassId)
+        .eq('academic_year', state.academicYear)
+        .eq('term', state.term)
+        .maybeSingle();
+    if (error) { console.warn('[report dates] not available:', error.message); return null; }
+    state.termDates = { vacation: data?.vacation_date || '', reopening: data?.reopening_date || '', saved: !!data };
+    return state.termDates;
+}
+
+function formatTermDate(iso) {
+    if (!iso) return 'Not yet known';
+    const d = new Date(iso + 'T00:00:00');
+    return isNaN(d) ? iso : d.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+// mode 'gate': full screen when the page opens; 'adjust': popup from the button
+function openTermDates(mode = 'adjust') {
+    if (!state.termDates) return Promise.resolve();
+    document.getElementById('term-dates-screen')?.remove();
+    const gate = mode === 'gate';
+    const fields = termDateFields();
+    return new Promise(resolve => {
+        const el = document.createElement('div');
+        el.id = 'term-dates-screen';
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-modal', 'true');
+        el.setAttribute('aria-labelledby', 'term-dates-title');
+        el.className = gate
+            ? 'fixed inset-0 z-[10000] bg-slate-50 dark:bg-slate-900 flex items-start sm:items-center justify-center p-4 sm:p-6 overflow-y-auto'
+            : 'fixed inset-0 z-[10000] bg-black/60 flex items-start sm:items-center justify-center p-4 overflow-y-auto';
+        el.innerHTML = `
+            <form id="term-dates-form" novalidate class="w-full max-w-lg my-auto rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl p-6 sm:p-8">
+                <div class="flex items-start gap-3">
+                    <div class="shrink-0 w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 flex items-center justify-center" aria-hidden="true">
+                        <i class="fas fa-calendar-days text-lg"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h1 id="term-dates-title" class="text-xl font-bold text-slate-800 dark:text-white">${gate ? 'Report dates' : 'Change report dates'}</h1>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">${escHtml(state.assignedClass || '')} · ${escHtml(state.term || '')} · ${escHtml(state.academicYear || '')}</p>
+                    </div>
+                </div>
+                <p class="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">${gate
+                    ? 'These dates go on every student\'s report in your class, so you don\'t type them on each report. If a date isn\'t out yet, tick the box beside it; you\'ll be asked again next time you open reports.'
+                    : 'The new dates replace the old ones on every student\'s report in the class, including reports already filled in.'}</p>
+                ${fields.map(d => `
+                <div class="mt-5" data-term-date="${d.key}">
+                    <label for="td-${d.key}" class="block text-sm font-semibold text-slate-700 dark:text-slate-200">${d.label}</label>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-1.5">${d.hint}</p>
+                    <input id="td-${d.key}" type="date" value="${escHtml(state.termDates[d.key] || '')}"
+                        class="input-field w-full px-4 py-3 rounded-xl text-base border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-white">
+                    <label id="td-${d.key}-unknown-row" class="mt-2 flex items-start gap-2.5 text-sm text-slate-700 dark:text-slate-200 cursor-pointer">
+                        <input id="td-${d.key}-unknown" type="checkbox" class="mt-0.5 h-4 w-4 shrink-0 accent-emerald-700">
+                        <span>${d.unknown}</span>
+                    </label>
+                </div>`).join('')}
+                <p id="term-dates-error" class="hidden mt-4 text-sm text-red-600 dark:text-red-400" role="alert"></p>
+                <div class="mt-6 flex flex-col-reverse sm:flex-row gap-3">
+                    <button type="button" id="term-dates-cancel" class="w-full sm:flex-1 py-3 rounded-xl border border-slate-300 dark:border-slate-600 font-semibold text-slate-600 dark:text-slate-300">${gate ? 'Back to dashboard' : 'Cancel'}</button>
+                    <button type="submit" id="term-dates-save" class="w-full sm:flex-[1.4] py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed">${gate ? 'Proceed to reports' : 'Apply to all students'}</button>
+                </div>
+            </form>`;
+        document.body.appendChild(el);
+
+        const $ = id => el.querySelector('#' + id);
+        const err = $('term-dates-error');
+        const fail = msg => { err.textContent = msg; err.classList.remove('hidden'); };
+        const values = () => Object.fromEntries(fields.map(d => [d.key, $('td-' + d.key).value]));
+        const ready = () => fields.every(d => $('td-' + d.key).value || $('td-' + d.key + '-unknown').checked);
+        const refresh = () => {
+            fields.forEach(d => {
+                const has = !!$('td-' + d.key).value;
+                $('td-' + d.key + '-unknown-row').classList.toggle('hidden', has);
+                if (has) $('td-' + d.key + '-unknown').checked = false;
+            });
+            $('term-dates-save').disabled = !ready();
+            err.classList.add('hidden');
+        };
+        fields.forEach(d => {
+            $('td-' + d.key).addEventListener('input', refresh);
+            $('td-' + d.key).addEventListener('change', refresh);
+            $('td-' + d.key + '-unknown').addEventListener('change', refresh);
+        });
+        refresh();
+
+        const close = () => { el.remove(); resolve(); };
+        $('term-dates-cancel').addEventListener('click', () => gate ? goBackToDashboard() : close());
+        if (!gate) {
+            el.addEventListener('click', e => { if (e.target === el) close(); });
+            el.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+        }
+
+        $('term-dates-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            if (!ready()) return fail('Enter each date, or tick the box to say it is not known yet.');
+            const v = values();
+            if (v.vacation && v.reopening && v.reopening <= v.vacation) return fail('The date of reopening must be after the date of vacation.');
+            const next = { vacation: v.vacation ?? state.termDates.vacation, reopening: v.reopening ?? state.termDates.reopening };
+            const unchanged = next.vacation === state.termDates.vacation && next.reopening === state.termDates.reopening;
+            if (unchanged && (state.termDates.saved || (!next.vacation && !next.reopening))) { close(); return; }
+            const btn = $('term-dates-save');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i>Saving…';
+            try {
+                const { data: updated, error } = await state.supabaseClient.rpc('set_report_term_dates', {
+                    p_class_id: state.assignedClassId,
+                    p_academic_year: state.academicYear,
+                    p_term: state.term,
+                    p_vacation: next.vacation || null,
+                    p_reopening: next.reopening || null,
+                });
+                if (error) throw error;
+                state.termDates = { ...next, saved: true };
+                // Same change in the reports already loaded on this page
+                Object.values(state.reportsData || {}).forEach(r => {
+                    if (r && r.data && typeof r.data === 'object' && r.id) {
+                        r.data.date = next.vacation || '';
+                        r.data.next_term_begins = next.reopening || '';
+                    }
+                });
+                close();
+                applyTermDatesToForm();
+                renderStudentsGrid();
+                updateProgress();
+                updateTermDatesButton();
+                showToast(gate ? 'Report dates saved for the whole class'
+                    : `Dates updated${updated ? ` on ${updated} saved report${updated === 1 ? '' : 's'}` : ''}`, 'success');
+            } catch (e2) {
+                btn.disabled = false;
+                btn.textContent = gate ? 'Proceed to reports' : 'Apply to all students';
+                fail(e2?.message || 'The dates could not be saved. Please try again.');
+            }
+        });
+        $(fields.length ? 'td-' + fields[0].key : 'term-dates-save')?.focus();
+    });
+}
+
+// The report form: date fields show the class dates and are changed for the whole class only
+function applyTermDatesToForm() {
+    if (!state.termDates) return;
+    const editor = document.getElementById('report-editor');
+    if (!editor) return;
+    termDateFields().forEach(d => {
+        editor.querySelectorAll(`[data-field="${d.field}"]:not([data-subject])`).forEach(input => {
+            input.value = state.termDates[d.key] || '';
+            input.readOnly = true;
+            input.tabIndex = -1;
+            input.classList.add('bg-slate-100', 'dark:bg-slate-700', 'cursor-not-allowed');
+            input.title = 'Set for the whole class';
+            if (!input.parentElement.querySelector('.rv-td-hint')) {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'rv-td-hint block mt-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400 underline';
+                b.textContent = state.termDates[d.key] ? 'Change for the whole class' : 'Not known yet · add it for the whole class';
+                b.addEventListener('click', () => openTermDates('adjust'));
+                input.insertAdjacentElement('afterend', b);
+            } else {
+                input.parentElement.querySelector('.rv-td-hint').textContent = state.termDates[d.key] ? 'Change for the whole class' : 'Not known yet · add it for the whole class';
+            }
+        });
+    });
+}
+
+// "Report Dates" button beside Fill Reports (teacher and admin)
+function updateTermDatesButton() {
+    if (!state.termDates || !termDateFields().length) return;
+    let btn = document.getElementById('term-dates-btn');
+    if (!btn) {
+        const fill = document.getElementById('fill-reports-btn');
+        if (!fill || !fill.parentNode) return;
+        btn = document.createElement('button');
+        btn.id = 'term-dates-btn';
+        btn.type = 'button';
+        btn.className = 'px-5 py-3 rounded-xl font-semibold border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2';
+        btn.addEventListener('click', () => openTermDates('adjust'));
+        fill.parentNode.insertBefore(btn, fill);
+    }
+    const missing = termDatesMissing();
+    btn.innerHTML = `<i class="fas fa-calendar-days"></i><span>Report Dates</span>${missing ? '<span class="ml-1 px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">Missing</span>' : ''}`;
+    btn.title = termDateFields().map(d => `${d.label}: ${formatTermDate(state.termDates[d.key])}`).join('\n');
+}
+
+{
+    const _initializeSupabase = initializeSupabase;
+    initializeSupabase = async function () {
+        const r = await _initializeSupabase.apply(this, arguments);
+        try {
+            if (!state.students?.length || !termDateFieldsReady()) return r;
+            await loadTermDates();
+            updateTermDatesButton();
+            if (!state.isAdmin && termDatesMissing()) await openTermDates('gate');
+        } catch (e) { console.warn('[report dates]', e?.message || e); }
+        return r;
+    };
+    const termDateFieldsReady = () => !!TEMPLATE_CONFIG[state.classLevel];
+
+    const _renderEditorForDates = renderEditorContent;
+    renderEditorContent = async function () {
+        const r = await _renderEditorForDates.apply(this, arguments);
+        if (state.termDates) {
+            applyTermDatesToForm();
+            if (state.isAdmin) refreshProgressUI(); else scheduleLiveProgress();
+        }
+        return r;
+    };
+}
