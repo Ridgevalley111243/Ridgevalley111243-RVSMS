@@ -71,6 +71,7 @@
                                 <p id="feat-${f.id}-label" class="font-semibold text-slate-800 dark:text-white">${esc(f.label)}</p>
                                 <p id="feat-${f.id}-desc" class="text-sm text-slate-600 dark:text-slate-300 mt-0.5">${esc(f.desc)}</p>
                                 <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Used by: ${esc(f.who)}</p>
+                                ${f.id === 'paystack' && window.rvPaystack ? `<div id="paystack-key-row">${rvPaystack.keyRowHtml()}</div>` : ''}
                             </div>
                             <button type="button" role="switch" aria-checked="${on}" aria-labelledby="feat-${f.id}-label" aria-describedby="feat-${f.id}-desc"
                                 data-feature="${f.id}" onclick="rvSettings.toggle('${groupId}','${f.id}', this)"
@@ -91,6 +92,12 @@
             ui.showToast(`${f.label} switched ${next ? 'on' : 'off'}`, 'success');
             ui.updateSidebar();
             if (id === 'weeks') ui.updatePeriodDisplay?.();
+            if (id === 'paystack' && window.rvPaystack) {
+                const row = document.getElementById('paystack-key-row');
+                if (row) row.innerHTML = rvPaystack.keyRowHtml();
+                // Switched on with no key yet: ask for it straight away
+                if (next && !rvPaystack.publicKey()) rvPaystack.askKey();
+            }
         } catch (err) {
             btn.setAttribute('aria-checked', String(!next));
             modal.alert('Could Not Save', esc(typeof extractErrorMessage === 'function' ? extractErrorMessage(err) : err.message), 'error');

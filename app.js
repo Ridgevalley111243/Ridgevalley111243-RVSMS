@@ -4164,7 +4164,8 @@ const views = {
                             <div class="flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
                                 <div>
                                     <p class="font-bold text-slate-800 dark:text-slate-200">${escapeHtml(student?.name || 'Unknown')}</p>
-                                    <p class="text-sm text-amber-700 dark:text-amber-300">₵<span class="rv-money-val" data-raw="${t.amount}">${window._rvMoneyHidden ? '•••' : t.amount}</span> • ${t.method}</p>
+                                    <p class="text-sm text-amber-700 dark:text-amber-300">₵<span class="rv-money-val" data-raw="${t.amount}">${window._rvMoneyHidden ? '•••' : t.amount}</span> • ${typeof paymentMethodLabel === 'function' ? paymentMethodLabel(t.method) : t.method}</p>
+                                    ${t.reference ? `<p class="text-xs text-slate-500 dark:text-slate-400 font-mono">Paystack ref: ${escapeHtml(t.reference)}</p>` : ''}
                                     ${t.proof ? `<a href="${t.proof}" target="_blank" class="text-xs text-blue-500 underline">View Proof</a>` : ''}
                                 </div>
                                 <div class="flex gap-2">
@@ -4240,13 +4241,24 @@ const views = {
                     ? s.class_id === c.id
                     : normalizeClassName(s.class) === normalizeClassName(buildClassName(c)));
                 const ids = new Set(students.map(s => s.id));
-                const saved = new Set(state.reports
-                    .filter(r => ids.has(r.student_id) && r.completed
-                        && (!term || r.term === term)
-                        && (!year || String(r.academic_year) === year))
-                    .map(r => r.student_id)).size;
+                // Real progress: what the class teacher has filled in (report-templates.js),
+                // not just whether a report was saved.
+                const level = typeof reportLevelForClass === 'function' ? reportLevelForClass(buildClassName(c)) : null;
+                const latest = {};
+                state.reports
+                    .filter(r => ids.has(r.student_id) && (!term || r.term === term) && (!year || String(r.academic_year) === year))
+                    .forEach(r => { if (!latest[r.student_id] || (r.last_modified || '') > (latest[r.student_id].last_modified || '')) latest[r.student_id] = r; });
+                let complete = 0, remarked = 0, fieldsDone = 0, fieldsTotal = 0;
+                students.forEach(s => {
+                    const r = latest[s.id];
+                    const p = level ? reportProgress(level, term, r?.data || {}) : { complete: !!r?.completed, done: r ? 1 : 0, total: 1 };
+                    fieldsDone += p.done; fieldsTotal += p.total;
+                    if (p.complete) complete++;
+                    if (p.complete && r?.data?.head_teacher_remarks) remarked++;
+                });
                 const teacher = state.teachers.find(t => t.assigned_class === c.id);
-                return { c, name: buildClassName(c), total: students.length, saved, teacher };
+                return { c, name: buildClassName(c), total: students.length, saved: complete, remarked,
+                         pct: fieldsTotal ? Math.floor(fieldsDone / fieldsTotal * 100) : 0, teacher };
             });
 
         const html = `
@@ -4259,20 +4271,31 @@ const views = {
             ${rows.length === 0 ? '<div class="glass-panel rounded-2xl p-10 text-center text-slate-500 bg-white dark:bg-slate-800">No classes set up yet.</div>' : `
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 ${rows.map(r => {
-                    const pct = r.total ? Math.round(r.saved / r.total * 100) : 0;
+                    const pct = r.pct;
+                    const ready = r.total > 0 && r.saved === r.total;
+                    const done = ready && r.remarked === r.total;
+                    const badge = done
+                        ? '<span class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"><i class="fas fa-circle-check"></i> Ready to download</span>'
+                        : ready
+                        ? '<span class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"><i class="fas fa-pen"></i> Teacher done · add remarks</span>'
+                        : r.total ? '<span class="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"><i class="fas fa-hourglass-half"></i> Teacher filling</span>' : '';
                     return `
                     <div class="glass-panel rounded-2xl p-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-col gap-4">
-                        <div class="min-w-0">
-                            <h3 class="font-bold text-slate-800 dark:text-white truncate" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</h3>
-                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">${r.teacher ? escapeHtml(r.teacher.full_name || 'Class teacher') : 'No class teacher assigned'}</p>
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <h3 class="font-bold text-slate-800 dark:text-white truncate" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">${r.teacher ? escapeHtml(r.teacher.full_name || 'Class teacher') : 'No class teacher assigned'}</p>
+                            </div>
+                            ${badge}
                         </div>
                         <div>
                             <div class="flex justify-between text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5">
-                                <span>Reports saved</span><span class="tabular-nums">${r.saved} / ${r.total}</span>
+                                <span>Completed by teacher</span><span class="tabular-nums">${r.saved} / ${r.total} · ${pct}%</span>
                             </div>
-                            <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                                <div class="bg-ridge-600 h-2 rounded-full" style="width:${pct}%"></div>
+                            <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2" role="progressbar" aria-label="Teacher progress for ${escapeHtml(r.name)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}">
+                                <div class="${ready ? 'bg-emerald-600' : 'bg-ridge-600'} h-2 rounded-full" style="width:${pct}%"></div>
                             </div>
+                            ${ready ? `<p class="text-xs text-slate-500 dark:text-slate-400 mt-1.5">Head teacher's remarks: ${r.remarked} / ${r.total}</p>` : ''}
                         </div>
                         <button onclick="actions.downloadBulkReports(${escapeHtml(JSON.stringify(r.name))}, ${escapeHtml(JSON.stringify(term))}, '${r.c.id}')" class="mt-auto w-full px-4 py-2.5 bg-ridge-600 hover:bg-ridge-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2">
                             <i class="fas fa-folder-open"></i> Open Class Reports
@@ -5356,7 +5379,8 @@ const views = {
                                         <div class="flex items-start justify-between mb-2">
                                             <div>
                                                 <p class="font-bold text-slate-800 dark:text-white">${escapeHtml(student?.name || 'Unknown')}</p>
-                                                <p class="text-sm text-slate-500">₵<span class="rv-money-val" data-raw="${t.amount}">${window._rvMoneyHidden ? '•••' : t.amount}</span> • ${t.method === 'momo' ? 'Mobile Money' : 'Cash'}</p>
+                                                <p class="text-sm text-slate-500">₵<span class="rv-money-val" data-raw="${t.amount}">${window._rvMoneyHidden ? '•••' : t.amount}</span> • ${typeof paymentMethodLabel === 'function' ? paymentMethodLabel(t.method) : (t.method === 'momo' ? 'Mobile Money' : 'Cash')}</p>
+                                                ${t.reference ? `<p class="text-xs text-slate-500 dark:text-slate-400 font-mono">Paystack ref: ${escapeHtml(t.reference)}</p>` : ''}
                                                 <p class="text-xs text-slate-400">${new Date(t.created_at).toLocaleDateString()}</p>
                                             </div>
                                             <span class="px-2 py-1 rounded-full text-xs font-bold ${statusColors[t.status] || 'bg-slate-100 text-slate-700'}">
@@ -7226,7 +7250,7 @@ const actions = {
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">Payment Method</span>
-                            <span class="detail-value">${transaction.method === 'momo' ? 'Mobile Money' : 'Cash'}</span>
+                            <span class="detail-value">${transaction.method === 'paystack' ? 'Paystack (online)' : transaction.method === 'momo' ? 'Mobile Money' : 'Cash'}${transaction.reference ? ' · ' + escapeHtml(transaction.reference) : ''}</span>
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">Status</span>

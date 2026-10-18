@@ -69,6 +69,10 @@
                   who: 'Accountant',
                   desc: 'Income, arrears and payment summaries, with PDF export.',
                   views: ['financial_report', 'financial_analytics'] },
+                { id: 'paystack', label: 'Paystack online payments', default: false,
+                  who: 'Parents, Accountant',
+                  desc: 'Parents pay online by card or Mobile Money through Paystack. Payments arrive as pending with a Paystack reference for you to confirm. After switching it on, add your Paystack public key.',
+                  views: [] },
                 { id: 'report_bills', label: "Next term's bills on report cards", default: true,
                   who: 'Teachers, Parents',
                   desc: "Adds a table of each student's bills for next term to the downloaded report card.",
@@ -78,6 +82,9 @@
     };
 
     const saved = { academic: {}, finance: {} };
+    // Plain settings that go with a feature (e.g. the Paystack public key)
+    const VALUE_KEYS = ['paystack_public_key'];
+    const values = {};
     let loaded = false;
 
     function feature(id) {
@@ -112,8 +119,9 @@
     async function load(client) {
         try {
             const { data, error } = await client.from('app_settings')
-                .select('key, value').in('key', [GROUPS.academic.key, GROUPS.finance.key]);
+                .select('key, value').in('key', [GROUPS.academic.key, GROUPS.finance.key, ...VALUE_KEYS]);
             if (error) throw error;
+            VALUE_KEYS.forEach(k => { values[k] = (data || []).find(r => r.key === k)?.value || ''; });
             for (const [group, g] of Object.entries(GROUPS)) {
                 const row = (data || []).find(r => r.key === g.key);
                 saved[group] = row ? parse(row.value) : {};
@@ -137,5 +145,15 @@
         saved[group] = next;
     }
 
-    window.rvFeatures = { GROUPS, isOn, featureForView, load, set, get loaded() { return loaded; } };
+    async function setValue(client, key, value) {
+        if (!VALUE_KEYS.includes(key)) throw new Error('Unknown setting');
+        const { data, error } = await client.from('app_settings')
+            .upsert({ key, value }, { onConflict: 'key' }).select('key');
+        if (error) throw error;
+        if (!data || !data.length) throw new Error('The setting was not saved. You may not have permission to change it.');
+        values[key] = value;
+    }
+
+    window.rvFeatures = { GROUPS, isOn, featureForView, load, set, setValue,
+        value: k => values[k] || '', get loaded() { return loaded; } };
 })();
