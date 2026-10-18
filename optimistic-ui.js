@@ -588,7 +588,7 @@ const _origAddStudent = actions.addStudent?.bind(actions);
 if (_origAddStudent) {
     actions.addStudent = async function() {
         const admissionNumber = document.getElementById('student-admission')?.value?.trim();
-        const name            = document.getElementById('student-name')?.value?.trim();
+        const name            = rvNameOrder.fromForm();
         const gender          = document.getElementById('student-gender')?.value;
         const dob             = document.getElementById('student-dob')?.value;
         const age             = document.getElementById('student-age')?.value;
@@ -597,7 +597,7 @@ if (_origAddStudent) {
         const parentPhone     = document.getElementById('student-parent-phone')?.value?.trim();
 
         if (!admissionNumber || !name || !dob || !classId) {
-            return modal.alert('Validation Error', 'Please fill in Admission Number, Name, Date of Birth, and Class', 'warning');
+            return modal.alert('Validation Error', 'Please fill in Admission Number, Surname, First Name, Date of Birth, and Class', 'warning');
         }
 
         // FIX: resolve UUID → canonical class name, never write UUID into students.class

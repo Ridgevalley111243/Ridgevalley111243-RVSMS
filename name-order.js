@@ -60,5 +60,17 @@
         return client.auth.updateUser({ data: { rv_name_order: order } });
     }
 
-    window.rvNameOrder = { ORDERS, DEFAULT, split, format, sort, optionsHtml, load, save };
+    // Builds a register name from its parts: SURNAME FIRST MIDDLE
+    function compose(surname, first, middle) {
+        return [surname, first, middle].map(x => String(x ?? '').trim()).filter(Boolean).join(' ').replace(/\s+/g, ' ');
+    }
+
+    // The name typed into the admin's Register New Student form ('' if surname or first name is missing)
+    function fromForm() {
+        const v = id => document.getElementById(id)?.value || '';
+        if (!v('student-surname').trim() || !v('student-first-name').trim()) return '';
+        return compose(v('student-surname'), v('student-first-name'), v('student-middle-name'));
+    }
+
+    window.rvNameOrder = { ORDERS, DEFAULT, split, format, sort, optionsHtml, load, save, compose, fromForm };
 })();

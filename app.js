@@ -3874,9 +3874,16 @@ const views = {
 
             <div class="glass-panel rounded-2xl p-6 mb-6 bg-white dark:bg-slate-800 shadow-lg">
                 <h3 class="text-sm font-bold text-slate-600 dark:text-slate-400 mb-4 uppercase tracking-wide">Register New Student</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-3">Type each part of the name in its own box. It is saved surname first, so teachers never have to rearrange it.</p>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div><label for="student-surname" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Surname</label>
+                        <input type="text" id="student-surname" oninput="actions.previewNewStudentName()" autocomplete="off" class="w-full input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Surname"></div>
+                    <div><label for="student-first-name" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">First name</label>
+                        <input type="text" id="student-first-name" oninput="actions.previewNewStudentName()" autocomplete="off" class="w-full input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="First Name"></div>
+                    <div><label for="student-middle-name" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Middle name <span class="normal-case font-normal">(optional)</span></label>
+                        <input type="text" id="student-middle-name" oninput="actions.previewNewStudentName()" autocomplete="off" class="w-full input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Middle Name (optional)"></div>
+                    <p id="student-name-preview" class="md:col-span-3 -mt-2 text-sm text-slate-500 dark:text-slate-400" aria-live="polite"></p>
                     <input type="text" id="student-admission" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Admission Number">
-                    <input type="text" id="student-name" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none" placeholder="Full Name">
                     <select id="student-gender" class="input-field rounded-xl px-4 py-3 border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white focus:ring-2 focus:ring-ridge-500 outline-none">
                         <option value="">Select Gender</option>
                         <option value="Male">Male</option>
@@ -5753,6 +5760,15 @@ const actions = {
         );
     },
 
+    // Register New Student: show how the name will be saved as the admin types
+    previewNewStudentName() {
+        const el = document.getElementById('student-name-preview');
+        if (!el) return;
+        const v = id => document.getElementById(id)?.value || '';
+        const name = rvNameOrder.compose(v('student-surname'), v('student-first-name'), v('student-middle-name'));
+        el.innerHTML = name ? `Will be saved as <strong class="text-slate-800 dark:text-white">${escapeHtml(name)}</strong>` : '';
+    },
+
     calculateAge() {
         const dob = document.getElementById('student-dob')?.value;
         if (dob) {
@@ -5764,7 +5780,7 @@ const actions = {
 
     async addStudent() {
         const admissionNumber = document.getElementById('student-admission')?.value?.trim();
-        const name = document.getElementById('student-name')?.value?.trim();
+        const name = rvNameOrder.fromForm();
         const gender = document.getElementById('student-gender')?.value;
         const dob = document.getElementById('student-dob')?.value;
         const age = document.getElementById('student-age')?.value;
@@ -5772,7 +5788,7 @@ const actions = {
         const classId = document.getElementById('student-class')?.value;
         const parentPhone = document.getElementById('student-parent-phone')?.value?.trim();
 
-        if (!admissionNumber || !name || !dob || !classId) return modal.alert('Validation Error', 'Please fill in Admission Number, Name, Date of Birth, and Class', 'warning');
+        if (!admissionNumber || !name || !dob || !classId) return modal.alert('Validation Error', 'Please fill in Admission Number, Surname, First Name, Date of Birth, and Class', 'warning');
 
         // Resolve the class object so we can store both the UUID and the canonical string
         const classObj = state.classes.find(c => c.id === classId);
@@ -7533,7 +7549,7 @@ const actions = {
                     <!-- Step 2: File Upload (hidden initially) -->
                     <div id="${modalId}-step2" style="padding:24px;display:none;">
                         <p style="color:#94a3b8;font-size:13px;margin-bottom:6px;">Upload an Excel file (.xlsx / .xls) containing student data.</p>
-                        <p style="color:#64748b;font-size:12px;margin-bottom:16px;">Your file should have columns for student <strong style="color:#94a3b8;">Name</strong>, <strong style="color:#94a3b8;">Gender</strong>, and <strong style="color:#94a3b8;">Date of Birth</strong>.</p>
+                        <p style="color:#64748b;font-size:12px;margin-bottom:16px;">Your file should have separate columns for the student's <strong style="color:#94a3b8;">Surname</strong>, <strong style="color:#94a3b8;">First Name</strong> and <strong style="color:#94a3b8;">Middle Name</strong>, plus <strong style="color:#94a3b8;">Gender</strong> and <strong style="color:#94a3b8;">Date of Birth</strong>. Names are saved surname first, so teachers never have to rearrange them.</p>
                         <label style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;border:2px dashed #334155;border-radius:14px;cursor:pointer;background:#0f172a;transition:border-color 0.2s;gap:10px;" 
                                onmouseover="this.style.borderColor='#1a56db'" onmouseout="this.style.borderColor='#334155'">
                             <i class="fas fa-cloud-upload-alt" style="font-size:32px;color:#1a56db;"></i>
@@ -7659,10 +7675,28 @@ const actions = {
                         <select id="${modalId}-map-admission" style="width:100%;padding:12px;border-radius:8px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;outline:none;" onchange="actions._bulkWizardUpdatePreview('${modalId}')">${optionHtml}</select>
                     </div>
                     <div>
-                        <div style="padding:12px;background:#0f172a;border-radius:8px;border:1.5px solid #1a56db;color:#e2e8f0;font-size:13px;font-weight:600;"><i class="fas fa-user mr-2 text-blue-400"></i>Student Name</div>
+                        <div style="padding:12px;background:#0f172a;border-radius:8px;border:1.5px solid #1a56db;color:#e2e8f0;font-size:13px;font-weight:600;"><i class="fas fa-user mr-2 text-blue-400"></i>Surname</div>
                     </div>
                     <div>
-                        <select id="${modalId}-map-name" style="width:100%;padding:12px;border-radius:8px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;outline:none;" onchange="actions._bulkWizardUpdatePreview('${modalId}')">${optionHtml}</select>
+                        <select id="${modalId}-map-surname" aria-label="Surname column" style="width:100%;padding:12px;border-radius:8px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;outline:none;" onchange="actions._bulkWizardUpdatePreview('${modalId}')">${optionHtml}</select>
+                    </div>
+                    <div>
+                        <div style="padding:12px;background:#0f172a;border-radius:8px;border:1.5px solid #1a56db;color:#e2e8f0;font-size:13px;font-weight:600;"><i class="fas fa-user mr-2 text-blue-400"></i>First Name</div>
+                    </div>
+                    <div>
+                        <select id="${modalId}-map-first" aria-label="First Name column" style="width:100%;padding:12px;border-radius:8px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;outline:none;" onchange="actions._bulkWizardUpdatePreview('${modalId}')">${optionHtml}</select>
+                    </div>
+                    <div>
+                        <div style="padding:12px;background:#0f172a;border-radius:8px;border:1.5px solid #1a56db;color:#e2e8f0;font-size:13px;font-weight:600;"><i class="fas fa-user mr-2 text-blue-400"></i>Middle Name (optional)</div>
+                    </div>
+                    <div>
+                        <select id="${modalId}-map-middle" aria-label="Middle Name (optional) column" style="width:100%;padding:12px;border-radius:8px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;outline:none;" onchange="actions._bulkWizardUpdatePreview('${modalId}')">${optionHtml}</select>
+                    </div>
+                    <div>
+                        <div style="padding:12px;background:#0f172a;border-radius:8px;border:1.5px solid #475569;color:#e2e8f0;font-size:13px;font-weight:600;"><i class="fas fa-user-pen mr-2 text-slate-400"></i>Or: Full Name in one column</div>
+                    </div>
+                    <div>
+                        <select id="${modalId}-map-name" aria-label="Or: Full Name in one column column" style="width:100%;padding:12px;border-radius:8px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;outline:none;" onchange="actions._bulkWizardUpdatePreview('${modalId}')">${optionHtml}</select>
                     </div>
                     <div>
                         <div style="padding:12px;background:#0f172a;border-radius:8px;border:1.5px solid #ec4899;color:#e2e8f0;font-size:13px;font-weight:600;"><i class="fas fa-venus-mars mr-2 text-pink-400"></i>Gender</div>
@@ -7683,6 +7717,9 @@ const actions = {
                         <select id="${modalId}-map-phone" style="width:100%;padding:12px;border-radius:8px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;outline:none;" onchange="actions._bulkWizardUpdatePreview('${modalId}')">${optionHtml}</select>
                     </div>
                 </div>
+                <div style="padding:10px 14px;background:rgba(26,86,219,0.1);border:1px solid rgba(26,86,219,0.3);border-radius:8px;margin-bottom:8px;">
+                    <p style="color:#93c5fd;font-size:12px;"><i class="fas fa-info-circle mr-2"></i>Names are saved as <strong>SURNAME FIRST MIDDLE</strong>. A column called "Other Names" can go under First Name: its first word is taken as the first name and the rest as middle names. Only use <strong>Full Name in one column</strong> if your file has no separate surname column; it must then be written surname first.</p>
+                </div>
                 <div style="padding:10px 14px;background:rgba(26,86,219,0.1);border:1px solid rgba(26,86,219,0.3);border-radius:8px;margin-bottom:4px;">
                     <p style="color:#93c5fd;font-size:12px;"><i class="fas fa-info-circle mr-2"></i>Date of Birth accepts formats: <strong>YYYY-MM-DD</strong>, <strong>MM/DD/YYYY</strong>, <strong>DD/MM/YYYY</strong>, or any standard date format.</p>
                 </div>
@@ -7691,18 +7728,33 @@ const actions = {
             // Auto-detect common column names
             const admCandidates = ['admission', 'admission number', 'adm', 'adm no', 'adm number', 'admission no', 'student id', 'id'];
             const nameCandidates = ['name', 'student name', 'full name', 'student'];
+            const surnameCandidates = ['surname', 'last name', 'lastname', 'family name', 'surname name'];
+            const firstCandidates = ['first name', 'firstname', 'given name', 'forename', 'other names', 'other name', 'othernames'];
+            const middleCandidates = ['middle name', 'middlename', 'middle names', 'middle'];
             const genderCandidates = ['gender', 'sex', 'gender/sex'];
             const dobCandidates = ['dob', 'date of birth', 'birth date', 'birthday', 'dateofbirth'];
             const phoneCandidates = ['parent phone', 'phone', 'phone number', 'parent contact', 'contact', 'mobile', 'tel'];
             const admSel = document.getElementById(`${modalId}-map-admission`);
             const nameSel = document.getElementById(`${modalId}-map-name`);
+            const surnameSel = document.getElementById(`${modalId}-map-surname`);
+            const firstSel = document.getElementById(`${modalId}-map-first`);
+            const middleSel = document.getElementById(`${modalId}-map-middle`);
             const genderSel = document.getElementById(`${modalId}-map-gender`);
             const dobSel = document.getElementById(`${modalId}-map-dob`);
             const phoneSel = document.getElementById(`${modalId}-map-phone`);
             headers.forEach(h => {
                 const hl = h.toLowerCase();
                 if (admCandidates.includes(hl) && admSel.value === '') admSel.value = h;
-                if (nameCandidates.includes(hl) && nameSel.value === '') nameSel.value = h;
+                if (surnameCandidates.includes(hl) && surnameSel.value === '') surnameSel.value = h;
+                if (firstCandidates.includes(hl) && firstSel.value === '') firstSel.value = h;
+                if (middleCandidates.includes(hl) && middleSel.value === '') middleSel.value = h;
+            });
+            // A single name column only when the file has no separate surname column
+            if (!surnameSel.value) headers.forEach(h => {
+                if (nameCandidates.includes(h.toLowerCase()) && nameSel.value === '') nameSel.value = h;
+            });
+            headers.forEach(h => {
+                const hl = h.toLowerCase();
                 if (genderCandidates.includes(hl) && genderSel.value === '') genderSel.value = h;
                 if (dobCandidates.includes(hl) && dobSel.value === '') dobSel.value = h;
                 if (phoneCandidates.includes(hl) && phoneSel.value === '') phoneSel.value = h;
@@ -7724,17 +7776,15 @@ const actions = {
         const { fileData, headers } = modalEl._wizardState;
         if (!fileData || fileData.length < 2) return;
         const admSel = document.getElementById(`${modalId}-map-admission`);
-        const nameSel = document.getElementById(`${modalId}-map-name`);
         const genderSel = document.getElementById(`${modalId}-map-gender`);
         const dobSel = document.getElementById(`${modalId}-map-dob`);
         const phoneSel = document.getElementById(`${modalId}-map-phone`);
         const admCol = admSel?.value;
-        const nameCol = nameSel?.value;
         const genderCol = genderSel?.value;
         const dobCol = dobSel?.value;
         const phoneCol = phoneSel?.value;
         const admIdx = headers.indexOf(admCol);
-        const nameIdx = headers.indexOf(nameCol);
+        const nameCols = this._bulkWizardNameCols(modalId, headers);
         const genderIdx = headers.indexOf(genderCol);
         const dobIdx = headers.indexOf(dobCol);
         const phoneIdx = headers.indexOf(phoneCol);
@@ -7748,7 +7798,7 @@ const actions = {
                     <thead>
                         <tr style="background:#1e293b;">
                             <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Adm. No.</th>
-                            <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Name</th>
+                            <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Name (saved as)</th>
                             <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Gender</th>
                             <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Date of Birth</th>
                             <th style="padding:8px 12px;text-align:left;color:#94a3b8;font-weight:700;">Age</th>
@@ -7758,7 +7808,7 @@ const actions = {
                     <tbody>
                         ${previewRows.map(row => {
                             const adm = admIdx >= 0 ? String(row[admIdx] || '') : '';
-                            const name = nameIdx >= 0 ? String(row[nameIdx] || '') : '';
+                            const { name, missing } = this._bulkWizardRowName(nameCols, row);
                             const gender = genderIdx >= 0 ? String(row[genderIdx] || '') : '';
                             const dob = dobIdx >= 0 ? row[dobIdx] : '';
                             const dobStr = dob instanceof Date ? dob.toISOString().split('T')[0] : this._parseDobString(String(dob || ''));
@@ -7766,7 +7816,7 @@ const actions = {
                             const phone = phoneIdx >= 0 ? String(row[phoneIdx] || '') : '';
                             return `<tr style="border-top:1px solid #1e293b;">
                                 <td style="padding:8px 12px;color:#67e8f9;">${adm || '<span style="color:#64748b;">—</span>'}</td>
-                                <td style="padding:8px 12px;color:#e2e8f0;">${name ? escapeHtml(name) : '<span style="color:#64748b;">—</span>'}</td>
+                                <td style="padding:8px 12px;color:#e2e8f0;">${name ? escapeHtml(name) : '<span style="color:#64748b;">—</span>'}${missing ? `<div style="color:#fbbf24;font-size:11px;">No ${missing}: will be skipped</div>` : ''}</td>
                                 <td style="padding:8px 12px;color:#f9a8d4;">${gender || '<span style="color:#64748b;">—</span>'}</td>
                                 <td style="padding:8px 12px;color:#e2e8f0;">${dobStr || '<span style="color:#64748b;">—</span>'}</td>
                                 <td style="padding:8px 12px;color:#10b981;font-weight:600;">${age}</td>
@@ -7777,6 +7827,25 @@ const actions = {
                 </table>
             </div>
         `;
+    },
+
+    // Which columns hold the name: separate Surname / First / Middle, or one Full Name column
+    _bulkWizardNameCols(modalId, headers) {
+        const idx = key => headers.indexOf(document.getElementById(`${modalId}-map-${key}`)?.value || '');
+        const cols = { surname: idx('surname'), first: idx('first'), middle: idx('middle'), full: idx('name') };
+        cols.split = cols.surname >= 0 || cols.first >= 0;
+        cols.ready = cols.split ? (cols.surname >= 0 && cols.first >= 0) : cols.full >= 0;
+        return cols;
+    },
+
+    // The register name for one spreadsheet row (SURNAME FIRST MIDDLE) and any missing part
+    _bulkWizardRowName(cols, row) {
+        const cell = i => (i >= 0 ? String(row[i] ?? '').trim() : '');
+        if (!cols.split) return { name: cell(cols.full).replace(/\s+/g, ' '), missing: '' };
+        const surname = cell(cols.surname), first = cell(cols.first);
+        const name = rvNameOrder.compose(surname, first, cell(cols.middle));
+        const missing = !name ? '' : !surname ? 'surname' : !first ? 'first name' : '';
+        return { name, missing };
     },
 
     _calculateAgeFromDob(dobStr) {
@@ -7837,17 +7906,17 @@ const actions = {
         if (!modalEl) return;
         const { selectedClass, selectedClassId, fileData, headers } = modalEl._wizardState;
         const admSel = document.getElementById(`${modalId}-map-admission`);
-        const nameSel = document.getElementById(`${modalId}-map-name`);
         const genderSel = document.getElementById(`${modalId}-map-gender`);
         const dobSel = document.getElementById(`${modalId}-map-dob`);
         const phoneSel = document.getElementById(`${modalId}-map-phone`);
         const admCol = admSel?.value;
-        const nameCol = nameSel?.value;
         const genderCol = genderSel?.value;
         const dobCol = dobSel?.value;
         const phoneCol = phoneSel?.value;
+        const nameCols = this._bulkWizardNameCols(modalId, headers);
 
-        if (!nameCol || !dobCol) { ui.showToast('Please map both Name and Date of Birth columns', 'warning'); return; }
+        if (!nameCols.ready) { ui.showToast('Please choose the Surname and First Name columns', 'warning'); return; }
+        if (!dobCol) { ui.showToast('Please choose the Date of Birth column', 'warning'); return; }
         if (!selectedClassId) { ui.showToast('No class selected', 'warning'); return; }
 
         // Resolve class object from stored UUID so we always write the canonical name
@@ -7860,21 +7929,21 @@ const actions = {
         assertNotUUID(normalisedClass, '_bulkWizardFinish');
 
         const admIdx = headers.indexOf(admCol);
-        const nameIdx = headers.indexOf(nameCol);
         const genderIdx = headers.indexOf(genderCol);
         const dobIdx = headers.indexOf(dobCol);
         const phoneIdx = headers.indexOf(phoneCol);
-        const dataRows = (fileData || []).slice(1).filter(row => row[nameIdx]?.toString().trim());
+        const named = (fileData || []).slice(1).map(row => ({ row, ...this._bulkWizardRowName(nameCols, row) }));
+        const dataRows = named.filter(r => r.name && !r.missing);
+        const skipped = named.filter(r => r.name && r.missing).length;
 
-        if (dataRows.length === 0) { ui.showToast('No valid student rows found in the file', 'warning'); return; }
+        if (dataRows.length === 0) { ui.showToast(skipped ? 'Every row is missing a surname or first name' : 'No valid student rows found in the file', 'warning'); return; }
 
         modalEl.remove();
         app.showLoading(`Uploading ${dataRows.length} students...`);
 
         try {
-            const records = dataRows.map(row => {
+            const records = dataRows.map(({ row, name }) => {
                 const admission_number = admIdx >= 0 ? String(row[admIdx] || '').trim() : '';
-                const name = String(row[nameIdx] || '').trim();
                 const genderRaw = genderIdx >= 0 ? String(row[genderIdx] || '').trim() : '';
                 // Normalise gender value to Male/Female/Other
                 const genderNorm = genderRaw.toLowerCase().startsWith('m') ? 'Male'
@@ -7909,6 +7978,7 @@ const actions = {
             await notificationManager.notifyParents('New Students Added', `${records.length} new student(s) have been added to ${normalisedClass}.`, 'student_added');
 
             ui.showToast(`Successfully uploaded ${records.length} students to ${selectedClass}`, 'success');
+            if (skipped) modal.alert('Some Rows Skipped', `${skipped} row(s) were not uploaded because the surname or first name was empty. Fix them in the file and upload just those rows, or add them with Register New Student.`, 'warning');
             await dataManager.loadStudents();
             ui.route('students');
         } catch (err) {
