@@ -4996,7 +4996,14 @@ const views = {
             await dataManager.loadClasses();
             await dataManager.loadStudents();
         } catch (e) { /* non-fatal */ }
-        const myStudents = dataManager.getTeacherStudents();
+        // Name order (Settings → Student name order for teachers): show names in
+        // the teacher's chosen order and list them alphabetically in that order.
+        const nameOrderOn = !!(window.rvNameOrder && window.rvFeatures?.isOn('name_order'));
+        const order = state._nameOrder || window.rvNameOrder?.DEFAULT;
+        const shownName = s => nameOrderOn ? rvNameOrder.format(s.name, order) : s.name;
+        const myStudents = nameOrderOn
+            ? rvNameOrder.sort(dataManager.getTeacherStudents(), order)
+            : dataManager.getTeacherStudents();
 
         // Helper: resolve a readable class label — never expose raw UUIDs in UI
         const resolveClassLabel = (s) => {
@@ -5008,7 +5015,16 @@ const views = {
         };
 
         const html = `
-            <h2 class="text-2xl font-bold mb-6 text-slate-800 dark:text-white">My Students</h2>
+            <div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+                <h2 class="text-2xl font-bold text-slate-800 dark:text-white">My Students</h2>
+                ${nameOrderOn && myStudents.length ? `
+                <div>
+                    <label for="name-order-select" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Name order</label>
+                    <select id="name-order-select" onchange="actions.setNameOrder(this.value)" class="input-field rounded-xl px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-800 dark:text-white">
+                        ${rvNameOrder.optionsHtml(order)}
+                    </select>
+                </div>` : ''}
+            </div>
             <div class="glass-panel rounded-2xl overflow-hidden bg-white dark:bg-slate-800 shadow-lg">
                 ${myStudents.length === 0 ? '<p class="p-8 text-center text-slate-500">No students assigned to your class</p>' : `
                     <div class="overflow-x-auto">
@@ -5024,7 +5040,7 @@ const views = {
                             <tbody class="divide-y divide-slate-200 dark:divide-slate-700">
                                 ${myStudents.map(s => `
                                     <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                                        <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(s.name)}</td>
+                                        <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(shownName(s))}</td>
                                         <td class="px-6 py-4 text-slate-800 dark:text-slate-200">${resolveClassLabel(s)}</td>
                                         <td class="px-6 py-4 text-slate-800 dark:text-slate-200">${escapeHtml(s.age || 'N/A')}</td>
                                         <td class="px-6 py-4 text-right">
