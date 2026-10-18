@@ -402,7 +402,9 @@ async function loadGraduatedStudents() {
             .select('*')
             .order('graduated_at', { ascending: false });
         if (error) throw error;
-        state.graduatedStudents = data || [];
+        // Graduations undone later are kept as 'reverted' for the record but are
+        // not graduates (and must not stop the student graduating for real later)
+        state.graduatedStudents = (data || []).filter(g => g.status !== 'reverted');
     } catch (err) {
         console.warn('loadGraduatedStudents error:', err);
         state.graduatedStudents = [];
@@ -1475,7 +1477,7 @@ const promotionActions = {
     async confirmGraduateAll() {
         const currentAY  = state.currentAY;
         const toAY       = state.academicYears.filter(y => !y.active)[0] || currentAY;
-        const candidates = state.students.filter(s =>
+        let candidates = state.students.filter(s =>
             s.status !== 'graduated' && isGraduationGrade(s)
         );
 
@@ -1484,11 +1486,38 @@ const promotionActions = {
             return;
         }
 
+        // Students who moved up into the final class this academic year graduate
+        // at the end of it: before Term 3 they are this year's class, not graduates.
+        let heldBack = 0;
+        if (!isTermThree(state.currentTerm?.name) && currentAY?.year) {
+            try {
+                const { data: moved, error: movedErr } = await supabaseClient
+                    .from('student_promotions')
+                    .select('student_id')
+                    .eq('academic_year', currentAY.year)
+                    .in('student_id', candidates.map(s => String(s.id)));
+                if (movedErr) throw movedErr;
+                const movedIds = new Set((moved || []).map(m => String(m.student_id)));
+                heldBack = candidates.filter(s => movedIds.has(String(s.id))).length;
+                candidates = candidates.filter(s => !movedIds.has(String(s.id)));
+            } catch (err) {
+                modal.alert('Could Not Check', 'Could not check which students moved up this year, so nobody was graduated. Please try again.', 'error');
+                return;
+            }
+        }
+        if (candidates.length === 0) {
+            modal.alert('Not Yet',
+                `The ${heldBack} student(s) in the final class moved up into it this academic year (${escapeHtml(currentAY.year)}). ` +
+                `They can be graduated in Term 3, at the end of the year.`, 'info');
+            return;
+        }
+
         modal.createModal(
             'Graduate Final-Year Students',
             `<p style="color:#cbd5e1;font-size:14px;line-height:1.6;">
                 <strong style="color:#fff;">${candidates.length}</strong> student(s) in the final class will be permanently archived as graduates.
             </p>
+            ${heldBack ? `<p style="color:#fbbf24;font-size:13px;margin-top:8px;">${heldBack} other student(s) moved up into the final class this academic year and are not included. They can be graduated in Term 3.</p>` : ''}
             <div style="margin-top:12px;padding:12px 14px;background:rgba(5,150,105,0.12);border:1px solid rgba(5,150,105,0.3);border-radius:10px;font-size:13px;color:#6ee7b7;">
                 <i class="fas fa-info-circle" style="margin-right:6px;"></i>
                 Graduated students remain fully preserved in the database and accessible from the <strong>Graduated Students</strong> section. Their attendance, reports, and billing records are never deleted.
