@@ -207,6 +207,122 @@
         };
     }
 
+    // ── Teacher: arrange a student's name (My Students → Arrange name) ───────
+    // The teacher marks each word as surname, first name or middle name, and
+    // the name is saved in register order: SURNAME FIRST MIDDLE.
+    const PARTS = [
+        { id: 'surname', label: 'Surname' },
+        { id: 'first', label: 'First name' },
+        { id: 'middle', label: 'Middle name' },
+    ];
+    function arrangedName(words, roles) {
+        const of = part => words.filter((_, i) => roles[i] === part);
+        return [...of('surname'), ...of('first'), ...of('middle')].join(' ');
+    }
+    function normalGender(g) {
+        const v = String(g || '').trim().toLowerCase();
+        return { male: 'Male', female: 'Female', other: 'Other' }[v] || '';
+    }
+
+    if (typeof actions !== 'undefined') {
+        actions.teacherArrangeName = function (id) {
+            const student = (state.students || []).find(s => s.id === id);
+            if (!student) return;
+            const words = String(student.name || '').trim().split(/\s+/).filter(Boolean);
+            if (words.length < 2) {
+                modal.alert('Nothing to Arrange', 'This name has only one word. Use <strong>Edit</strong> to add the rest of the name.', 'info');
+                return;
+            }
+            // Start from how the name is written now: first word surname, second first name, the rest middle
+            const roles = words.map((_, i) => (i === 0 ? 'surname' : i === 1 ? 'first' : 'middle'));
+            const mid = 'arrange-name-' + Date.now();
+            const rows = words.map((w, i) => `
+                <fieldset class="rounded-xl border border-slate-200 dark:border-neutral-800 p-3">
+                    <legend class="px-1 text-base font-bold text-slate-800 dark:text-white">${esc(w)}</legend>
+                    <div class="rv-part-row mt-1">
+                        ${PARTS.map(p => `
+                        <label class="rv-part-opt">
+                            <input type="radio" name="${mid}-w${i}" value="${p.id}" data-word="${i}" ${roles[i] === p.id ? 'checked' : ''} class="sr-only">
+                            <span>${p.label}</span>
+                        </label>`).join('')}
+                    </div>
+                </fieldset>`).join('');
+            document.body.insertAdjacentHTML('beforeend', `
+                <div id="${mid}" class="fixed inset-0 z-[9999] bg-black/60 flex items-start sm:items-center justify-center p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="${mid}-title">
+                    <form id="${mid}-form" class="w-full max-w-md my-auto rounded-2xl bg-white dark:bg-[#0f0f0f] border border-slate-200 dark:border-neutral-800 shadow-2xl">
+                        <div class="px-6 pt-6 pb-2">
+                            <h3 id="${mid}-title" class="text-lg font-bold text-slate-800 dark:text-white">Arrange Name</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">For each word, choose whether it is the surname, first name or middle name.</p>
+                        </div>
+                        <div class="px-6 py-4 space-y-3">
+                            ${rows}
+                            <div class="rounded-xl bg-slate-50 dark:bg-white/5 p-3">
+                                <p class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Will be saved as</p>
+                                <p id="${mid}-preview" class="mt-1 font-semibold text-slate-800 dark:text-white break-words" aria-live="polite"></p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Surname, then first name, then middle name.</p>
+                            </div>
+                            <p id="${mid}-error" class="hidden text-sm text-red-600" role="alert"></p>
+                        </div>
+                        <div class="px-6 pb-6 flex gap-3">
+                            <button type="button" id="${mid}-cancel" class="flex-1 py-3 rounded-xl border border-slate-300 dark:border-neutral-700 font-semibold text-slate-600 dark:text-slate-300">Cancel</button>
+                            <button type="submit" id="${mid}-save" class="flex-[2] py-3 rounded-xl bg-ridge-600 hover:bg-ridge-700 text-white font-semibold"><i class="fas fa-save mr-2"></i>Save Name</button>
+                        </div>
+                    </form>
+                </div>`);
+            const el = document.getElementById(mid);
+            const $ = suffix => document.getElementById(`${mid}-${suffix}`);
+            const close = () => el.remove();
+            const problem = () => {
+                if (!roles.includes('surname')) return 'Choose which word is the surname.';
+                if (!roles.includes('first')) return 'Choose which word is the first name.';
+                return '';
+            };
+            const refresh = () => {
+                $('preview').textContent = arrangedName(words, roles);
+                const msg = problem();
+                $('error').textContent = msg;
+                $('error').classList.toggle('hidden', !msg);
+                $('save').disabled = !!msg;
+                $('save').classList.toggle('opacity-50', !!msg);
+            };
+            el.querySelectorAll('input[type=radio]').forEach(r => r.addEventListener('change', () => {
+                roles[+r.dataset.word] = r.value;
+                refresh();
+            }));
+            $('cancel').onclick = close;
+            el.addEventListener('click', e => { if (e.target === el) close(); });
+            refresh();
+            el.querySelector('input[type=radio]:checked')?.focus();
+
+            $('form').onsubmit = async e => {
+                e.preventDefault();
+                if (problem()) return refresh();
+                const name = arrangedName(words, roles);
+                if (name === words.join(' ')) { close(); ui.showToast('Name already in this order', 'info'); return; }
+                try {
+                    app.showLoading('Saving name...');
+                    const { error } = await supabaseClient.rpc('teacher_update_student', {
+                        p_student_id: id,
+                        p_name: name,
+                        p_admission_number: student.admission_number || '',
+                        p_gender: normalGender(student.gender),
+                        p_age: student.age || '',
+                        p_dob: student.dob || '',
+                    });
+                    if (error) throw error;
+                    close();
+                    await dataManager.loadStudents();
+                    ui.route('teacher_students');
+                    ui.showToast('Name arranged', 'success');
+                } catch (err) {
+                    modal.alert('Could Not Save', esc(typeof extractErrorMessage === 'function' ? extractErrorMessage(err) : err.message), 'error');
+                } finally {
+                    app.hideLoading();
+                }
+            };
+        };
+    }
+
     const style = document.createElement('style');
     style.textContent = `
         .rv-switch { position: relative; width: 48px; height: 28px; border-radius: 999px; border: none;
@@ -219,7 +335,15 @@
         .rv-switch:disabled { opacity: .6; cursor: progress; }
         .dark .rv-switch { background: #404040; }
         .dark .rv-switch[aria-checked="true"] { background: #059669; }
-        @media (prefers-reduced-motion: reduce) { .rv-switch, .rv-switch::after { transition: none; } }`;
+        @media (prefers-reduced-motion: reduce) { .rv-switch, .rv-switch::after { transition: none; } }
+        .rv-part-row { display: flex; gap: .375rem; }
+        .rv-part-opt { flex: 1 1 0; min-width: 0; cursor: pointer; }
+        .rv-part-opt span { display: block; text-align: center; padding: .55rem .25rem; border-radius: .6rem;
+            border: 1px solid #cbd5e1; font-size: .8rem; font-weight: 600; color: #475569; }
+        .rv-part-opt input:checked + span { background: #047857; border-color: #047857; color: #fff; }
+        .rv-part-opt input:focus-visible + span { outline: 3px solid #34d399; outline-offset: 2px; }
+        .dark .rv-part-opt span { border-color: #404040; color: #cbd5e1; }
+        .dark .rv-part-opt input:checked + span { background: #059669; border-color: #059669; color: #fff; }`;
     document.head.appendChild(style);
 
     window.rvSettings = { toggle, render: renderSettings };

@@ -5066,7 +5066,10 @@ const views = {
                                         <td class="px-6 py-4 font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(shownName(s))}</td>
                                         <td class="px-6 py-4 text-slate-800 dark:text-slate-200">${resolveClassLabel(s)}</td>
                                         <td class="px-6 py-4 text-slate-800 dark:text-slate-200">${escapeHtml(s.age || 'N/A')}</td>
-                                        <td class="px-6 py-4 text-right">
+                                        <td class="px-6 py-4 text-right whitespace-nowrap">
+                                            <button onclick="actions.teacherArrangeName('${s.id}')" title="Mark which part of the name is the surname, first name and middle name" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5">
+                                                <i class="fas fa-arrow-right-arrow-left text-xs"></i> Arrange name
+                                            </button>
                                             <button onclick="actions.teacherEditStudent('${s.id}')" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-ridge-700 dark:text-ridge-400 hover:bg-ridge-50 dark:hover:bg-white/5">
                                                 <i class="fas fa-pen text-xs"></i> Edit
                                             </button>
