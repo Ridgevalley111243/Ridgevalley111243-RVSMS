@@ -5515,8 +5515,18 @@ const actions = {
         try {
             app.showLoading('Activating year...');
             
-            await supabaseClient.from('academic_years').update({ active: false }).neq('id', 0);
-            await supabaseClient.from('academic_years').update({ active: true }).eq('id', yearId);
+            // Only one active year: switch every other year off, then this one on.
+            // (This used to filter with .neq('id', 0); ids are UUIDs, so that
+            // query failed, the error was ignored, and the old year stayed active.)
+            const { error: offErr } = await supabaseClient
+                .from('academic_years').update({ active: false }).neq('id', yearId);
+            if (offErr) throw offErr;
+            const { data: activated, error: onErr } = await supabaseClient
+                .from('academic_years').update({ active: true }).eq('id', yearId).select('id');
+            if (onErr) throw onErr;
+            if (!activated || activated.length === 0) {
+                throw new Error('The academic year was not activated. Please refresh the page and try again.');
+            }
             
             await dataManager.loadAcademicYears();
             ui.route('academic');
