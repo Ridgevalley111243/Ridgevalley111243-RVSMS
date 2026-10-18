@@ -709,6 +709,8 @@ async function initializeSupabase() {
             renderEmptyState('Login Required', 'Please log in to the portal as a teacher or administrator, then open reports from your dashboard.');
             return;
         }
+        // Feature switches and the teacher's name order (Settings), loaded alongside the class
+        state.namePrefs = loadNamePrefs(isTeacher);
         if (isTeacher) {
             state.teacherId   = session.user.id;
             state.teacherName = profile.full_name || state.teacherName;
@@ -998,6 +1000,7 @@ async function loadStudents() {
         console.log(`[Student Loading] Final matched=${matched} | rejected=${rejected} | total fetched=${(allStudents || []).length}`);
 
         state.students = filtered;
+        await applyNameOrder();
 
         // ── STEP 4: Validate student data ─────────────────────────────────────
         state.students.forEach((student, index) => {
@@ -1015,6 +1018,53 @@ async function loadStudents() {
     } catch (err) {
         throw new AppError(`Failed to load students: ${err.message}`, 'error', true);
     }
+}
+
+// ==================== STUDENT NAME ORDER ====================
+// Teachers can choose how names are shown (Settings → Student name order for
+// teachers). Names are then listed alphabetically in that order. The admin's
+// review mode keeps names exactly as written in the register.
+async function loadNamePrefs(isTeacher) {
+    state.nameOrderOn = false;
+    state.nameOrder = null;
+    if (!window.rvFeatures || !window.rvNameOrder) return;
+    await rvFeatures.load(state.supabaseClient);
+    if (!isTeacher || !rvFeatures.isOn('name_order')) return;
+    state.nameOrderOn = true;
+    state.nameOrder = await rvNameOrder.load(state.supabaseClient);
+}
+
+function displayName(student) {
+    const name = student?.name || '';
+    return state.nameOrderOn ? rvNameOrder.format(name, state.nameOrder) : name;
+}
+
+async function applyNameOrder() {
+    try { await state.namePrefs; } catch (_) {}
+    if (state.nameOrderOn) state.students = rvNameOrder.sort(state.students, state.nameOrder);
+    const box = document.getElementById('name-order-box');
+    const sel = document.getElementById('name-order-select');
+    if (box && sel) {
+        box.classList.toggle('hidden', !state.nameOrderOn);
+        if (state.nameOrderOn) sel.innerHTML = rvNameOrder.optionsHtml(state.nameOrder);
+    }
+}
+
+async function changeNameOrder(order) {
+    if (!state.nameOrderOn || state.currentStudentIndex >= 0) return;
+    const prev = state.nameOrder;
+    state.nameOrder = order;
+    state.students = rvNameOrder.sort(state.students, order);
+    renderStudentsGrid();
+    const { error } = await rvNameOrder.save(state.supabaseClient, order);
+    if (error) {
+        state.nameOrder = prev;
+        state.students = rvNameOrder.sort(state.students, prev);
+        renderStudentsGrid();
+        showToast('Could not save the name order. Please try again.', 'error');
+        return;
+    }
+    showToast('Name order saved', 'success');
 }
 
 async function loadAttendanceData() {
@@ -1948,10 +1998,10 @@ function renderStudentsGrid() {
                 <div class="flex items-start justify-between mb-4">
                     <div class="flex items-center gap-3">
                         <div class="w-12 h-12 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
-                            ${student.name.charAt(0).toUpperCase()}
+                            ${displayName(student).charAt(0).toUpperCase()}
                         </div>
                         <div class="min-w-0">
-                            <h4 class="font-bold text-slate-900 dark:text-white truncate">${escHtml(student.name)}</h4>
+                            <h4 class="font-bold text-slate-900 dark:text-white truncate">${escHtml(displayName(student))}</h4>
                             <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">${student.student_id || student.id}</p>
                         </div>
                     </div>
@@ -2005,7 +2055,7 @@ function renderStudentList() {
             <div onclick="switchStudent(${index})" class="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${isActive ? 'bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'}">
                 ${indicator}
                 <div class="flex-1 min-w-0">
-                    <p class="font-semibold text-sm text-slate-900 dark:text-white truncate ${isActive ? 'text-emerald-700 dark:text-emerald-400' : ''}">${escHtml(student.name)}</p>
+                    <p class="font-semibold text-sm text-slate-900 dark:text-white truncate ${isActive ? 'text-emerald-700 dark:text-emerald-400' : ''}">${escHtml(displayName(student))}</p>
                     <p class="text-xs text-slate-500 dark:text-slate-400">${student.student_id || student.id}</p>
                 </div>
             </div>
@@ -2290,8 +2340,8 @@ async function renderEditorContent() {
         '| savedData keys:', Object.keys(savedData).length);
 
     // Step 4: Update the editor header
-    document.getElementById('student-avatar').textContent      = student.name.charAt(0).toUpperCase();
-    document.getElementById('editor-student-name').textContent = student.name;
+    document.getElementById('student-avatar').textContent      = displayName(student).charAt(0).toUpperCase();
+    document.getElementById('editor-student-name').textContent = displayName(student);
     document.getElementById('editor-student-meta').textContent = `${state.assignedClass} • ${student.student_id || student.id}`;
     const editorAttEl = document.getElementById('editor-attendance');
     if (editorAttEl) editorAttEl.textContent = savedData.attendance ? `${savedData.attendance} days` : 'Manual entry';
@@ -3784,7 +3834,8 @@ async function buildReportDocx(student, reportData) {
     // ── STEP 4: Append Bills for Next Term before </w:body> ───────────────
     try {
         const ayId = state.currentAcademicYear?.id;
-        const billsXml = await buildReportUpcomingBills(student.id, ayId, null);
+        const billsOn = !window.rvFeatures || rvFeatures.isOn('report_bills');
+        const billsXml = billsOn ? await buildReportUpcomingBills(student.id, ayId, null) : '';
         if (billsXml) {
             // Insert before </w:body>
             docXml = docXml.replace('</w:body>', billsXml + '</w:body>');
