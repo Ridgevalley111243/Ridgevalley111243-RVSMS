@@ -32,6 +32,7 @@
                 <button type="button" onclick="rvSms.setup()" class="ml-2 underline font-semibold">Set up SMS</button></p>`;
         }
         return `<p class="text-xs mt-2 text-emerald-700 dark:text-emerald-400"><i class="fas fa-circle-check mr-1"></i>Ready · sending from <span class="font-mono">${esc(status.from_number)}</span> · key ••••${esc(status.key_hint)}
+            <button type="button" onclick="rvSms.messages()" class="ml-2 underline font-semibold">Choose messages</button>
             <button type="button" onclick="rvSms.test()" class="ml-2 underline font-semibold">Send test SMS</button>
             <button type="button" onclick="rvSms.setup()" class="ml-2 underline font-semibold">Change setup</button></p>`;
     }
@@ -158,6 +159,82 @@
         to.focus();
     }
 
+    // ── Automatic messages: which are sent, and the latest ones ─────────────
+    // Sent by the database (see supabase/migrations/20261020110000_sms_auto_messages.sql)
+    const EVENTS = [
+        ['announcement',       'Announcements',                  'To the people an announcement is for (not you). An announcement to everyone texts every parent and staff member with a number.'],
+        ['payment_submitted',  'Payment submitted',              'A receipt to the parent who paid, and an alert to the accounts office.'],
+        ['payment_reviewed',   'Payment approved or rejected',   "To the student's parents. Also when the office records a cash payment."],
+        ['class_reports_done', 'Class reports completed',        'To the admin, when a teacher finishes every report in their class.'],
+        ['report_published',   'Report uploaded',                "To the student's parents, when the admin uploads their report."],
+        ['child_link',         'Child link approved or declined','To the parent who asked to link the child.'],
+        ['absent',             'Student absent',                 "To the student's parents as soon as the teacher saves today's register. Needs Teacher attendance marking switched on."],
+        ['new_bill',           'New bill',                       "To the student's parents for each bill the accounts office assigns. A bill for a whole class texts every family in it."],
+    ];
+    const EVENT_LABEL = Object.fromEntries(EVENTS.map(([k, label]) => [k, label]));
+
+    function recentHtml(rows) {
+        if (!rows) return '';
+        if (!rows.length) return '<p class="text-sm text-slate-500 dark:text-slate-400">No automatic messages yet.</p>';
+        const when = t => { try { return new Date(t).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (_) { return ''; } };
+        const state = r => r.status === 'done'
+            ? (r.failed ? `<span class="text-amber-700 dark:text-amber-400">Sent ${r.sent} of ${r.sent + r.failed}</span>${r.error ? ` <span class="text-slate-500 dark:text-slate-400">· ${esc(r.error)}</span>` : ''}`
+                        : `<span class="text-emerald-700 dark:text-emerald-400">Sent to ${r.sent}</span>`)
+            : r.status === 'not sent' ? '<span class="text-red-600 dark:text-red-400">Not sent (the server did not pick it up)</span>'
+            : `<span class="text-slate-500 dark:text-slate-400">${r.status === 'sending' ? 'Sending' : 'Queued'} · ${r.recipients} number${r.recipients === 1 ? '' : 's'}</span>`;
+        return `<ul class="divide-y divide-slate-200 dark:divide-neutral-800 text-sm">${rows.map(r => `
+            <li class="py-2 flex flex-wrap items-baseline justify-between gap-x-3">
+                <span class="font-semibold text-slate-700 dark:text-slate-200">${esc(EVENT_LABEL[r.event] || r.event)}</span>
+                <span class="text-xs text-slate-500 dark:text-slate-400">${esc(when(r.created_at))}</span>
+                <span class="w-full text-xs mt-0.5">${state(r)}</span>
+            </li>`).join('')}</ul>`;
+    }
+
+    async function messages() {
+        try { await loadStatus(); } catch (e) { return modal.alert('Could Not Load', esc(errText(e)), 'error'); }
+        if (!status?.configured) return setup();
+        const chosen = { ...(status.events || {}) };
+        const d = dialog('sms-events-modal', 'Automatic SMS', `
+            <p class="text-sm text-slate-600 dark:text-slate-300 mt-1">Choose which messages are texted automatically. Parents are reached through their portal account and the parent phone on the student's record.</p>
+            <ul class="mt-3 divide-y divide-slate-200 dark:divide-neutral-800">${EVENTS.map(([k, label, desc]) => `
+                <li class="flex items-start gap-3 py-3">
+                    <div class="min-w-0 flex-1">
+                        <p id="sms-ev-${k}-label" class="font-semibold text-sm text-slate-800 dark:text-white">${label}</p>
+                        <p id="sms-ev-${k}-desc" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">${esc(desc)}</p>
+                    </div>
+                    <button type="button" role="switch" aria-checked="${!!chosen[k]}" aria-labelledby="sms-ev-${k}-label" aria-describedby="sms-ev-${k}-desc"
+                        data-event="${k}" class="rv-switch shrink-0 mt-0.5"><span class="sr-only">${chosen[k] ? 'On' : 'Off'}</span></button>
+                </li>`).join('')}
+            </ul>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">Each text costs the same as a normal SMS from the school phone. The free httpSMS plan allows 200 texts a month.</p>
+            <h3 class="text-sm font-bold text-slate-800 dark:text-white mt-5">Recent messages</h3>
+            <div id="sms-recent" class="mt-1" aria-live="polite"><p class="text-sm text-slate-500 dark:text-slate-400"><i class="fas fa-circle-notch fa-spin mr-1"></i>Loading…</p></div>`,
+            'Save choices');
+        d.el.querySelectorAll('[data-event]').forEach(btn => btn.addEventListener('click', () => {
+            const k = btn.dataset.event;
+            chosen[k] = !chosen[k];
+            btn.setAttribute('aria-checked', String(chosen[k]));
+            btn.querySelector('.sr-only').textContent = chosen[k] ? 'On' : 'Off';
+        }));
+        d.save.addEventListener('click', async () => {
+            d.clear();
+            d.save.disabled = true;
+            try {
+                const { error } = await supabaseClient.rpc('admin_set_sms_events', { p_events: chosen });
+                if (error) throw error;
+                status.events = { ...chosen };
+                d.close();
+                ui.showToast('SMS choices saved', 'success');
+            } catch (e) {
+                d.save.disabled = false;
+                d.fail(errText(e));
+            }
+        });
+        const { data: rows, error } = await supabaseClient.rpc('admin_sms_recent', { p_limit: 10 });
+        const box = d.el.querySelector('#sms-recent');
+        if (box) box.innerHTML = error ? `<p class="text-sm text-slate-500 dark:text-slate-400">Could not load recent messages.</p>` : recentHtml(rows || []);
+    }
+
     // Sends through the send-sms Edge Function; resolves to { sent, failed, results }
     async function send(to, message) {
         const { data, error } = await supabaseClient.functions.invoke('send-sms', { body: { to, message } });
@@ -169,5 +246,5 @@
         return data;
     }
 
-    window.rvSms = { rowHtml, refresh, afterToggle, setup, test, send };
+    window.rvSms = { rowHtml, refresh, afterToggle, setup, test, send, messages };
 })();
