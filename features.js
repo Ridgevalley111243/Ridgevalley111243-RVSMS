@@ -1075,7 +1075,8 @@ const featureViews = {
                             <div class="flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
                                 <div>
                                     <p class="font-bold text-slate-800 dark:text-slate-200">${escapeHtml(student?.name || 'Unknown')}</p>
-                                    <p class="text-sm text-amber-700 dark:text-amber-300">₵${t.amount} • ${t.method}</p>
+                                    <p class="text-sm text-amber-700 dark:text-amber-300">₵${t.amount} • ${typeof paymentMethodLabel === 'function' ? paymentMethodLabel(t.method) : t.method}</p>
+                                    ${t.reference ? `<p class="text-xs text-slate-500 dark:text-slate-400 font-mono">Paystack ref: ${escapeHtml(t.reference)}</p>` : ''}
                                     ${t.proof ? `<a href="${t.proof}" target="_blank" class="text-xs text-blue-500 underline">View Proof</a>` : ''}
                                 </div>
                                 <div class="flex gap-2">

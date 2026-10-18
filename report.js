@@ -49,333 +49,8 @@ const TEMPLATE_FILES = {
 // Supabase Storage bucket where templates are stored (public bucket)
 const TEMPLATE_BUCKET = 'report-templates';
 
-const TEMPLATE_CONFIG = {
-
-    // ── CRÈCHE ──────────────────────────────────────────────────────────────
-    'creche': {
-        sections: [
-            {
-                title: 'Demographic Characteristics',
-                type: 'demographic',
-                fields: [
-                    { name: 'date',            label: 'Date',            type: 'date'   },
-                    { name: 'age_months',      label: 'Age (Months)',    type: 'number' },
-                    { name: 'previous_height', label: 'Previous Height', type: 'text'   },
-                    { name: 'current_height',  label: 'Current Height',  type: 'text'   },
-                    { name: 'previous_weight', label: 'Previous Weight', type: 'text'   },
-                    { name: 'current_weight',  label: 'Current Weight',  type: 'text'   }
-                ]
-            },
-            {
-                title: 'Play Therapy Activities (Yes / No)',
-                type: 'play_therapy_yes_no',
-                fields: [
-                    { name: 'identify_caregiver',  label: 'Can identify his/her caregiver from other caregiver?' },
-                    { name: 'recognize_parents',   label: 'Can identify and recognized the presence of his/her parents when with caregivers?' },
-                    { name: 'can_crawl',           label: 'Can craw?' },
-                    { name: 'stand_with_help',     label: 'Can stand with help?' },
-                    { name: 'stand_without_help',  label: 'Can stand without help?' },
-                    { name: 'take_steps',          label: 'Can stand and take steps not more than...', type: 'text_with_remark' },
-                    { name: 'walk_independently',  label: 'Can walk independently?' },
-                    { name: 'play_with_colleagues',label: 'Do join and play with colleagues?' },
-                    { name: 'show_signs_tasty',    label: 'Do show specific/unique signs/gestures when tasty or hungry?' },
-                    { name: 'show_signs_hungry',   label: 'Shows specific/unique signs/gestures when tasty or hungry?' }
-                ]
-            },
-            {
-                title: 'Signs / Gestures Details',
-                type: 'textarea',
-                fields: [{ name: 'signs_gestures_details', label: 'If yes, what signs/gestures?', placeholder: 'Describe the signs or gestures...' }]
-            },
-            {
-                title: 'Attendance & Promotion',
-                type: 'basic_info',
-                fields: [
-                    { name: 'attendance',  label: 'Days Present', type: 'number', },
-                    { name: 'total_days',  label: 'Total Days',   type: 'number', },
-                    { name: 'promoted_to', label: 'Promoted to',  type: 'text' }
-                ]
-            },
-            {
-                title: 'Remarks',
-                type: 'remarks',
-                fields: [
-                    { name: 'class_caregiver_remarks', label: "Class Caregiver's Remarks", rows: 3 },
-                    { name: 'head_teacher_remarks',    label: "Head Teacher's Remarks",    rows: 3 }
-                ]
-            }
-        ]
-    },
-
-    // ── NURSERY ────────────────────────────────────────
-    // Uses CRECHE_AND_NURSERY_REPORT_TEMPLATE.docx
-    'nursery': {
-        sections: [
-            {
-                title: 'Basic Information',
-                type: 'basic_info',
-                fields: [
-                    { name: 'student_name',    label: 'Student Name',     type: 'text',   readonly: true, auto: 'name'  },
-                    { name: 'term',            label: 'Term',             type: 'text',   readonly: true, auto: 'term'  },
-                    { name: 'year',            label: 'Academic Year',    type: 'text',   readonly: true, auto: 'year'  },
-                    { name: 'class',           label: 'Level',            type: 'text',   readonly: true, auto: 'class' },
-                    { name: 'no_on_roll',      label: 'NO. On Roll',      type: 'number', readonly: true, auto: 'count' },
-                    { name: 'date',            label: 'Date',             type: 'date' },
-                    { name: 'next_term_begins',label: 'Next Term Begins', type: 'date' }
-                ]
-            },
-            {
-                title: 'Play Therapy Activities',
-                type: 'rating_abcd',
-                subtitle: 'A = Excellent  B = Very Good  C = Good  D = Weak',
-                fields: [
-                    { name: 'language_orals',    label: 'LANGUAGE ACT/ ORALS'     },
-                    { name: 'express_self',      label: 'CAN EXPRESS SELF CLEARLY' },
-                    { name: 'say_alphabets',     label: 'CAN SAY THE ALPHABETS'   },
-                    { name: 'picture_reading',   label: 'PICTURE READING'         },
-                    { name: 'rhymes_recitation', label: 'RHYMES/ RECITATIONS'     }
-                ]
-            },
-            {
-                title: 'Senses: Can Differentiate Between',
-                type: 'rating_abcd',
-                fields: [
-                    { name: 'smell',  label: 'SMELL'  },
-                    { name: 'colour', label: 'COLOUR' },
-                    { name: 'taste',  label: 'TASTE'  },
-                    { name: 'shapes', label: 'SHAPES' }
-                ]
-            },
-            {
-                title: 'Pre-Number Work',
-                type: 'rating_abcd',
-                fields: [
-                    { name: 'counting_writing',   label: 'COUNTING & WRITING'         },
-                    { name: 'nature_environment', label: 'NATURE & ENVIRONMENT'        },
-                    { name: 'art_creativity',     label: 'ART & CREATIVITY'           },
-                    { name: 'religious_moral',    label: 'RELIGIOUS & MORAL EDUCATION' }
-                ]
-            },
-            {
-                title: 'Physical Development',
-                type: 'rating_abcd',
-                fields: [
-                    { name: 'throw_catch_kick', label: 'CAN THROW, CATCH & KICK A BALL'         },
-                    { name: 'outdoor_games',    label: 'ACTIVE & ENJOY OUTDOOR GAMES'            },
-                    { name: 'muscle_control',   label: 'SHOW GOOD MUSCLE CONTROL'               },
-                    { name: 'write_letters',    label: 'CAN WRITE LETTER OR THE ALPHABET UP TO', type: 'text_value' },
-                    { name: 'write_numerals',   label: 'CAN WRITE THE NUMERAL UP TO',            type: 'text_value' }
-                ]
-            },
-            {
-                title: 'Attendance & Promotion',
-                type: 'basic_info',
-                fields: [
-                    { name: 'total_days',  label: 'Total School Days', type: 'number', },
-                    { name: 'attendance',  label: 'Days Present',      type: 'number', },
-                    { name: 'days_absent', label: 'Days Absent',       type: 'number', readonly: true  },
-                    { name: 'promoted_to', label: 'Promoted To',       type: 'text' }
-                ]
-            },
-            {
-                title: 'Identified Skills',
-                type: 'basic_info',
-                fields: [
-                    { name: 'interest', label: 'Identified Interest', type: 'text' },
-                    { name: 'talent',   label: 'Identified Talent',   type: 'text' }
-                ]
-            },
-            {
-                title: 'Remarks',
-                type: 'remarks',
-                fields: [
-                    { name: 'class_teacher_remarks', label: "Class Teacher's Remark", rows: 3 },
-                    { name: 'head_teacher_remarks',  label: "Head Teacher's Remark",  rows: 3 }
-                ]
-            }
-        ]
-    },
-
-
-    // ── KG ────────────────────────────────────────────────────────────────────────────
-    // Matches K_G_REPORT_TEMPLATE.docx exactly.
-    // Table columns: Subject | Class Score (50%) | Exam Score (50%) | Total Score (100%) | Remarks
-    // Row labels must match template text EXACTLY for placeholder filling to work.
-    'kg': {
-        sections: [
-            {
-                title: 'Student Information',
-                type: 'kg_student_info',
-                fields: [
-                    { name: 'student_name',     label: 'Student Name',     type: 'text',   readonly: true, auto: 'name'  },
-                    { name: 'term',             label: 'Term',             type: 'text',   readonly: true, auto: 'term'  },
-                    { name: 'year',             label: 'Academic Year',    type: 'text',   readonly: true, auto: 'year'  },
-                    { name: 'class',            label: 'Level',            type: 'text',   readonly: true, auto: 'class' },
-                    { name: 'no_on_roll',       label: 'NO. On Roll',      type: 'number', readonly: true, auto: 'count' },
-                    { name: 'date',             label: 'Date',             type: 'date'   },
-                    { name: 'next_term_begins', label: 'Next Term Begins', type: 'date'   }
-                ]
-            },
-            {
-                title: 'Performance Table',
-                type: 'kg_unified_table',
-                scoredRows: [
-                    { name: 'language_orals',                 label: 'LANGUAGE ORALS'                    },
-                    { name: 'language_literacy',              label: 'LANGUAGE & LITERACY'                },
-                    { name: 'numeracy',                       label: 'NUMERACY'                          },
-                    { name: 'handwriting',                    label: 'HANDWRITING'                       },
-                    { name: 'creative_arts',                  label: 'CREATIVE ARTS'                     },
-                    { name: 'phonics',                        label: 'PHONICS'                           },
-                    { name: 'our_world',                      label: 'OUR WORLD, OUR PEOPLE'             },
-                    { name: 'picture_reading_identification', label: 'PICTURE READING & IDENTIFICATION'  },
-                    { name: 'senses_colours',                 label: 'COLOURS',                           section: 'senses'   },
-                    { name: 'senses_shapes',                  label: 'SHAPES',                            section: 'senses'   },
-                    { name: 'phys_outdoor_games',             label: 'ACTIVE & ENJOY OUTDOOR GAMES',      section: 'physical' },
-                    { name: 'phys_muscle_control',            label: 'SHOWS GOOD MUSCLE CONTROL',         section: 'physical' },
-                    { name: 'phys_neatness',                  label: 'NEATNESS',                          section: 'physical' },
-                    { name: 'phys_leadership',                label: 'LEADERSHIP SKILLS',                 section: 'physical' }
-                ]
-            },
-            {
-                title: 'Attendance & Additional Information',
-                type: 'kg_footer_info',
-                fields: [
-                    { name: 'total_days',            label: 'Total School Days',   type: 'number', },
-                    { name: 'attendance',            label: 'Days Present',        type: 'number', },
-                    { name: 'days_absent',           label: 'Days Absent',         type: 'number', readonly: true  },
-                    { name: 'subject_of_interest',   label: 'Subject of Interest', type: 'text'   },
-                    { name: 'conduct',               label: 'Conduct',             type: 'text'   },
-                    { name: 'promoted_to',           label: 'Promoted To',         type: 'text'   },
-                    { name: 'class_teacher_remarks', label: "Class Teacher's Remark", type: 'textarea', rows: 3 },
-                    { name: 'head_teacher_remarks',  label: "Head Teacher's Remark",  type: 'textarea', rows: 3 }
-                ]
-            }
-        ]
-    },
-
-        // ── LOWER PRIMARY ───────────────────────────────────────────────────────
-    'lower': {
-        sections: [
-            {
-                title: 'Basic Information',
-                type: 'basic_info',
-                fields: [
-                    { name: 'student_name',    label: 'Student Name',     type: 'text',   readonly: true, auto: 'name'  },
-                    { name: 'term',            label: 'Term',             type: 'text',   readonly: true, auto: 'term'  },
-                    { name: 'year',            label: 'Academic Year',    type: 'text',   readonly: true, auto: 'year'  },
-                    { name: 'class',           label: 'Level',            type: 'text',   readonly: true, auto: 'class' },
-                    { name: 'no_on_roll',      label: 'NO. On Roll',      type: 'number', readonly: true, auto: 'count' },
-                    { name: 'date',            label: 'Date',             type: 'date' },
-                    { name: 'next_term_begins',label: 'Next Term Begins', type: 'date' }
-                ]
-            },
-            {
-                title: 'Academic Performance',
-                type: 'subjects_scored_full',
-                headers: ['Subject', 'Class Score (50%)', 'Exam Score (50%)', 'Total Score (100%)', 'Position', 'Remarks'],
-                fields: [
-                    { name: 'english',      label: 'ENGLISH LANGUAGE'           },
-                    { name: 'mathematics',  label: 'MATHEMATICS'                },
-                    { name: 'science',      label: 'SCIENCE'                    },
-                    { name: 'history',      label: 'HISTORY'                    },
-                    { name: 'rel_moral',    label: 'RELIGIOUS & MORAL EDUCATION' },
-                    { name: 'asante_twi',   label: 'ASANTE TWI'                 },
-                    { name: 'phonics',      label: 'PHONICS'                    },
-                    { name: 'french',       label: 'FRENCH'                     },
-                    { name: 'creative_arts',label: 'CREATIVE ARTS'              }
-                ]
-            },
-            {
-                title: 'Attendance & Promotion',
-                type: 'basic_info',
-                fields: [
-                    { name: 'total_days',  label: 'Total School Days', type: 'number', },
-                    { name: 'attendance',  label: 'Days Present',      type: 'number', },
-                    { name: 'days_absent', label: 'Days Absent',       type: 'number', readonly: true  },
-                    { name: 'promoted_to', label: 'Promoted To',       type: 'text' }
-                ]
-            },
-            {
-                title: 'Additional Information',
-                type: 'basic_info',
-                fields: [
-                    { name: 'interest', label: 'Interest', type: 'text' },
-                    { name: 'conduct',  label: 'Conduct',  type: 'text' }
-                ]
-            },
-            {
-                title: 'Remarks',
-                type: 'remarks',
-                fields: [
-                    { name: 'class_teacher_remarks', label: "Class Teacher's Remark", rows: 3 },
-                    { name: 'head_teacher_remarks',  label: "Head Teacher's Remark",  rows: 3 }
-                ]
-            }
-        ]
-    },
-
-    // ── UPPER PRIMARY ───────────────────────────────────────────────────────
-    'upper': {
-        sections: [
-            {
-                title: 'Basic Information',
-                type: 'basic_info',
-                fields: [
-                    { name: 'student_name',    label: 'Student Name',     type: 'text',   readonly: true, auto: 'name'  },
-                    { name: 'term',            label: 'Term',             type: 'text',   readonly: true, auto: 'term'  },
-                    { name: 'year',            label: 'Academic Year',    type: 'text',   readonly: true, auto: 'year'  },
-                    { name: 'class',           label: 'Level',            type: 'text',   readonly: true, auto: 'class' },
-                    { name: 'no_on_roll',      label: 'NO. On Roll',      type: 'number', readonly: true, auto: 'count' },
-                    { name: 'date',            label: 'Date',             type: 'date' },
-                    { name: 'next_term_begins',label: 'Next Term Begins', type: 'date' }
-                ]
-            },
-            {
-                title: 'Academic Performance',
-                type: 'subjects_scored_full',
-                headers: ['Subject', 'Class Score (50%)', 'Exam Score (50%)', 'Total Score (100%)', 'Position', 'Remarks'],
-                fields: [
-                    { name: 'english',      label: 'ENGLISH LANGUAGE'           },
-                    { name: 'mathematics',  label: 'MATHEMATICS'                },
-                    { name: 'science',      label: 'SCIENCE'                    },
-                    { name: 'history',      label: 'HISTORY'                    },
-                    { name: 'computing',    label: 'COMPUTING'                  },
-                    { name: 'rel_moral',    label: 'RELIGIOUS & MORAL EDUCATION' },
-                    { name: 'asante_twi',   label: 'ASANTE TWI'                 },
-                    { name: 'phonics',      label: 'PHONICS'                    },
-                    { name: 'french',       label: 'FRENCH'                     },
-                    { name: 'creative_arts',label: 'CREATIVE ARTS'              }
-                ]
-            },
-            {
-                title: 'Attendance & Promotion',
-                type: 'basic_info',
-                fields: [
-                    { name: 'total_days',  label: 'Total School Days', type: 'number', },
-                    { name: 'attendance',  label: 'Days Present',      type: 'number', },
-                    { name: 'days_absent', label: 'Days Absent',       type: 'number', readonly: true  },
-                    { name: 'promoted_to', label: 'Promoted To',       type: 'text' }
-                ]
-            },
-            {
-                title: 'Additional Information',
-                type: 'basic_info',
-                fields: [
-                    { name: 'interest', label: 'Interest', type: 'text' },
-                    { name: 'conduct',  label: 'Conduct',  type: 'text' }
-                ]
-            },
-            {
-                title: 'Remarks',
-                type: 'remarks',
-                fields: [
-                    { name: 'class_teacher_remarks', label: "Class Teacher's Remark", rows: 3 },
-                    { name: 'head_teacher_remarks',  label: "Head Teacher's Remark",  rows: 3 }
-                ]
-            }
-        ]
-    }
-};
+// TEMPLATE_CONFIG (the fields on each report card) lives in report-templates.js,
+// shared with the portal so both work out report progress the same way.
 
 // ==================== GRADE INTERPRETATION ====================
 // Used to auto-fill subject remarks and initials for primary levels (lower/upper)
@@ -1018,6 +693,118 @@ async function loadStudents() {
     } catch (err) {
         throw new AppError(`Failed to load students: ${err.message}`, 'error', true);
     }
+}
+
+// ==================== REPORT PROGRESS ====================
+// Real progress from what has been filled in (rules in report-templates.js).
+// While a report is open, its progress follows the form as the teacher types.
+function studentProgress(studentId) {
+    const live = state._liveData && state._liveData.studentId === studentId ? state._liveData.data : null;
+    return reportProgress(state.classLevel, state.term, live || state.reportsData[studentId]?.data || {});
+}
+
+function progressStatus(prog, report) {
+    if (state.isAdmin) {
+        if (prog.complete && report?.data?.head_teacher_remarks) return { cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', icon: 'fa-check-circle', text: 'Done' };
+        if (prog.complete) return { cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', icon: 'fa-pen', text: 'Ready for remark' };
+        return { cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300', icon: 'fa-clock', text: prog.done ? 'Teacher filling' : 'Not started' };
+    }
+    if (prog.complete) return { cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', icon: 'fa-check-circle', text: 'Completed' };
+    if (prog.done) return { cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300', icon: 'fa-clock', text: 'In progress' };
+    return { cls: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300', icon: 'fa-circle', text: 'Not started' };
+}
+
+function progressBarHtml(prog, studentId, statusHtml = '') {
+    const fill = prog.complete ? 'bg-emerald-500' : 'bg-amber-400';
+    return `
+        <div class="mb-3">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                ${statusHtml}
+                <span data-progress-pct="${escHtml(studentId)}" class="text-sm font-bold tabular-nums ${prog.complete ? 'text-emerald-600' : 'text-slate-600 dark:text-slate-300'}">${prog.percent}%</span>
+            </div>
+            <div class="h-1.5 w-full rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden" role="progressbar" aria-label="Report progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${prog.percent}">
+                <div data-progress-fill="${escHtml(studentId)}" class="h-1.5 rounded-full ${fill} transition-all duration-300" style="width:${prog.percent}%"></div>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">${prog.done} of ${prog.total} filled</p>
+        </div>`;
+}
+
+// Update every bar for a student, the class bar, and the editor header
+function refreshProgressUI(studentId) {
+    const ids = studentId ? [studentId] : state.students.map(s => s.id);
+    ids.forEach(id => {
+        const p = studentProgress(id);
+        document.querySelectorAll(`[data-progress-fill="${CSS.escape(id)}"]`).forEach(el => {
+            el.style.width = p.percent + '%';
+            el.classList.toggle('bg-emerald-500', p.complete);
+            el.classList.toggle('bg-amber-400', !p.complete);
+            el.parentElement?.setAttribute('aria-valuenow', String(p.percent));
+        });
+        document.querySelectorAll(`[data-progress-pct="${CSS.escape(id)}"]`).forEach(el => { el.textContent = p.percent + '%'; });
+    });
+    const cur = state.students[state.currentStudentIndex];
+    const hdr = document.getElementById('editor-progress');
+    if (cur && hdr) {
+        const p = studentProgress(cur.id);
+        hdr.innerHTML = p.complete
+            ? '<i class="fas fa-circle-check mr-1"></i>Completed'
+            : `${p.percent}% filled · ${p.total - p.done} to go`;
+        hdr.title = p.complete ? '' : 'Still to fill: ' + p.missing.slice(0, 12).join(', ') + (p.missing.length > 12 ? '…' : '');
+    }
+    updateProgress();
+}
+
+let _liveProgressTimer = null;
+function scheduleLiveProgress() {
+    clearTimeout(_liveProgressTimer);
+    _liveProgressTimer = setTimeout(() => {
+        const student = state.students[state.currentStudentIndex];
+        if (!student || state.isAdmin) return;
+        try { state._liveData = { studentId: student.id, data: collectFormData(student) }; }
+        catch (_) { return; }
+        refreshProgressUI(student.id);
+    }, 200);
+}
+
+// Teacher finished every report in the class: notify the admins (once per class and term)
+async function notifyAdminIfClassComplete() {
+    if (state.isAdmin || !state.students.length) return;
+    if (!state.students.every(st => reportProgress(state.classLevel, state.term, state.reportsData[st.id]?.data || {}).complete)) return;
+    const key = `rv_class_complete_notified:${state.assignedClassId || state.assignedClass}:${state.term}:${state.academicYear}`;
+    try { if (localStorage.getItem(key)) return; } catch (_) {}
+    try {
+        const { error } = await state.supabaseClient.rpc('notify_admins', {
+            p_title: 'Class reports ready',
+            p_message: `${state.teacherName || 'The class teacher'} has completed all ${state.students.length} reports for ${state.assignedClass} (${state.term}). They are ready for the head teacher's remarks.`,
+            p_type: 'report_submitted'
+        });
+        if (error) throw error;
+        try { localStorage.setItem(key, new Date().toISOString()); } catch (_) {}
+        showToast('All reports complete. The admin has been notified.', 'success');
+    } catch (err) {
+        console.warn('[reports] could not notify admin:', err?.message || err);
+    }
+}
+
+// Admin review: say when the class teacher has finished every report
+function updateAdminReadyBanner(completed, total) {
+    const hint = document.getElementById('reports-hint');
+    if (!state.isAdmin || !hint) return;
+    const ready = total > 0 && completed === total;
+    let banner = document.getElementById('admin-ready-banner');
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'admin-ready-banner';
+        banner.setAttribute('role', 'status');
+        const grid = document.getElementById('students-grid');
+        grid?.parentElement?.insertBefore(banner, grid);
+    }
+    banner.className = ready
+        ? 'rounded-2xl p-4 border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-200 text-sm flex items-start gap-3'
+        : 'rounded-2xl p-4 border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 text-sm flex items-start gap-3';
+    banner.innerHTML = ready
+        ? '<i class="fas fa-circle-check mt-0.5" aria-hidden="true"></i><div><p class="font-semibold">The class teacher has completed every report.</p><p>Add the head teacher\'s remarks, then download the class report.</p></div>'
+        : `<i class="fas fa-hourglass-half mt-0.5" aria-hidden="true"></i><div><p class="font-semibold">The class teacher is still filling in reports: ${completed} of ${total} complete.</p><p>You can add remarks now, or wait until every report is complete.</p></div>`;
 }
 
 // ==================== STUDENT NAME ORDER ====================
@@ -1983,21 +1770,18 @@ function renderStudentsGrid() {
     
     container.innerHTML = state.students.map((student, index) => {
         const report = state.reportsData[student.id];
-        const hasReport = report?.completed;
+        const prog = studentProgress(student.id);
+        const hasReport = prog.complete;
         const savedAtt = report?.data?.attendance || '';
         const savedTotal = report?.data?.total_days || '';
-        
-        const statusClass = hasReport
-            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
-        const statusIcon = hasReport ? 'fa-check-circle' : 'fa-clock';
-        const statusText = hasReport ? 'Saved' : (state.isAdmin ? 'Not filled' : 'Pending');
+        const st = progressStatus(prog, report);
+        const statusClass = st.cls, statusIcon = st.icon, statusText = st.text;
         
         return `
             <div onclick="openBulkEditor(${index})" class="student-card glass-panel rounded-2xl p-5 cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700 ${hasReport ? 'ring-1 ring-emerald-500/20' : ''}">
-                <div class="flex items-start justify-between mb-4">
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                <div class="flex items-start justify-between gap-2 mb-4">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-12 h-12 shrink-0 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
                             ${displayName(student).charAt(0).toUpperCase()}
                         </div>
                         <div class="min-w-0">
@@ -2005,11 +1789,8 @@ function renderStudentsGrid() {
                             <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">${student.student_id || student.id}</p>
                         </div>
                     </div>
-                    <span class="status-badge ${statusClass}">
-                        <i class="fas ${statusIcon} text-xs"></i>
-                        ${statusText}
-                    </span>
                 </div>
+                ${progressBarHtml(prog, student.id, `<span class="status-badge whitespace-nowrap ${statusClass}"><i class="fas ${statusIcon} text-xs" aria-hidden="true"></i> ${statusText}</span>`)}
                 <div class="flex items-center justify-between text-sm">
                     <span class="text-slate-600 dark:text-slate-400">
                         <i class="fas fa-calendar-check mr-1 text-emerald-500"></i>
@@ -2023,9 +1804,14 @@ function renderStudentsGrid() {
 }
 
 function updateProgress() {
-    const completed = Object.values(state.reportsData).filter(r => r.completed).length;
+    const all = state.students.map(st => studentProgress(st.id));
+    const completed = all.filter(p => p.complete).length;
     const total = state.students.length;
-    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const fieldsDone = all.reduce((n, p) => n + p.done, 0);
+    const fieldsTotal = all.reduce((n, p) => n + p.total, 0);
+    // Moves with every field filled in, and reaches 100% only when every report is complete
+    const percent = fieldsTotal > 0 ? Math.floor((fieldsDone / fieldsTotal) * 100) : 0;
+    updateAdminReadyBanner(completed, total);
     
     document.getElementById('progress-completed').textContent = completed;
     document.getElementById('progress-total').textContent = total;
@@ -2045,19 +1831,24 @@ function renderStudentList() {
     container.innerHTML = state.students.map((student, index) => {
         const report = state.reportsData[student.id];
         const isActive = index === state.currentStudentIndex;
-        const isCompleted = report?.completed;
-        
+        const prog = studentProgress(student.id);
+        const isCompleted = prog.complete;
+
         let indicator = '';
-        if (isCompleted) indicator = '<i class="fas fa-circle text-emerald-500"></i>';
-        else indicator = '<i class="far fa-circle text-slate-300"></i>';
+        if (isCompleted) indicator = '<i class="fas fa-circle-check text-emerald-500" aria-hidden="true"></i>';
+        else if (prog.done > 0) indicator = '<i class="fas fa-circle-half-stroke text-amber-500" aria-hidden="true"></i>';
+        else indicator = '<i class="far fa-circle text-slate-300" aria-hidden="true"></i>';
         
         return `
             <div onclick="switchStudent(${index})" class="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${isActive ? 'bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent'}">
                 ${indicator}
                 <div class="flex-1 min-w-0">
                     <p class="font-semibold text-sm text-slate-900 dark:text-white truncate ${isActive ? 'text-emerald-700 dark:text-emerald-400' : ''}">${escHtml(displayName(student))}</p>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">${student.student_id || student.id}</p>
+                    <div class="mt-1.5 h-1 w-full rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden" role="progressbar" aria-label="Report progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${prog.percent}">
+                        <div data-progress-fill="${escHtml(student.id)}" class="h-1 rounded-full ${isCompleted ? 'bg-emerald-500' : 'bg-amber-400'} transition-all duration-300" style="width:${prog.percent}%"></div>
+                    </div>
                 </div>
+                <span data-progress-pct="${escHtml(student.id)}" class="text-xs font-semibold tabular-nums ${isCompleted ? 'text-emerald-600' : 'text-slate-500'}">${prog.percent}%</span>
             </div>
         `;
     }).join('');
@@ -2432,6 +2223,7 @@ async function renderEditorContent() {
             }
 
             state.hasUnsavedChanges = true;
+            scheduleLiveProgress();
 
             // Live days_absent computation: recompute whenever total_days or attendance changes
             if (fieldName === 'total_days' || fieldName === 'attendance') {
@@ -3133,6 +2925,57 @@ function saveCurrentReportData(isAutoSave = false) {
     }
     
     try {
+        const data = collectFormData(student);
+
+        // Check if data actually changed (for auto-save)
+        const dataHash = JSON.stringify(data);
+        if (isAutoSave && state.lastSavedHash === dataHash) {
+            return Promise.resolve();
+        }
+
+        // Extra guard: don't auto-save a completely empty form
+        // (this prevents saving blank data when switching students)
+        if (isAutoSave) {
+            const hasAnyValue = Object.values(data).some(v => {
+                if (typeof v === 'object' && v !== null) {
+                    return Object.values(v).some(sv => sv !== '' && sv !== null && sv !== undefined);
+                }
+                return v !== '' && v !== null && v !== undefined;
+            });
+            if (!hasAnyValue) {
+                console.log('[saveCurrentReportData] Skipping auto-save — all fields empty');
+                return Promise.resolve();
+            }
+        }
+
+        // Completed = every field the class teacher fills is filled (report-templates.js)
+        const progress = reportProgress(state.classLevel, state.term, data);
+        const prev = state.reportsData[student.id];
+        state.reportsData[student.id] = {
+            ...(prev || {}),
+            id: prev?.id,
+            studentId: student.id,
+            studentName: student.name,
+            completed: progress.complete,
+            lastModified: new Date().toISOString(),
+            data: data
+        };
+
+        state.hasUnsavedChanges = false;
+        state.lastSavedHash = dataHash;
+        refreshProgressUI();
+
+        // Save to Supabase, then tell the admin once the whole class is complete
+        return saveToSupabase(student.id, isAutoSave).then(r => { notifyAdminIfClassComplete(); return r; });
+
+    } catch (err) {
+        handleError(err, 'Save Report Data');
+        return Promise.reject(err);
+    }
+}
+
+// Reads the open report form into a data object (no saving)
+function collectFormData(student) {
         const config = TEMPLATE_CONFIG[state.classLevel];
         const data = {};
         
@@ -3183,47 +3026,7 @@ function saveCurrentReportData(isAutoSave = false) {
             const presentDays = parseInt(data.attendance   || 0);
             data.days_absent = String(Math.max(0, totalDays - presentDays));
         }
-        
-        // Check if data actually changed (for auto-save)
-        const dataHash = JSON.stringify(data);
-        if (isAutoSave && state.lastSavedHash === dataHash) {
-            return Promise.resolve();
-        }
-
-        // Extra guard: don't auto-save a completely empty form
-        // (this prevents saving blank data when switching students)
-        if (isAutoSave) {
-            const hasAnyValue = Object.values(data).some(v => {
-                if (typeof v === 'object' && v !== null) {
-                    return Object.values(v).some(sv => sv !== '' && sv !== null && sv !== undefined);
-                }
-                return v !== '' && v !== null && v !== undefined;
-            });
-            if (!hasAnyValue) {
-                console.log('[saveCurrentReportData] Skipping auto-save — all fields empty');
-                return Promise.resolve();
-            }
-        }
-        
-        // Update state
-        state.reportsData[student.id] = {
-            studentId: student.id,
-            studentName: student.name,
-            completed: true,
-            lastModified: new Date().toISOString(),
-            data: data
-        };
-        
-        state.hasUnsavedChanges = false;
-        state.lastSavedHash = dataHash;
-        
-        // Save to Supabase
-        return saveToSupabase(student.id, isAutoSave);
-        
-    } catch (err) {
-        handleError(err, 'Save Report Data');
-        return Promise.reject(err);
-    }
+        return data;
 }
 
 async function saveToSupabase(studentId, isAutoSave) {
@@ -3242,7 +3045,7 @@ async function saveToSupabase(studentId, isAutoSave) {
             term: state.term,
             academic_year: state.academicYear,
             data: report.data,
-            completed: true,
+            completed: !!report.completed,
             submitted: report.submitted || false,
             submitted_at: report.submittedAt,
             last_modified: new Date().toISOString()
@@ -4220,7 +4023,11 @@ async function downloadClassReports() {
         }
         calculateAllPositions();
 
-        const ready = state.students.filter(s => state.reportsData[s.id]?.completed);
+        // Every report with anything saved (complete or not), as before
+        const ready = state.students.filter(s => {
+            const d = state.reportsData[s.id]?.data || {};
+            return Object.values(d).some(v => v && (typeof v !== 'object' || Object.values(v).some(Boolean)));
+        });
         if (ready.length === 0) {
             showToast('No saved reports in this class yet.', 'warning');
             return;
@@ -4492,3 +4299,20 @@ document.addEventListener('keydown', (e) => {
         if (next) { next.focus(); next.select?.(); }
     }
 });
+
+// Live progress: start from the opened report, and drop the live copy when the
+// report closes or another student opens.
+{
+    const _renderEditorContent = renderEditorContent;
+    renderEditorContent = async function () {
+        state._liveData = null;
+        const r = await _renderEditorContent.apply(this, arguments);
+        if (state.isAdmin) refreshProgressUI(); else scheduleLiveProgress();
+        return r;
+    };
+    const _closeEditor = closeEditor;
+    closeEditor = function () {
+        state._liveData = null;
+        return _closeEditor.apply(this, arguments);
+    };
+}
